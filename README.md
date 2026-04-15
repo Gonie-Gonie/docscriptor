@@ -11,10 +11,16 @@ The long-term goal is to compose structured content in scripts, reuse templates 
 
 ## Development
 
-Assuming Python 3.14 is already installed on the machine, run the setup script:
+Assuming Python 3.14 is already installed on the machine, run the repository setup helper:
 
 ```powershell
-.\setup.ps1
+.\scripts\setup-repo.cmd
+```
+
+If you prefer to run the PowerShell script directly, use a one-off execution policy bypass for the current invocation:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-repo.ps1
 ```
 
 The script will:
@@ -33,7 +39,7 @@ To activate the virtual environment manually after setup:
 ## VS Code
 
 This repository commits workspace settings for VS Code.
-After running `.\setup.ps1`, opening the folder in VS Code should pick `.venv` as the default interpreter and enable pytest discovery for the `tests` folder.
+After running `.\scripts\setup-repo.cmd`, opening the folder in VS Code should pick `.venv` as the default interpreter and enable pytest discovery for the `tests` folder.
 
 Run the test suite:
 
