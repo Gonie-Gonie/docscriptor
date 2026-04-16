@@ -13,9 +13,9 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.platypus import Image as RLImage
-from reportlab.platypus import KeepTogether, ListFlowable, ListItem as RLListItem, Paragraph as RLParagraph, SimpleDocTemplate, Spacer, Table as RLTable, TableStyle
+from reportlab.platypus import KeepTogether, ListFlowable, ListItem as RLListItem, Paragraph as RLParagraph, Preformatted, SimpleDocTemplate, Spacer, Table as RLTable, TableStyle
 
-from docscriptor.model import Body, Document, Figure, ListBlock, Paragraph, ParagraphStyle, PathLike, Section, Table, Text, Theme
+from docscriptor.model import Body, CodeBlock, Document, Figure, ListBlock, Paragraph, ParagraphStyle, PathLike, Section, Table, Text, Theme
 
 
 ALIGNMENTS = {
@@ -102,6 +102,8 @@ class PdfRenderer:
             return [RLParagraph(self._inline_markup(block.content, theme), paragraph_style)]
         if isinstance(block, ListBlock):
             return self._render_list(block, theme, styles)
+        if isinstance(block, CodeBlock):
+            return self._render_code_block(block, theme, styles)
         if isinstance(block, Table):
             return self._render_table(block, theme, styles)
         if isinstance(block, Figure):
@@ -178,6 +180,38 @@ class PdfRenderer:
             leftIndent=18,
         )
         return [flowable, Spacer(1, 8)]
+
+    def _render_code_block(self, block: CodeBlock, theme: Theme, styles: object) -> list[object]:
+        code_style = RLParagraphStyle(
+            "CodeBlock",
+            parent=styles["Code"],
+            fontName=self._resolve_font(theme.monospace_font_name, False, False),
+            fontSize=max(theme.body_font_size - 1, 8),
+            leading=max(theme.body_font_size - 1, 8) * 1.35,
+            leftIndent=12,
+            rightIndent=6,
+            spaceBefore=6,
+            spaceAfter=block.style.space_after or 0,
+            borderPadding=8,
+            borderWidth=0.75,
+            borderColor=colors.HexColor("#D8E0EB"),
+            backColor=colors.HexColor("#F5F7FA"),
+        )
+
+        elements: list[object] = []
+        if block.language:
+            label_style = RLParagraphStyle(
+                "CodeBlockLabel",
+                parent=styles["BodyText"],
+                fontName=self._resolve_font(theme.monospace_font_name, True, False),
+                fontSize=theme.caption_font_size,
+                textColor=colors.HexColor("#5B6675"),
+                spaceAfter=2,
+            )
+            elements.append(RLParagraph(escape(block.language.upper()), label_style))
+
+        elements.append(Preformatted(block.code, code_style))
+        return [KeepTogether(elements)]
 
     def _render_figure(self, block: Figure, theme: Theme, styles: object) -> list[object]:
         image = RLImage(str(block.image_path))

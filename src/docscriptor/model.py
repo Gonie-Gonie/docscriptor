@@ -189,6 +189,15 @@ class ListBlock(Block):
         self.ordered = ordered
 
 
+@dataclass(slots=True)
+class CodeBlock(Block):
+    """A block-level preformatted code snippet."""
+
+    code: str
+    language: str | None = None
+    style: ParagraphStyle = field(default_factory=lambda: ParagraphStyle(space_after=12.0))
+
+
 BlockInput = Block | str | Sequence["BlockInput"] | None
 
 
@@ -364,6 +373,12 @@ def numbered_list(*items: ListInput) -> ListBlock:
     """Create a numbered list from paragraph or inline values."""
 
     return ListBlock(*items, ordered=True)
+
+
+def code_block(code: str, *, language: str | None = None, style: ParagraphStyle | None = None) -> CodeBlock:
+    """Create a block-level preformatted code snippet."""
+
+    return CodeBlock(code=code, language=language, style=style or ParagraphStyle(space_after=12.0))
 
 
 def section(title: InlineInput, *children: BlockInput, level: int = 1) -> Section:

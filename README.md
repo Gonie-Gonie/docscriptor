@@ -13,7 +13,7 @@ The long-term goal is to compose structured content in scripts, reuse templates 
 
 The package now ships with a basic document object model and two renderers:
 
-- block objects such as `Document`, `Body`, `Section`, `Subsection`, `Paragraph`, `Table`, and `Figure`
+- block objects such as `Document`, `Body`, `Section`, `Subsection`, `Paragraph`, `CodeBlock`, `Table`, and `Figure`
 - inline objects such as `Text`, `Strong`, `Emphasis`, `Code`, and `styled(...)`
 - list objects through `bullet_list(...)`, `numbered_list(...)`, and `ListBlock`
 - a lightweight `markup(...)` helper for markdown-like inline bold, italic, and code formatting
@@ -48,6 +48,7 @@ Example:
 ```python
 from docscriptor import (
     Document,
+    CodeBlock,
     Figure,
     Paragraph,
     Section,
@@ -78,31 +79,30 @@ report = Document(
                 caption="Table 1. Summary metrics.",
             ),
         ),
+        CodeBlock(
+            "report.save_docx('artifacts/report.docx')\nreport.save_pdf('artifacts/report.pdf')",
+            language="python",
+        ),
         Figure("example.png", caption=Paragraph("Figure 1. Example output."), width_inches=3.0),
     ),
     author="Docscriptor",
 )
-
-report.save_docx("artifacts/report.docx")
-report.save_pdf("artifacts/report.pdf")
 ```
 
 ## Example Script
 
-The repository also includes a runnable showcase script that exercises sections, inline styling, bullet lists, numbered lists, tables, and figures using a mostly variable-driven authoring style:
+The repository also includes a runnable usage-guide script that documents how to use docscriptor while exercising sections, inline styling, lists, tables, and code blocks:
 
 ```powershell
-python -m examples.showcase
+python -m examples.usage_guide
 ```
 
-By default it writes these files under `artifacts/showcase/`:
+By default it writes these files under `artifacts/usage-guide/`:
 
-- `docscriptor-showcase.docx`
-- `docscriptor-showcase.pdf`
+- `docscriptor-usage-guide.docx`
+- `docscriptor-usage-guide.pdf`
 
-The image used by the example is a bundled asset at `examples/assets/showcase-figure.png`.
-
-This example is also covered by automated tests so the generated outputs are checked continuously.
+This example is also covered by automated tests so the generated outputs stay exercised continuously.
 
 ## Development
 

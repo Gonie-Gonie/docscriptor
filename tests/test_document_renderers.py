@@ -8,6 +8,7 @@ from pypdf import PdfReader
 
 from docscriptor import (
     Code,
+    CodeBlock,
     Document,
     Emphasis,
     Figure,
@@ -91,6 +92,10 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
                     "Lists render into both DOCX and PDF.",
                     Paragraph("Paragraph instances can also be list items."),
                 ),
+                CodeBlock(
+                    "from docscriptor import Document\n\ndocument.save_docx('report.docx')\ndocument.save_pdf('report.pdf')",
+                    language="python",
+                ),
                 numbered_list("Create the model", "Render the files"),
                 Table(
                     headers=["Type", "Status"],
@@ -125,6 +130,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "Summary" in paragraph_texts
     assert any("docscriptor" in text for text in paragraph_texts)
     assert any("Figure 1. Tiny sample image." in text for text in paragraph_texts)
+    assert any("from docscriptor import Document" in text for text in paragraph_texts)
     assert any(paragraph.style.name == "List Bullet" for paragraph in word_document.paragraphs)
     assert any(paragraph.style.name == "List Number" for paragraph in word_document.paragraphs)
 
@@ -138,3 +144,4 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "Table 1. Generated artifacts." in pdf_text
     assert "Figure 1. Tiny sample image." in pdf_text
     assert "Lists render into both DOCX and PDF." in pdf_text
+    assert "from docscriptor import Document" in pdf_text

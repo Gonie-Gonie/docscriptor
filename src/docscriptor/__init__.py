@@ -4,6 +4,7 @@ from docscriptor.markup import md, markup
 from docscriptor.model import (
     Body,
     Code,
+    CodeBlock,
     Document,
     DocscriptorError,
     Emphasis,
@@ -20,6 +21,7 @@ from docscriptor.model import (
     Theme,
     body,
     bullet_list,
+    code_block,
     document,
     figure,
     numbered_list,
@@ -35,6 +37,7 @@ __version__ = "0.1.0"
 __all__ = [
     "Body",
     "Code",
+    "CodeBlock",
     "Document",
     "DocscriptorError",
     "Emphasis",
@@ -52,6 +55,7 @@ __all__ = [
     "__version__",
     "body",
     "bullet_list",
+    "code_block",
     "document",
     "figure",
     "md",

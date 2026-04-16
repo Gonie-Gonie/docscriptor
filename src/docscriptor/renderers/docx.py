@@ -6,9 +6,11 @@ from pathlib import Path
 
 from docx import Document as WordDocument
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
-from docscriptor.model import Body, Document, Figure, ListBlock, Paragraph, ParagraphStyle, PathLike, Section, Table, Text, Theme
+from docscriptor.model import Body, CodeBlock, Document, Figure, ListBlock, Paragraph, ParagraphStyle, PathLike, Section, Table, Text, Theme
 
 
 ALIGNMENTS = {
@@ -68,6 +70,9 @@ class DocxRenderer:
         if isinstance(block, ListBlock):
             self._render_list(word_document, block)
             return
+        if isinstance(block, CodeBlock):
+            self._render_code_block(word_document, block, theme)
+            return
         if isinstance(block, Table):
             self._render_table(word_document, block)
             return
@@ -114,6 +119,32 @@ class DocxRenderer:
             self._apply_paragraph_style(paragraph, item.style)
             self._append_runs(paragraph, item.content)
 
+    def _render_code_block(self, word_document: WordDocument, code_block: CodeBlock, theme: Theme) -> None:
+        if code_block.language:
+            label = word_document.add_paragraph()
+            label.paragraph_format.space_after = Pt(2)
+            run = label.add_run(code_block.language.upper())
+            run.font.name = theme.monospace_font_name
+            run.font.size = Pt(theme.caption_font_size)
+            run.font.bold = True
+            run.font.color.rgb = RGBColor.from_string("5B6675")
+
+        paragraph = word_document.add_paragraph()
+        self._apply_paragraph_style(paragraph, code_block.style)
+        paragraph.paragraph_format.left_indent = Inches(0.25)
+        paragraph.paragraph_format.right_indent = Inches(0.1)
+        paragraph.paragraph_format.space_before = Pt(6)
+        self._set_paragraph_shading(paragraph, "F5F7FA")
+
+        run = paragraph.add_run()
+        run.font.name = theme.monospace_font_name
+        run.font.size = Pt(max(theme.body_font_size - 1, 8))
+
+        for index, line in enumerate(code_block.code.replace("\r\n", "\n").replace("\r", "\n").split("\n")):
+            if index:
+                run.add_break()
+            run.add_text(line)
+
     def _render_table(self, word_document: WordDocument, table_block: Table) -> None:
         row_count = len(table_block.rows) + 1
         table = word_document.add_table(rows=row_count, cols=len(table_block.headers))
@@ -146,3 +177,11 @@ class DocxRenderer:
             caption = word_document.add_paragraph()
             caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
             self._append_runs(caption, figure.caption.content)
+
+    def _set_paragraph_shading(self, paragraph: object, fill: str) -> None:
+        paragraph_properties = paragraph._p.get_or_add_pPr()
+        shading = OxmlElement("w:shd")
+        shading.set(qn("w:val"), "clear")
+        shading.set(qn("w:color"), "auto")
+        shading.set(qn("w:fill"), fill)
+        paragraph_properties.append(shading)
