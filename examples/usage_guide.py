@@ -193,7 +193,7 @@ def build_usage_guide_document(output_dir: Path) -> Document:
     tables = _build_usage_guide_tables()
     figures = _build_usage_guide_figures(figure_path)
 
-    return Document(
+    document = Document(
         "Using docscriptor",
         TableList(),
         FigureList(),
@@ -339,6 +339,7 @@ def build_usage_guide_document(output_dir: Path) -> Document:
         summary="Usage guide document",
         citations=RELATED_WORK_BIBTEX,
     )
+    return document
 
 
 def build_usage_guide(output_dir: str | Path) -> tuple[Path, Path]:
@@ -358,7 +359,12 @@ def build_usage_guide(output_dir: str | Path) -> tuple[Path, Path]:
 def main() -> None:
     """Build the guide into the default example output directory."""
 
-    docx_path, pdf_path = build_usage_guide(OUTPUT_DIR)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    document = build_usage_guide_document(OUTPUT_DIR)
+    docx_path = OUTPUT_DIR / "docscriptor-usage-guide.docx"
+    pdf_path = OUTPUT_DIR / "docscriptor-usage-guide.pdf"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
     print(f"Wrote {docx_path}")
     print(f"Wrote {pdf_path}")
 
