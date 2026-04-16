@@ -15,7 +15,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.platypus import Image as RLImage
 from reportlab.platypus import KeepTogether, ListFlowable, ListItem as RLListItem, Paragraph as RLParagraph, Preformatted, SimpleDocTemplate, Spacer, Table as RLTable, TableStyle
 
-from docscriptor.model import Body, CodeBlock, Document, Figure, ListBlock, Paragraph, ParagraphStyle, PathLike, Section, Table, Text, Theme
+from docscriptor.model import Body, BulletList, CodeBlock, Document, Figure, NumberedList, Paragraph, ParagraphStyle, PathLike, Section, Table, Text, Theme
 
 
 ALIGNMENTS = {
@@ -100,7 +100,7 @@ class PdfRenderer:
         if isinstance(block, Paragraph):
             paragraph_style = self._paragraph_style(block.style, theme, styles["BodyText"])
             return [RLParagraph(self._inline_markup(block.content, theme), paragraph_style)]
-        if isinstance(block, ListBlock):
+        if isinstance(block, (BulletList, NumberedList)):
             return self._render_list(block, theme, styles)
         if isinstance(block, CodeBlock):
             return self._render_code_block(block, theme, styles)
@@ -167,18 +167,21 @@ class PdfRenderer:
             story.append(Spacer(1, 12))
         return story
 
-    def _render_list(self, block: ListBlock, theme: Theme, styles: object) -> list[object]:
+    def _render_list(self, block: BulletList | NumberedList, theme: Theme, styles: object) -> list[object]:
         item_style = self._paragraph_style(ParagraphStyle(space_after=3), theme, styles["BodyText"])
         list_items = [
             RLListItem(RLParagraph(self._inline_markup(item.content, theme), item_style))
             for item in block.items
         ]
-        flowable = ListFlowable(
-            list_items,
-            bulletType="1" if block.ordered else "bullet",
-            start="1",
-            leftIndent=18,
-        )
+        list_kwargs: dict[str, object] = {
+            "leftIndent": 18,
+        }
+        if isinstance(block, NumberedList):
+            list_kwargs["bulletType"] = "1"
+            list_kwargs["start"] = "1"
+        else:
+            list_kwargs["bulletType"] = "bullet"
+        flowable = ListFlowable(list_items, **list_kwargs)
         return [flowable, Spacer(1, 8)]
 
     def _render_code_block(self, block: CodeBlock, theme: Theme, styles: object) -> list[object]:

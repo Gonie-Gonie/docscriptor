@@ -178,8 +178,8 @@ def coerce_list_item(value: ListInput) -> Paragraph:
 
 
 @dataclass(slots=True, init=False)
-class ListBlock(Block):
-    """An ordered or unordered list of paragraphs."""
+class _ListBlock(Block):
+    """Internal base class for list-style blocks."""
 
     items: list[Paragraph]
     ordered: bool
@@ -187,6 +187,20 @@ class ListBlock(Block):
     def __init__(self, *items: ListInput, ordered: bool = False) -> None:
         self.items = [coerce_list_item(item) for item in items if item is not None]
         self.ordered = ordered
+
+
+class BulletList(_ListBlock):
+    """An unordered list of paragraphs."""
+
+    def __init__(self, *items: ListInput) -> None:
+        super().__init__(*items, ordered=False)
+
+
+class NumberedList(_ListBlock):
+    """An ordered list of paragraphs."""
+
+    def __init__(self, *items: ListInput) -> None:
+        super().__init__(*items, ordered=True)
 
 
 @dataclass(slots=True)
@@ -363,14 +377,3 @@ class Document:
         from docscriptor.renderers.pdf import PdfRenderer
 
         return PdfRenderer().render(self, path)
-
-def bullet_list(*items: ListInput) -> ListBlock:
-    """Create a bullet list from paragraph or inline values."""
-
-    return ListBlock(*items, ordered=False)
-
-
-def numbered_list(*items: ListInput) -> ListBlock:
-    """Create a numbered list from paragraph or inline values."""
-
-    return ListBlock(*items, ordered=True)

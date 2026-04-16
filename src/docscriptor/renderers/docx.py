@@ -10,7 +10,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
-from docscriptor.model import Body, CodeBlock, Document, Figure, ListBlock, Paragraph, ParagraphStyle, PathLike, Section, Table, Text, Theme
+from docscriptor.model import Body, BulletList, CodeBlock, Document, Figure, NumberedList, Paragraph, ParagraphStyle, PathLike, Section, Table, Text, Theme
 
 
 ALIGNMENTS = {
@@ -67,7 +67,7 @@ class DocxRenderer:
             self._apply_paragraph_style(paragraph, block.style)
             self._append_runs(paragraph, block.content)
             return
-        if isinstance(block, ListBlock):
+        if isinstance(block, (BulletList, NumberedList)):
             self._render_list(word_document, block)
             return
         if isinstance(block, CodeBlock):
@@ -112,8 +112,8 @@ class DocxRenderer:
             if fragment.style.color is not None:
                 font.color.rgb = RGBColor.from_string(fragment.style.color)
 
-    def _render_list(self, word_document: WordDocument, list_block: ListBlock) -> None:
-        style_name = "List Number" if list_block.ordered else "List Bullet"
+    def _render_list(self, word_document: WordDocument, list_block: BulletList | NumberedList) -> None:
+        style_name = "List Number" if isinstance(list_block, NumberedList) else "List Bullet"
         for item in list_block.items:
             paragraph = word_document.add_paragraph(style=style_name)
             self._apply_paragraph_style(paragraph, item.style)

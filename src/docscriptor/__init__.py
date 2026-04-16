@@ -3,6 +3,7 @@
 from docscriptor.markup import md, markup
 from docscriptor.model import (
     Body,
+    BulletList,
     Chapter,
     Code,
     CodeBlock,
@@ -10,7 +11,7 @@ from docscriptor.model import (
     DocscriptorError,
     Emphasis,
     Figure,
-    ListBlock,
+    NumberedList,
     Paragraph,
     ParagraphStyle,
     Section,
@@ -21,8 +22,6 @@ from docscriptor.model import (
     Text,
     TextStyle,
     Theme,
-    bullet_list,
-    numbered_list,
     styled,
 )
 
@@ -30,6 +29,7 @@ __version__ = "0.1.0"
 
 __all__ = [
     "Body",
+    "BulletList",
     "Chapter",
     "Code",
     "CodeBlock",
@@ -37,7 +37,7 @@ __all__ = [
     "DocscriptorError",
     "Emphasis",
     "Figure",
-    "ListBlock",
+    "NumberedList",
     "Paragraph",
     "ParagraphStyle",
     "Section",
@@ -49,9 +49,7 @@ __all__ = [
     "TextStyle",
     "Theme",
     "__version__",
-    "bullet_list",
     "md",
     "markup",
-    "numbered_list",
     "styled",
 ]

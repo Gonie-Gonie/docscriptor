@@ -8,13 +8,14 @@ from docx import Document as WordDocument
 from pypdf import PdfReader
 
 from docscriptor import (
+    BulletList,
     Chapter,
     Code,
     CodeBlock,
     Document,
     Emphasis,
     Figure,
-    ListBlock,
+    NumberedList,
     Paragraph,
     ParagraphStyle,
     Section,
@@ -22,9 +23,7 @@ from docscriptor import (
     Subsection,
     Subsubsection,
     Table,
-    bullet_list,
     markup,
-    numbered_list,
     styled,
 )
 
@@ -57,13 +56,14 @@ def test_markup_creates_styled_fragments() -> None:
     assert fragments[5].style.font_name == "Courier"
 
 
-def test_list_helpers_create_block_instances() -> None:
-    bullet = bullet_list("first", Paragraph("second"))
-    ordered = numbered_list("step one", "step two")
+def test_list_classes_create_block_instances() -> None:
+    bullet = BulletList("first", Paragraph("second"))
+    ordered = NumberedList("step one", "step two")
 
-    assert isinstance(bullet, ListBlock)
+    assert isinstance(bullet, BulletList)
     assert bullet.ordered is False
     assert [item.plain_text() for item in bullet.items] == ["first", "second"]
+    assert isinstance(ordered, NumberedList)
     assert ordered.ordered is True
     assert [item.plain_text() for item in ordered.items] == ["step one", "step two"]
 
@@ -91,8 +91,11 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Chapter")
     assert hasattr(docscriptor, "Section")
     assert hasattr(docscriptor, "Paragraph")
+    assert hasattr(docscriptor, "BulletList")
+    assert hasattr(docscriptor, "NumberedList")
     assert hasattr(docscriptor, "Table")
     assert hasattr(docscriptor, "Figure")
+    assert not hasattr(docscriptor, "ListBlock")
 
     for removed_name in (
         "document",
@@ -103,6 +106,8 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
         "subsubsection",
         "paragraph",
         "code_block",
+        "bullet_list",
+        "numbered_list",
         "table",
         "figure",
     ):
@@ -134,7 +139,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
                 Paragraph(markup("Inline helpers also support **bold** and *italic* markup.")),
                 Subsection(
                     "Artifacts",
-                    bullet_list(
+                    BulletList(
                         "Lists render into both DOCX and PDF.",
                         Paragraph("Paragraph instances can also be list items."),
                     ),
@@ -145,7 +150,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
                             language="python",
                         ),
                     ),
-                    numbered_list("Create the model", "Render the files"),
+                    NumberedList("Create the model", "Render the files"),
                     Table(
                         headers=["Type", "Status"],
                         rows=[
@@ -201,3 +206,5 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "Figure 1. Tiny sample image." in pdf_text
     assert "Lists render into both DOCX and PDF." in pdf_text
     assert "from docscriptor import Document" in pdf_text
+    assert "1\nLists render into both DOCX and PDF." not in pdf_text
+    assert "1\nCreate the model" in pdf_text

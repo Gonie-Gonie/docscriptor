@@ -5,9 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from docscriptor import (
+    BulletList,
     Chapter,
     CodeBlock,
     Document,
+    NumberedList,
     Paragraph,
     ParagraphStyle,
     Section,
@@ -15,9 +17,7 @@ from docscriptor import (
     Subsection,
     Subsubsection,
     Table,
-    bullet_list,
     markup,
-    numbered_list,
     styled,
 )
 
@@ -88,9 +88,9 @@ GUIDE_DOCUMENT = Document(
                 Strong("Section"),
                 ", and ",
                 Strong("Paragraph"),
-                ". Use helper functions only where they add behavior, such as list creation or inline markup.",
+                ". Use helper functions only where they transform content, such as inline styling or markup parsing.",
             ),
-            numbered_list(
+            NumberedList(
                 "Import the model objects you need.",
                 "Compose chapters, sections, and paragraphs as regular Python instances.",
                 "Call save_docx() and save_pdf() on the document.",
@@ -114,9 +114,9 @@ GUIDE_DOCUMENT = Document(
                 headers=["Kind", "Examples", "Purpose"],
                 rows=[
                     ["Hierarchy", "Chapter, Section, Subsection, Subsubsection", "Document structure"],
-                    ["Blocks", "Paragraph, CodeBlock, Table, Figure", "Content layout"],
+                    ["Blocks", "Paragraph, BulletList, NumberedList, CodeBlock, Table, Figure", "Content layout"],
                     ["Inline", "Text, Strong, Emphasis, Code", "Inline emphasis"],
-                    ["Helpers", "bullet_list, numbered_list, markup", "Faster authoring"],
+                    ["Helpers", "markup, styled", "Inline authoring shortcuts"],
                 ],
                 caption="Table 1. Core authoring primitives.",
                 column_widths=[1.6, 3.1, 1.8],
@@ -136,7 +136,7 @@ GUIDE_DOCUMENT = Document(
                 ),
                 Subsubsection(
                     "When To Use CodeBlock",
-                    bullet_list(
+                    BulletList(
                         "Show a complete example without losing indentation.",
                         "Document reusable templates and helper classes.",
                         "Keep prose and code snippets inside the same generated guide.",
@@ -159,7 +159,7 @@ GUIDE_DOCUMENT = Document(
             Paragraph(
                 "A practical workflow is to keep the document definition in Python, generate outputs in CI, and review the resulting files where needed."
             ),
-            bullet_list(
+            BulletList(
                 "Use DOCX when you want editable handoff files.",
                 "Use PDF when you want stable distribution output.",
                 "Keep examples in version control so the API stays exercised.",
