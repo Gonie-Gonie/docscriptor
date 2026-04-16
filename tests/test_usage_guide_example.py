@@ -91,6 +91,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("See Table 1 for the core block inventory and Figure 1" in text for text in paragraph_texts)
     assert any("Use Figure 2 together with Table 2" in text for text in paragraph_texts)
     assert any("The project repository itself can be cited inline, as shown by [1]." in text for text in paragraph_texts)
+    assert any("literate-programming tradition described in [2]" in text for text in paragraph_texts)
     assert any("from docscriptor import Chapter, Document, Paragraph, Section" in text for text in paragraph_texts)
     assert any("class WarningParagraph(Paragraph):" in text for text in paragraph_texts)
     assert any(paragraph.style.name == "List Bullet" for paragraph in word_document.paragraphs)
@@ -105,6 +106,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert paragraph_texts.count("Figure 1. Heading hierarchy example output.") >= 2
     assert paragraph_texts.count("Figure 2. Repeated figure rendering example.") >= 2
     assert any("https://github.com/Gonie-Gonie/pydocs" in text for text in paragraph_texts)
+    assert any("Literate Programming" in text for text in paragraph_texts)
+    assert any("https://doi.org/10.1093/comjnl/27.2.97" in text for text in paragraph_texts)
     assert word_document.styles["Normal"].font.name == "Times New Roman"
     assert paragraph_texts.index("List of Tables") < paragraph_texts.index("List of Figures")
     assert paragraph_texts.index("List of Figures") < paragraph_texts.index("Contents")
@@ -136,9 +139,12 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "See Table 1 for the core block inventory and Figure 1" in pdf_text
     assert "Use Figure 2 together with Table 2" in pdf_text
     assert "The project repository itself can be cited inline, as shown by [1]." in pdf_text
+    assert "literate-programming tradition described in [2]" in pdf_text
     assert "from docscriptor import Chapter, Document, Paragraph, Section" in pdf_text
     assert "class WarningParagraph(Paragraph):" in pdf_text
     assert "https://github.com/Gonie-Gonie/pydocs" in pdf_text
+    assert "Literate Programming" in pdf_text
+    assert "https://doi.org/10.1093/comjnl/27.2.97" in pdf_text
     assert _pdf_image_draw_count(pdf_path) == 2
     assert pdf_text.index("List of Tables") < pdf_text.index("List of Figures")
     assert pdf_text.index("List of Figures") < pdf_text.index("Contents")

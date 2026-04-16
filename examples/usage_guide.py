@@ -33,6 +33,17 @@ from docscriptor import (
 
 
 OUTPUT_DIR = Path("artifacts") / "usage-guide"
+RELATED_WORK_BIBTEX = """@article{knuth1984literate,
+  author = {Donald E. Knuth},
+  title = {Literate Programming},
+  journal = {The Computer Journal},
+  volume = {27},
+  number = {2},
+  pages = {97--111},
+  year = {1984},
+  publisher = {Oxford University Press},
+  url = {https://doi.org/10.1093/comjnl/27.2.97}
+}"""
 
 QUICK_START_SNIPPET = """from docscriptor import Chapter, Document, Paragraph, Section
 
@@ -284,6 +295,11 @@ def build_usage_guide_document(output_dir: Path) -> Document:
                     "."
                 ),
                 Paragraph(
+                    "That Python-first style also overlaps with the literate-programming tradition described in ",
+                    cite("knuth1984literate"),
+                    ", where source structure and explanation stay tightly connected.",
+                ),
+                Paragraph(
                     "For existing BibTeX data, pass a bibliography string to ",
                     Bold("Document"),
                     " and call ",
@@ -297,6 +313,7 @@ def build_usage_guide_document(output_dir: Path) -> Document:
         ReferencesPage(),
         author="docscriptor examples",
         summary="Usage guide document",
+        citations=RELATED_WORK_BIBTEX,
     )
 
 
