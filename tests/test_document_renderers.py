@@ -16,6 +16,8 @@ from docscriptor import (
     Document,
     Emphasis,
     Figure,
+    FigureList,
+    FigureReference,
     NumberedList,
     Paragraph,
     ParagraphStyle,
@@ -24,6 +26,8 @@ from docscriptor import (
     Subsection,
     Subsubsection,
     Table,
+    TableList,
+    TableReference,
     markup,
     styled,
 )
@@ -109,6 +113,10 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Paragraph")
     assert hasattr(docscriptor, "BulletList")
     assert hasattr(docscriptor, "NumberedList")
+    assert hasattr(docscriptor, "TableList")
+    assert hasattr(docscriptor, "FigureList")
+    assert hasattr(docscriptor, "TableReference")
+    assert hasattr(docscriptor, "FigureReference")
     assert hasattr(docscriptor, "Table")
     assert hasattr(docscriptor, "Figure")
     assert not hasattr(docscriptor, "ListBlock")
@@ -153,6 +161,13 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
                     style=ParagraphStyle(space_after=14),
                 ),
                 Paragraph(markup("Inline helpers also support **bold** and *italic* markup.")),
+                Paragraph(
+                    "See ",
+                    TableReference("artifacts-table"),
+                    " and ",
+                    FigureReference("preview-figure"),
+                    " for the generated outputs.",
+                ),
                 Subsection(
                     "Artifacts",
                     BulletList(
@@ -168,15 +183,39 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
                     ),
                     NumberedList("Create the model", "Render the files"),
                     Table(
+                        identifier="artifacts-table",
                         headers=["Type", "Status"],
                         rows=[
                             ["DOCX", "generated"],
                             ["PDF", "generated"],
                         ],
-                        caption="Table 1. Generated artifacts.",
+                        caption="Generated artifacts.",
                         column_widths=[2.5, 2.5],
                     ),
-                    Figure(image_path, caption=Paragraph("Figure 1. Tiny sample image."), width_inches=1.0),
+                    Table(
+                        identifier="workflow-table",
+                        headers=["Step", "Target"],
+                        rows=[
+                            ["Draft review", "DOCX"],
+                            ["Release", "PDF"],
+                        ],
+                        caption="Output workflow.",
+                        column_widths=[2.5, 2.5],
+                    ),
+                    Figure(
+                        image_path,
+                        identifier="preview-figure",
+                        caption=Paragraph("Tiny sample image."),
+                        width_inches=1.0,
+                    ),
+                    Figure(
+                        image_path,
+                        identifier="preview-figure-second",
+                        caption=Paragraph("Second tiny sample image."),
+                        width_inches=1.2,
+                    ),
+                    TableList(),
+                    FigureList(),
                 ),
             ),
         ),
@@ -202,15 +241,23 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "Highlights" in paragraph_texts
     assert "Artifacts" in paragraph_texts
     assert "Export Steps" in paragraph_texts
+    assert "List of Tables" in paragraph_texts
+    assert "List of Figures" in paragraph_texts
     assert any("docscriptor" in text for text in paragraph_texts)
-    assert any("Figure 1. Tiny sample image." in text for text in paragraph_texts)
+    assert any("See Table 1 and Figure 1 for the generated outputs." in text for text in paragraph_texts)
+    assert paragraph_texts.count("Table 1. Generated artifacts.") >= 2
+    assert paragraph_texts.count("Table 2. Output workflow.") >= 2
+    assert paragraph_texts.count("Figure 1. Tiny sample image.") >= 2
+    assert paragraph_texts.count("Figure 2. Second tiny sample image.") >= 2
     assert any("from docscriptor import Document" in text for text in paragraph_texts)
     assert any(paragraph.style.name == "List Bullet" for paragraph in word_document.paragraphs)
     assert any(paragraph.style.name == "List Number" for paragraph in word_document.paragraphs)
 
-    assert len(word_document.tables) == 1
+    assert len(word_document.tables) == 2
     assert word_document.tables[0].cell(1, 0).text == "DOCX"
     assert word_document.tables[0].cell(2, 1).text == "generated"
+    assert word_document.tables[1].cell(1, 0).text == "Draft review"
+    assert word_document.tables[1].cell(2, 1).text == "PDF"
     assert word_document.styles["Normal"].font.name == "Times New Roman"
     assert word_document.styles["Title"].font.name == "Times New Roman"
     assert word_document.styles["Heading 1"].font.name == "Times New Roman"
@@ -229,8 +276,13 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "Highlights" in pdf_text
     assert "Artifacts" in pdf_text
     assert "Export Steps" in pdf_text
-    assert "Table 1. Generated artifacts." in pdf_text
-    assert "Figure 1. Tiny sample image." in pdf_text
+    assert "See Table 1 and Figure 1 for the generated outputs." in pdf_text
+    assert pdf_text.count("Table 1. Generated artifacts.") >= 2
+    assert pdf_text.count("Table 2. Output workflow.") >= 2
+    assert pdf_text.count("Figure 1. Tiny sample image.") >= 2
+    assert pdf_text.count("Figure 2. Second tiny sample image.") >= 2
+    assert "List of Tables" in pdf_text
+    assert "List of Figures" in pdf_text
     assert "Lists render into both DOCX and PDF." in pdf_text
     assert "from docscriptor import Document" in pdf_text
     assert "1\nLists render into both DOCX and PDF." not in pdf_text

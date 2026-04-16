@@ -10,7 +10,27 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
-from docscriptor.model import Body, BulletList, CodeBlock, Document, Figure, NumberedList, Paragraph, ParagraphStyle, PathLike, Section, Table, Text, Theme
+from docscriptor.model import (
+    Body,
+    BulletList,
+    CodeBlock,
+    Document,
+    Figure,
+    FigureList,
+    FigureReference,
+    NumberedList,
+    Paragraph,
+    ParagraphStyle,
+    PathLike,
+    RenderIndex,
+    Section,
+    Table,
+    TableList,
+    TableReference,
+    Text,
+    Theme,
+    build_render_index,
+)
 
 
 ALIGNMENTS = {
@@ -31,11 +51,12 @@ class DocxRenderer:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         word_document = WordDocument()
+        render_index = build_render_index(document)
         self._configure_document(word_document, document)
         self._add_heading(word_document, [Text(document.title)], level=0, theme=document.theme)
 
         for child in document.body.children:
-            self._render_block(word_document, child, document.theme)
+            self._render_block(word_document, child, document.theme, render_index)
 
         word_document.save(path)
         return path
@@ -72,32 +93,38 @@ class DocxRenderer:
                 italic=italic,
             )
 
-    def _render_block(self, word_document: WordDocument, block: object, theme: Theme) -> None:
+    def _render_block(self, word_document: WordDocument, block: object, theme: Theme, render_index: RenderIndex) -> None:
         if isinstance(block, Body):
             for child in block.children:
-                self._render_block(word_document, child, theme)
+                self._render_block(word_document, child, theme, render_index)
             return
         if isinstance(block, Section):
             self._add_heading(word_document, block.title, block.level, theme)
             for child in block.children:
-                self._render_block(word_document, child, theme)
+                self._render_block(word_document, child, theme, render_index)
             return
         if isinstance(block, Paragraph):
             paragraph = word_document.add_paragraph()
             self._apply_paragraph_style(paragraph, block.style)
-            self._append_runs(paragraph, block.content)
+            self._append_runs(paragraph, block.content, theme=theme, render_index=render_index)
             return
         if isinstance(block, (BulletList, NumberedList)):
-            self._render_list(word_document, block)
+            self._render_list(word_document, block, theme, render_index)
             return
         if isinstance(block, CodeBlock):
             self._render_code_block(word_document, block, theme)
             return
+        if isinstance(block, TableList):
+            self._render_caption_list(word_document, block.title, render_index.tables, theme, render_index, theme.list_of_tables_title, theme.table_label)
+            return
+        if isinstance(block, FigureList):
+            self._render_caption_list(word_document, block.title, render_index.figures, theme, render_index, theme.list_of_figures_title, theme.figure_label)
+            return
         if isinstance(block, Table):
-            self._render_table(word_document, block)
+            self._render_table(word_document, block, theme, render_index)
             return
         if isinstance(block, Figure):
-            self._render_figure(word_document, block)
+            self._render_figure(word_document, block, theme, render_index)
             return
         raise TypeError(f"Unsupported block type for DOCX rendering: {type(block)!r}")
 
@@ -119,9 +146,17 @@ class DocxRenderer:
         if style.leading is not None:
             paragraph.paragraph_format.line_spacing = Pt(style.leading)
 
-    def _append_runs(self, paragraph: object, fragments: list[Text], default_size: float | None = None) -> None:
+    def _append_runs(
+        self,
+        paragraph: object,
+        fragments: list[Text],
+        default_size: float | None = None,
+        *,
+        theme: Theme | None = None,
+        render_index: RenderIndex | None = None,
+    ) -> None:
         for fragment in fragments:
-            run = paragraph.add_run(fragment.value)
+            run = paragraph.add_run(self._resolve_fragment_text(fragment, theme, render_index))
             font = run.font
             if fragment.style.font_name:
                 font.name = fragment.style.font_name
@@ -138,12 +173,12 @@ class DocxRenderer:
             if fragment.style.color is not None:
                 font.color.rgb = RGBColor.from_string(fragment.style.color)
 
-    def _render_list(self, word_document: WordDocument, list_block: BulletList | NumberedList) -> None:
+    def _render_list(self, word_document: WordDocument, list_block: BulletList | NumberedList, theme: Theme, render_index: RenderIndex) -> None:
         style_name = "List Number" if isinstance(list_block, NumberedList) else "List Bullet"
         for item in list_block.items:
             paragraph = word_document.add_paragraph(style=style_name)
             self._apply_paragraph_style(paragraph, item.style)
-            self._append_runs(paragraph, item.content)
+            self._append_runs(paragraph, item.content, theme=theme, render_index=render_index)
 
     def _render_code_block(self, word_document: WordDocument, code_block: CodeBlock, theme: Theme) -> None:
         if code_block.language:
@@ -170,28 +205,34 @@ class DocxRenderer:
                 run.add_break()
             run.add_text(line)
 
-    def _render_table(self, word_document: WordDocument, table_block: Table) -> None:
+    def _render_table(self, word_document: WordDocument, table_block: Table, theme: Theme, render_index: RenderIndex) -> None:
         row_count = len(table_block.rows) + 1
         table = word_document.add_table(rows=row_count, cols=len(table_block.headers))
         table.style = "Table Grid"
 
         for column_index, header in enumerate(table_block.headers):
             paragraph = table.rows[0].cells[column_index].paragraphs[0]
-            self._append_runs(paragraph, header.content or [Text("")])
+            self._append_runs(paragraph, header.content or [Text("")], theme=theme, render_index=render_index)
             for run in paragraph.runs:
                 run.bold = True
 
         for row_index, row in enumerate(table_block.rows, start=1):
             for column_index, cell in enumerate(row):
                 paragraph = table.rows[row_index].cells[column_index].paragraphs[0]
-                self._append_runs(paragraph, cell.content or [Text("")])
+                self._append_runs(paragraph, cell.content or [Text("")], theme=theme, render_index=render_index)
 
         if table_block.caption is not None:
             caption = word_document.add_paragraph()
             caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            self._append_runs(caption, table_block.caption.content)
+            self._append_runs(
+                caption,
+                self._caption_fragments(theme.table_label, render_index.table_number(table_block), table_block.caption),
+                default_size=theme.caption_font_size,
+                theme=theme,
+                render_index=render_index,
+            )
 
-    def _render_figure(self, word_document: WordDocument, figure: Figure) -> None:
+    def _render_figure(self, word_document: WordDocument, figure: Figure, theme: Theme, render_index: RenderIndex) -> None:
         paragraph = word_document.add_paragraph()
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = paragraph.add_run()
@@ -201,7 +242,13 @@ class DocxRenderer:
         if figure.caption is not None:
             caption = word_document.add_paragraph()
             caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            self._append_runs(caption, figure.caption.content)
+            self._append_runs(
+                caption,
+                self._caption_fragments(theme.figure_label, render_index.figure_number(figure), figure.caption),
+                default_size=theme.caption_font_size,
+                theme=theme,
+                render_index=render_index,
+            )
 
     def _set_paragraph_shading(self, paragraph: object, fill: str) -> None:
         paragraph_properties = paragraph._p.get_or_add_pPr()
@@ -227,3 +274,43 @@ class DocxRenderer:
         style.font.bold = bold
         style.font.italic = italic
         style.font.color.rgb = RGBColor(0, 0, 0)
+
+    def _resolve_fragment_text(self, fragment: Text, theme: Theme | None, render_index: RenderIndex | None) -> str:
+        if isinstance(fragment, TableReference):
+            if theme is None or render_index is None:
+                return fragment.plain_text()
+            label = fragment.prefix or theme.table_label
+            return f"{label} {render_index.resolve_table(fragment.target)}"
+        if isinstance(fragment, FigureReference):
+            if theme is None or render_index is None:
+                return fragment.plain_text()
+            label = fragment.prefix or theme.figure_label
+            return f"{label} {render_index.resolve_figure(fragment.target)}"
+        return fragment.value
+
+    def _caption_fragments(self, label: str, number: int | None, caption: Paragraph) -> list[Text]:
+        if number is None:
+            return caption.content
+        return [Text(f"{label} {number}. ")] + caption.content
+
+    def _render_caption_list(
+        self,
+        word_document: WordDocument,
+        title: list[Text] | None,
+        entries: list[object],
+        theme: Theme,
+        render_index: RenderIndex,
+        default_title: str,
+        label: str,
+    ) -> None:
+        self._add_heading(word_document, title or [Text(default_title)], level=4, theme=theme)
+        for entry in entries:
+            paragraph = word_document.add_paragraph()
+            paragraph.paragraph_format.left_indent = Inches(0.25)
+            self._append_runs(
+                paragraph,
+                self._caption_fragments(label, entry.number, entry.block.caption),
+                default_size=theme.caption_font_size,
+                theme=theme,
+                render_index=render_index,
+            )

@@ -14,7 +14,8 @@ The long-term goal is to compose structured content in scripts, reuse templates 
 The package now ships with a basic document object model and two renderers:
 
 - block objects such as `Document`, `Body`, `Chapter`, `Section`, `Subsection`, `Subsubsection`, `Paragraph`, `CodeBlock`, `Table`, and `Figure`
-- list objects such as `BulletList` and `NumberedList`
+- list objects such as `BulletList`, `NumberedList`, `TableList`, and `FigureList`
+- reference helpers such as `TableReference` and `FigureReference` for numbered captions
 - inline objects such as `Text`, `Strong`, `Emphasis`, `Code`, and `styled(...)`
 - a lightweight `markup(...)` helper for markdown-like inline bold, italic, and code formatting
 - render targets for `.docx` and `.pdf`
@@ -31,6 +32,7 @@ Instantiate structural nodes directly with classes such as `Document`, `Chapter`
 That same rule applies to lists, so use `BulletList` and `NumberedList` directly instead of constructor-style wrapper functions.
 The remaining helper functions are reserved for places where they transform content, such as `styled(...)` and `markup(...)`.
 The default theme uses Times New Roman for body copy and progressively stronger heading treatment for chapter and section levels.
+Captioned tables and figures are numbered automatically, can be cited from prose, and can be collected into generated lists.
 
 The core model in `docscriptor.model` is intentionally class-based so users can build their own abstractions on top.
 For example, a team can subclass `Paragraph`, `Section`, or `Document` to create house styles, reusable callouts, or report templates.
@@ -52,10 +54,14 @@ Example:
 
 ```python
 from docscriptor import (
+    FigureList,
+    FigureReference,
     Chapter,
     Document,
     CodeBlock,
     Figure,
+    TableList,
+    TableReference,
     Paragraph,
     Section,
     Subsection,
@@ -77,15 +83,23 @@ report = Document(
                 " and ",
                 markup("**lightweight** *markup* support."),
             ),
+            Paragraph(
+                "See ",
+                TableReference("metrics-table"),
+                " and ",
+                FigureReference("output-figure"),
+                " for the exported assets.",
+            ),
             Subsection(
                 "Measurements",
                 Table(
+                    identifier="metrics-table",
                     headers=["Metric", "Value"],
                     rows=[
                         ["Latency", "14 ms"],
                         ["Success rate", "99.8%"],
                     ],
-                    caption="Table 1. Summary metrics.",
+                    caption="Summary metrics.",
                 ),
                 Subsubsection(
                     "Exports",
@@ -95,7 +109,14 @@ report = Document(
                     ),
                 ),
             ),
-            Figure("example.png", caption=Paragraph("Figure 1. Example output."), width_inches=3.0),
+            Figure(
+                "example.png",
+                identifier="output-figure",
+                caption=Paragraph("Example output."),
+                width_inches=3.0,
+            ),
+            TableList(),
+            FigureList(),
         ),
     ),
     author="Docscriptor",

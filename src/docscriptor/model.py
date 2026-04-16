@@ -80,6 +80,10 @@ class Theme:
     body_font_size: float = 11.0
     heading_sizes: tuple[float, ...] = (18.0, 15.0, 13.0, 11.5)
     caption_font_size: float = 9.0
+    table_label: str = "Table"
+    figure_label: str = "Figure"
+    list_of_tables_title: str = "List of Tables"
+    list_of_figures_title: str = "List of Figures"
 
     def heading_size(self, level: int) -> float:
         index = min(max(level - 1, 0), len(self.heading_sizes) - 1)
@@ -129,6 +133,36 @@ class Code(Text):
 
     def __init__(self, value: str, style: TextStyle | None = None) -> None:
         super().__init__(value=value, style=TextStyle(font_name="Courier New").merged(style))
+
+
+class TableReference(Text):
+    """Inline reference to a numbered table."""
+
+    __slots__ = ("target", "prefix")
+
+    def __init__(self, target: str, *, prefix: str | None = None, style: TextStyle | None = None) -> None:
+        super().__init__(value="", style=style or TextStyle())
+        self.target = target
+        self.prefix = prefix
+
+    def plain_text(self) -> str:
+        label = self.prefix or "Table"
+        return f"{label} ?"
+
+
+class FigureReference(Text):
+    """Inline reference to a numbered figure."""
+
+    __slots__ = ("target", "prefix")
+
+    def __init__(self, target: str, *, prefix: str | None = None, style: TextStyle | None = None) -> None:
+        super().__init__(value="", style=style or TextStyle())
+        self.target = target
+        self.prefix = prefix
+
+    def plain_text(self) -> str:
+        label = self.prefix or "Figure"
+        return f"{label} ?"
 
 
 def styled(value: str, **style_values: object) -> Text:
@@ -225,6 +259,26 @@ class CodeBlock(Block):
     style: ParagraphStyle = field(default_factory=lambda: ParagraphStyle(space_after=12.0))
 
 
+@dataclass(slots=True, init=False)
+class TableList(Block):
+    """Generated list of numbered tables."""
+
+    title: list[Text] | None
+
+    def __init__(self, title: InlineInput | None = None) -> None:
+        self.title = coerce_inlines((title,)) if title is not None else None
+
+
+@dataclass(slots=True, init=False)
+class FigureList(Block):
+    """Generated list of numbered figures."""
+
+    title: list[Text] | None
+
+    def __init__(self, title: InlineInput | None = None) -> None:
+        self.title = coerce_inlines((title,)) if title is not None else None
+
+
 BlockInput = Block | str | Sequence["BlockInput"] | None
 
 
@@ -315,6 +369,7 @@ class Table(Block):
     rows: list[list[Paragraph]]
     caption: Paragraph | None
     column_widths: list[float] | None
+    identifier: str | None
 
     def __init__(
         self,
@@ -323,11 +378,13 @@ class Table(Block):
         *,
         caption: CellInput | None = None,
         column_widths: Sequence[float] | None = None,
+        identifier: str | None = None,
     ) -> None:
         self.headers = [coerce_cell(cell) for cell in headers]
         self.rows = [[coerce_cell(cell) for cell in row] for row in rows]
         self.caption = coerce_cell(caption) if caption is not None else None
         self.column_widths = list(column_widths) if column_widths is not None else None
+        self.identifier = identifier
 
         if self.rows and any(len(row) != len(self.headers) for row in self.rows):
             raise ValueError("Each row must contain the same number of cells as the headers")
@@ -342,11 +399,83 @@ class Figure(Block):
     image_path: PathLike
     caption: Paragraph | None = None
     width_inches: float | None = None
+    identifier: str | None = None
 
     def __post_init__(self) -> None:
         self.image_path = Path(self.image_path)
         if self.caption is not None and not isinstance(self.caption, Paragraph):
             self.caption = coerce_cell(self.caption)
+
+
+@dataclass(slots=True)
+class CaptionEntry:
+    """A numbered captioned block entry."""
+
+    number: int
+    block: Table | Figure
+
+
+@dataclass(slots=True)
+class RenderIndex:
+    """Numbering and lookup information derived from a document tree."""
+
+    tables: list[CaptionEntry] = field(default_factory=list)
+    figures: list[CaptionEntry] = field(default_factory=list)
+    table_numbers: dict[int, int] = field(default_factory=dict)
+    figure_numbers: dict[int, int] = field(default_factory=dict)
+    table_identifiers: dict[str, int] = field(default_factory=dict)
+    figure_identifiers: dict[str, int] = field(default_factory=dict)
+
+    def table_number(self, table: Table) -> int | None:
+        return self.table_numbers.get(id(table))
+
+    def figure_number(self, figure: Figure) -> int | None:
+        return self.figure_numbers.get(id(figure))
+
+    def resolve_table(self, target: str) -> int:
+        if target not in self.table_identifiers:
+            raise DocscriptorError(f"Unknown table reference: {target!r}")
+        return self.table_identifiers[target]
+
+    def resolve_figure(self, target: str) -> int:
+        if target not in self.figure_identifiers:
+            raise DocscriptorError(f"Unknown figure reference: {target!r}")
+        return self.figure_identifiers[target]
+
+
+def build_render_index(document: Document) -> RenderIndex:
+    """Scan a document tree and assign numbers to captioned figures and tables."""
+
+    render_index = RenderIndex()
+    _index_blocks(document.body.children, render_index)
+    return render_index
+
+
+def _index_blocks(blocks: Sequence[Block], render_index: RenderIndex) -> None:
+    for block in blocks:
+        if isinstance(block, Section):
+            _index_blocks(block.children, render_index)
+            continue
+        if isinstance(block, Table):
+            if block.caption is not None:
+                number = len(render_index.tables) + 1
+                render_index.tables.append(CaptionEntry(number=number, block=block))
+                render_index.table_numbers[id(block)] = number
+                if block.identifier is not None:
+                    if block.identifier in render_index.table_identifiers:
+                        raise DocscriptorError(f"Duplicate table identifier: {block.identifier!r}")
+                    render_index.table_identifiers[block.identifier] = number
+            continue
+        if isinstance(block, Figure):
+            if block.caption is not None:
+                number = len(render_index.figures) + 1
+                render_index.figures.append(CaptionEntry(number=number, block=block))
+                render_index.figure_numbers[id(block)] = number
+                if block.identifier is not None:
+                    if block.identifier in render_index.figure_identifiers:
+                        raise DocscriptorError(f"Duplicate figure identifier: {block.identifier!r}")
+                    render_index.figure_identifiers[block.identifier] = number
+            continue
 
 
 @dataclass(slots=True, init=False)
