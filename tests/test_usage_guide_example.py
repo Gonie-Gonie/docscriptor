@@ -82,6 +82,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "When To Use CodeBlock" in paragraph_texts
     assert "Reusable Abstractions" in paragraph_texts
     assert "Generated Lists" in paragraph_texts
+    assert "Contents" in paragraph_texts
     assert "List of Tables" in paragraph_texts
     assert "List of Figures" in paragraph_texts
     assert "References" in paragraph_texts
@@ -116,6 +117,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Hierarchy Depth" in pdf_text
     assert "When To Use CodeBlock" in pdf_text
     assert "Generated Lists" in pdf_text
+    assert "Contents" in pdf_text
     assert "List of Tables" in pdf_text
     assert "List of Figures" in pdf_text
     assert "References" in pdf_text
@@ -134,6 +136,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "class WarningParagraph(Paragraph):" in pdf_text
     assert "https://github.com/Gonie-Gonie/pydocs" in pdf_text
     assert _pdf_image_draw_count(pdf_path) == 2
+    assert b"15 Tf" in _pdf_text_context(pdf_path, "Contents")
     assert b"15 Tf" in _pdf_text_context(pdf_path, "List of Tables")
     assert b"15 Tf" in _pdf_text_context(pdf_path, "List of Figures")
     assert b"15 Tf" in _pdf_text_context(pdf_path, "References")

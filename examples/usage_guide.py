@@ -24,6 +24,7 @@ from docscriptor import (
     Subsection,
     Subsubsection,
     Table,
+    TableOfContents,
     TableList,
     cite,
     markup,
@@ -159,6 +160,7 @@ def build_usage_guide_document(output_dir: Path) -> Document:
 
     return Document(
         "Using docscriptor",
+        TableOfContents(),
         Chapter(
             "Getting Started",
             Section(

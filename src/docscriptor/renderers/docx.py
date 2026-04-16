@@ -28,6 +28,7 @@ from docscriptor.model import (
     ReferencesPage,
     Section,
     Table,
+    TableOfContents,
     TableList,
     Text,
     Theme,
@@ -118,6 +119,9 @@ class DocxRenderer:
             return
         if isinstance(block, ReferencesPage):
             self._render_references_page(word_document, block.title, theme, render_index)
+            return
+        if isinstance(block, TableOfContents):
+            self._render_table_of_contents(word_document, block.title, theme, render_index)
             return
         if isinstance(block, TableList):
             self._render_caption_list(word_document, block.title, render_index.tables, theme, render_index, theme.list_of_tables_title, theme.table_label)
@@ -346,6 +350,26 @@ class DocxRenderer:
             self._append_runs(
                 paragraph,
                 [Text(f"[{entry.number}] {entry.source.format_reference()}")],
+                default_size=theme.body_font_size,
+                theme=theme,
+                render_index=render_index,
+            )
+
+    def _render_table_of_contents(
+        self,
+        word_document: WordDocument,
+        title: list[Text] | None,
+        theme: Theme,
+        render_index: RenderIndex,
+    ) -> None:
+        self._add_heading(word_document, title or [Text(theme.contents_title)], level=theme.generated_section_level, theme=theme)
+        for entry in render_index.headings:
+            paragraph = word_document.add_paragraph()
+            paragraph.paragraph_format.left_indent = Inches(0.2 * max(entry.level - 1, 0))
+            paragraph.paragraph_format.space_after = Pt(3)
+            self._append_runs(
+                paragraph,
+                entry.title,
                 default_size=theme.body_font_size,
                 theme=theme,
                 render_index=render_index,

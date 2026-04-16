@@ -86,6 +86,7 @@ class Theme:
     list_of_tables_title: str = "List of Tables"
     list_of_figures_title: str = "List of Figures"
     references_title: str = "References"
+    contents_title: str = "Contents"
     generated_section_level: int = 2
 
     def heading_size(self, level: int) -> float:
@@ -303,6 +304,16 @@ class ReferencesPage(Block):
         self.title = coerce_inlines((title,)) if title is not None else None
 
 
+@dataclass(slots=True, init=False)
+class TableOfContents(Block):
+    """Generated outline of chapter and section titles."""
+
+    title: list[Text] | None
+
+    def __init__(self, title: InlineInput | None = None) -> None:
+        self.title = coerce_inlines((title,)) if title is not None else None
+
+
 BlockInput = Block | str | Sequence["BlockInput"] | None
 
 
@@ -493,6 +504,14 @@ class CitationReferenceEntry:
 
 
 @dataclass(slots=True)
+class HeadingEntry:
+    """A heading included in the generated table of contents."""
+
+    level: int
+    title: list[Text]
+
+
+@dataclass(slots=True)
 class CitationLibrary:
     """Collection of bibliography entries addressable by citation key."""
 
@@ -555,6 +574,7 @@ class RenderIndex:
     citations: list[CitationReferenceEntry] = field(default_factory=list)
     citation_numbers: dict[str, int] = field(default_factory=dict)
     citation_source_numbers: dict[int, int] = field(default_factory=dict)
+    headings: list[HeadingEntry] = field(default_factory=list)
 
     def table_number(self, table: Table) -> int | None:
         return self.table_numbers.get(id(table))
@@ -594,9 +614,10 @@ def _index_blocks(blocks: Sequence[Block], render_index: RenderIndex, citations:
             continue
         if isinstance(block, Section):
             _index_inlines(block.title, render_index, citations)
+            render_index.headings.append(HeadingEntry(level=block.level, title=block.title))
             _index_blocks(block.children, render_index, citations)
             continue
-        if isinstance(block, (TableList, FigureList, ReferencesPage)):
+        if isinstance(block, (TableList, FigureList, ReferencesPage, TableOfContents)):
             if block.title is not None:
                 _index_inlines(block.title, render_index, citations)
             continue

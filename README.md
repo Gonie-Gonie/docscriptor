@@ -14,7 +14,7 @@ The long-term goal is to compose structured content in scripts, reuse templates 
 The package now ships with a basic document object model and two renderers:
 
 - block objects such as `Document`, `Body`, `Chapter`, `Section`, `Subsection`, `Subsubsection`, `Paragraph`, `CodeBlock`, `Table`, and `Figure`
-- list objects such as `BulletList`, `NumberedList`, `TableList`, and `FigureList`
+- list and generated blocks such as `BulletList`, `NumberedList`, `TableOfContents`, `TableList`, and `FigureList`
 - object references by reusing `Table` and `Figure` instances directly inside paragraphs
 - citation helpers such as `cite(...)`, `CitationSource`, `CitationLibrary`, and `ReferencesPage`
 - inline objects such as `Text`, `Bold`, `Italic`, `Monospace`, and `styled(...)`
@@ -35,6 +35,7 @@ The remaining helper functions are reserved for places where they transform cont
 The default theme uses Times New Roman for body copy and progressively stronger heading treatment for chapter and section levels.
 Captioned tables and figures are numbered automatically, can be cited from prose by reusing the same object instance, and can be collected into generated lists.
 Bibliography data can be supplied with Python objects or as a BibTeX string, then rendered through `cite(...)` and a generated references page that only includes cited sources.
+Generated front matter such as a table of contents or lists of tables and figures is rendered with section-level headings so it reads like part of the document structure.
 
 The core model in `docscriptor.model` is intentionally class-based so users can build their own abstractions on top.
 For example, a team can subclass `Paragraph`, `Section`, or `Document` to create house styles, reusable callouts, or report templates.
@@ -69,6 +70,7 @@ from docscriptor import (
     Subsection,
     Subsubsection,
     Table,
+    TableOfContents,
     Bold,
     cite,
     markup,
@@ -128,6 +130,7 @@ report = Document(
                 ),
             ),
             output_figure,
+            TableOfContents(),
             Paragraph(Bold("Rendered inline labels remain easy to spot.")),
             TableList(),
             FigureList(),

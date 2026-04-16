@@ -28,6 +28,7 @@ from docscriptor import (
     Subsection,
     Subsubsection,
     Table,
+    TableOfContents,
     TableList,
     cite,
     markup,
@@ -199,6 +200,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Monospace")
     assert hasattr(docscriptor, "Table")
     assert hasattr(docscriptor, "Figure")
+    assert hasattr(docscriptor, "TableOfContents")
     assert not hasattr(docscriptor, "ListBlock")
     assert not hasattr(docscriptor, "Citation")
     assert not hasattr(docscriptor, "TableReference")
@@ -300,6 +302,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
 
     document = Document(
         "Pipeline Report",
+        TableOfContents(),
         Chapter(
             "Summary",
             Section(
@@ -381,10 +384,13 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "Highlights" in paragraph_texts
     assert "Artifacts" in paragraph_texts
     assert "Export Steps" in paragraph_texts
+    assert "Contents" in paragraph_texts
     assert "List of Tables" in paragraph_texts
     assert "List of Figures" in paragraph_texts
     assert "References" in paragraph_texts
     assert any("docscriptor" in text for text in paragraph_texts)
+    assert any(text == "Summary" for text in paragraph_texts)
+    assert any(text == "Highlights" for text in paragraph_texts)
     assert any("See Table 1 and Figure 1 for the generated outputs." in text for text in paragraph_texts)
     assert any("Repository status is tracked in [1]." in text for text in paragraph_texts)
     assert any("Registered bibliography entries can still be cited as [2]." in text for text in paragraph_texts)
@@ -427,6 +433,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "Highlights" in pdf_text
     assert "Artifacts" in pdf_text
     assert "Export Steps" in pdf_text
+    assert "Contents" in pdf_text
     assert "See Table 1 and Figure 1 for the generated outputs." in pdf_text
     assert "Repository status is tracked in [1]." in pdf_text
     assert "Registered bibliography entries can still be cited as [2]." in pdf_text
@@ -457,3 +464,4 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert b"15 Tf" in _pdf_text_context(pdf_path, "List of Tables")
     assert b"15 Tf" in _pdf_text_context(pdf_path, "List of Figures")
     assert b"15 Tf" in _pdf_text_context(pdf_path, "References")
+    assert b"15 Tf" in _pdf_text_context(pdf_path, "Contents")

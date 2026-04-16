@@ -33,6 +33,7 @@ from docscriptor.model import (
     ReferencesPage,
     Section,
     Table,
+    TableOfContents,
     TableList,
     Text,
     Theme,
@@ -180,6 +181,8 @@ class PdfRenderer:
             return self._render_code_block(block, theme, styles)
         if isinstance(block, ReferencesPage):
             return self._render_references_page(block.title, theme, styles, render_index)
+        if isinstance(block, TableOfContents):
+            return self._render_table_of_contents(block.title, theme, styles, render_index)
         if isinstance(block, TableList):
             return self._render_caption_list(block.title, render_index.tables, theme, styles, render_index, theme.list_of_tables_title, theme.table_label)
         if isinstance(block, FigureList):
@@ -550,4 +553,64 @@ class PdfRenderer:
         ]
         for entry in render_index.citations:
             story.append(RLParagraph(escape(f"[{entry.number}] {entry.source.format_reference()}"), entry_style))
+        return story
+
+    def _render_table_of_contents(
+        self,
+        title: list[Text] | None,
+        theme: Theme,
+        styles: object,
+        render_index: RenderIndex,
+    ) -> list[object]:
+        level = theme.generated_section_level
+        bold, italic = theme.heading_emphasis(level)
+        title_style = RLParagraphStyle(
+            "TableOfContentsTitle",
+            parent=styles["Heading1"],
+            fontName=self._resolve_font(theme.body_font_name, bold, italic),
+            fontSize=theme.heading_size(level),
+            leading=theme.heading_size(level) * 1.2,
+            spaceBefore=12,
+            spaceAfter=6,
+            alignment=ALIGNMENTS[theme.heading_alignment(level)],
+            textColor=colors.black,
+        )
+        story: list[object] = [
+            RLParagraph(
+                self._inline_markup(
+                    title or [Text(theme.contents_title)],
+                    theme,
+                    render_index,
+                    base_font_name=title_style.fontName,
+                    base_size=title_style.fontSize,
+                    base_bold=bold,
+                    base_italic=italic,
+                ),
+                title_style,
+            )
+        ]
+        for entry in render_index.headings:
+            entry_style = RLParagraphStyle(
+                f"TableOfContentsEntry{entry.level}",
+                parent=styles["BodyText"],
+                fontName=self._resolve_font(theme.body_font_name, False, False),
+                fontSize=theme.body_font_size,
+                leading=theme.body_font_size * 1.3,
+                leftIndent=18 * max(entry.level - 1, 0),
+                spaceAfter=3,
+                textColor=colors.black,
+            )
+            story.append(
+                RLParagraph(
+                    self._inline_markup(
+                        entry.title,
+                        theme,
+                        render_index,
+                        base_font_name=entry_style.fontName,
+                        base_size=entry_style.fontSize,
+                    ),
+                    entry_style,
+                )
+            )
+        story.append(Spacer(1, 6))
         return story
