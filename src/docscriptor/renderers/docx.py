@@ -318,7 +318,7 @@ class DocxRenderer:
         default_title: str,
         label: str,
     ) -> None:
-        self._add_heading(word_document, title or [Text(default_title)], level=4, theme=theme)
+        self._add_heading(word_document, title or [Text(default_title)], level=theme.generated_section_level, theme=theme)
         for entry in entries:
             paragraph = word_document.add_paragraph()
             paragraph.paragraph_format.left_indent = Inches(0.25)
@@ -338,7 +338,7 @@ class DocxRenderer:
         render_index: RenderIndex,
     ) -> None:
         word_document.add_page_break()
-        self._add_heading(word_document, title or [Text(theme.references_title)], level=1, theme=theme)
+        self._add_heading(word_document, title or [Text(theme.references_title)], level=theme.generated_section_level, theme=theme)
         for entry in render_index.citations:
             paragraph = word_document.add_paragraph()
             paragraph.paragraph_format.left_indent = Inches(0.3)

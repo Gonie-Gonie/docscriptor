@@ -86,6 +86,7 @@ class Theme:
     list_of_tables_title: str = "List of Tables"
     list_of_figures_title: str = "List of Figures"
     references_title: str = "References"
+    generated_section_level: int = 2
 
     def heading_size(self, level: int) -> float:
         index = min(max(level - 1, 0), len(self.heading_sizes) - 1)

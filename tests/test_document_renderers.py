@@ -130,6 +130,15 @@ def _pdf_content_bytes(pdf_path: Path) -> bytes:
     return b"\n".join(parts)
 
 
+def _pdf_text_context(pdf_path: Path, text: str, window: int = 160) -> bytes:
+    content = _pdf_content_bytes(pdf_path)
+    needle = f"({text})".encode()
+    index = content.find(needle)
+    assert index != -1, f"{text!r} not found in PDF content stream"
+    start = max(index - window, 0)
+    return content[start : index + len(needle) + window]
+
+
 def test_version_is_defined() -> None:
     from docscriptor import __version__
 
@@ -407,6 +416,10 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert word_document.styles["Heading 2"].font.color.rgb == RGBColor(0, 0, 0)
     assert word_document.styles["Heading 3"].font.color.rgb == RGBColor(0, 0, 0)
     assert word_document.styles["Heading 4"].font.color.rgb == RGBColor(0, 0, 0)
+    heading_styles = {paragraph.text: paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text in {"List of Tables", "List of Figures", "References"}}
+    assert heading_styles["List of Tables"] == "Heading 2"
+    assert heading_styles["List of Figures"] == "Heading 2"
+    assert heading_styles["References"] == "Heading 2"
 
     pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(str(pdf_path)).pages)
     assert "Pipeline Report" in pdf_text
@@ -441,3 +454,6 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert b"15 Tf" in pdf_content
     assert b"13 Tf" in pdf_content
     assert b"11.5 Tf" in pdf_content
+    assert b"15 Tf" in _pdf_text_context(pdf_path, "List of Tables")
+    assert b"15 Tf" in _pdf_text_context(pdf_path, "List of Figures")
+    assert b"15 Tf" in _pdf_text_context(pdf_path, "References")

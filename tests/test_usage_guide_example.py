@@ -41,6 +41,29 @@ def _pdf_image_draw_count(pdf_path: Path) -> int:
     return count
 
 
+def _pdf_content_bytes(pdf_path: Path) -> bytes:
+    parts: list[bytes] = []
+    for page in PdfReader(str(pdf_path)).pages:
+        contents = page.get_contents()
+        if contents is None:
+            continue
+        if isinstance(contents, list):
+            for item in contents:
+                parts.append(item.get_data())
+        else:
+            parts.append(contents.get_data())
+    return b"\n".join(parts)
+
+
+def _pdf_text_context(pdf_path: Path, text: str, window: int = 160) -> bytes:
+    content = _pdf_content_bytes(pdf_path)
+    needle = f"({text})".encode()
+    index = content.find(needle)
+    assert index != -1, f"{text!r} not found in PDF content stream"
+    start = max(index - window, 0)
+    return content[start : index + len(needle) + window]
+
+
 def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     usage_guide = _load_usage_guide_module()
     docx_path, pdf_path = usage_guide.build_usage_guide(tmp_path)
@@ -81,6 +104,10 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert paragraph_texts.count("Figure 2. Repeated figure rendering example.") >= 2
     assert any("https://github.com/Gonie-Gonie/pydocs" in text for text in paragraph_texts)
     assert word_document.styles["Normal"].font.name == "Times New Roman"
+    heading_styles = {paragraph.text: paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text in {"List of Tables", "List of Figures", "References"}}
+    assert heading_styles["List of Tables"] == "Heading 2"
+    assert heading_styles["List of Figures"] == "Heading 2"
+    assert heading_styles["References"] == "Heading 2"
 
     pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(str(pdf_path)).pages)
     assert "Using docscriptor" in pdf_text
@@ -107,3 +134,6 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "class WarningParagraph(Paragraph):" in pdf_text
     assert "https://github.com/Gonie-Gonie/pydocs" in pdf_text
     assert _pdf_image_draw_count(pdf_path) == 2
+    assert b"15 Tf" in _pdf_text_context(pdf_path, "List of Tables")
+    assert b"15 Tf" in _pdf_text_context(pdf_path, "List of Figures")
+    assert b"15 Tf" in _pdf_text_context(pdf_path, "References")

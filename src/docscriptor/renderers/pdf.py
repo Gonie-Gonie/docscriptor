@@ -457,16 +457,17 @@ class PdfRenderer:
         default_title: str,
         label: str,
     ) -> list[object]:
-        bold, italic = theme.heading_emphasis(4)
+        level = theme.generated_section_level
+        bold, italic = theme.heading_emphasis(level)
         title_style = RLParagraphStyle(
             "GeneratedCaptionListTitle",
             parent=styles["Heading1"],
             fontName=self._resolve_font(theme.body_font_name, bold, italic),
-            fontSize=theme.heading_size(4),
-            leading=theme.heading_size(4) * 1.2,
+            fontSize=theme.heading_size(level),
+            leading=theme.heading_size(level) * 1.2,
             spaceBefore=12,
             spaceAfter=6,
-            alignment=TA_LEFT,
+            alignment=ALIGNMENTS[theme.heading_alignment(level)],
             textColor=colors.black,
         )
         entry_style = self._paragraph_style(ParagraphStyle(space_after=3), theme, styles["BodyText"])
@@ -508,16 +509,17 @@ class PdfRenderer:
         styles: object,
         render_index: RenderIndex,
     ) -> list[object]:
-        bold, italic = theme.heading_emphasis(1)
+        level = theme.generated_section_level
+        bold, italic = theme.heading_emphasis(level)
         title_style = RLParagraphStyle(
             "ReferencesPageTitle",
             parent=styles["Heading1"],
             fontName=self._resolve_font(theme.body_font_name, bold, italic),
-            fontSize=theme.heading_size(1),
-            leading=theme.heading_size(1) * 1.2,
+            fontSize=theme.heading_size(level),
+            leading=theme.heading_size(level) * 1.2,
             spaceBefore=0,
             spaceAfter=10,
-            alignment=ALIGNMENTS[theme.heading_alignment(1)],
+            alignment=ALIGNMENTS[theme.heading_alignment(level)],
             textColor=colors.black,
         )
         entry_style = RLParagraphStyle(
