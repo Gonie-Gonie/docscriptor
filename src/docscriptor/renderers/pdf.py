@@ -103,7 +103,20 @@ class PdfRenderer:
             alignment=TA_CENTER,
             textColor=colors.black,
         )
-        story.append(RLParagraph(escape(document.title), title_style))
+        story.append(
+            RLParagraph(
+                self._inline_markup(
+                    [Text(document.title)],
+                    document.theme,
+                    render_index,
+                    base_font_name=title_style.fontName,
+                    base_size=title_style.fontSize,
+                    base_bold=True,
+                    base_italic=False,
+                ),
+                title_style,
+            )
+        )
 
         for child in document.body.children:
             story.extend(self._render_block(child, document.theme, styles, render_index))
@@ -130,13 +143,37 @@ class PdfRenderer:
                 alignment=ALIGNMENTS[theme.heading_alignment(block.level)],
                 textColor=colors.black,
             )
-            story = [RLParagraph(self._inline_markup(block.title, theme, render_index), title_style)]
+            story = [
+                RLParagraph(
+                    self._inline_markup(
+                        block.title,
+                        theme,
+                        render_index,
+                        base_font_name=title_style.fontName,
+                        base_size=title_style.fontSize,
+                        base_bold=bold,
+                        base_italic=italic,
+                    ),
+                    title_style,
+                )
+            ]
             for child in block.children:
                 story.extend(self._render_block(child, theme, styles, render_index))
             return story
         if isinstance(block, Paragraph):
             paragraph_style = self._paragraph_style(block.style, theme, styles["BodyText"])
-            return [RLParagraph(self._inline_markup(block.content, theme, render_index), paragraph_style)]
+            return [
+                RLParagraph(
+                    self._inline_markup(
+                        block.content,
+                        theme,
+                        render_index,
+                        base_font_name=paragraph_style.fontName,
+                        base_size=paragraph_style.fontSize,
+                    ),
+                    paragraph_style,
+                )
+            ]
         if isinstance(block, (BulletList, NumberedList)):
             return self._render_list(block, theme, styles, render_index)
         if isinstance(block, CodeBlock):
@@ -174,10 +211,38 @@ class PdfRenderer:
         )
 
         table_rows: list[list[object]] = [
-            [RLParagraph(self._inline_markup(cell.content, theme, render_index), header_style) for cell in block.headers]
+            [
+                RLParagraph(
+                    self._inline_markup(
+                        cell.content,
+                        theme,
+                        render_index,
+                        base_font_name=header_style.fontName,
+                        base_size=header_style.fontSize,
+                        base_bold=True,
+                        base_italic=False,
+                    ),
+                    header_style,
+                )
+                for cell in block.headers
+            ]
         ]
         for row in block.rows:
-            table_rows.append([RLParagraph(self._inline_markup(cell.content, theme, render_index), body_style) for cell in row])
+            table_rows.append(
+                [
+                    RLParagraph(
+                        self._inline_markup(
+                            cell.content,
+                            theme,
+                            render_index,
+                            base_font_name=body_style.fontName,
+                            base_size=body_style.fontSize,
+                        ),
+                        body_style,
+                    )
+                    for cell in row
+                ]
+            )
 
         column_widths = [width * inch for width in block.column_widths] if block.column_widths is not None else None
         table = RLTable(table_rows, colWidths=column_widths, hAlign="LEFT")
@@ -208,7 +273,13 @@ class PdfRenderer:
             )
             story.append(
                 RLParagraph(
-                    self._inline_markup(self._caption_fragments(theme.table_label, render_index.table_number(block), block.caption), theme, render_index),
+                    self._inline_markup(
+                        self._caption_fragments(theme.table_label, render_index.table_number(block), block.caption),
+                        theme,
+                        render_index,
+                        base_font_name=caption_style.fontName,
+                        base_size=caption_style.fontSize,
+                    ),
                     caption_style,
                 )
             )
@@ -219,7 +290,18 @@ class PdfRenderer:
     def _render_list(self, block: BulletList | NumberedList, theme: Theme, styles: object, render_index: RenderIndex) -> list[object]:
         item_style = self._paragraph_style(ParagraphStyle(space_after=3), theme, styles["BodyText"])
         list_items = [
-            RLListItem(RLParagraph(self._inline_markup(item.content, theme, render_index), item_style))
+            RLListItem(
+                RLParagraph(
+                    self._inline_markup(
+                        item.content,
+                        theme,
+                        render_index,
+                        base_font_name=item_style.fontName,
+                        base_size=item_style.fontSize,
+                    ),
+                    item_style,
+                )
+            )
             for item in block.items
         ]
         list_kwargs: dict[str, object] = {
@@ -285,7 +367,13 @@ class PdfRenderer:
             )
             elements.append(
                 RLParagraph(
-                    self._inline_markup(self._caption_fragments(theme.figure_label, render_index.figure_number(block), block.caption), theme, render_index),
+                    self._inline_markup(
+                        self._caption_fragments(theme.figure_label, render_index.figure_number(block), block.caption),
+                        theme,
+                        render_index,
+                        base_font_name=caption_style.fontName,
+                        base_size=caption_style.fontSize,
+                    ),
                     caption_style,
                 )
             )
@@ -293,21 +381,33 @@ class PdfRenderer:
             elements.append(Spacer(1, 12))
         return [KeepTogether(elements)]
 
-    def _inline_markup(self, fragments: list[Text], theme: Theme, render_index: RenderIndex) -> str:
+    def _inline_markup(
+        self,
+        fragments: list[Text],
+        theme: Theme,
+        render_index: RenderIndex,
+        *,
+        base_font_name: str | None = None,
+        base_size: float | None = None,
+        base_bold: bool = False,
+        base_italic: bool = False,
+    ) -> str:
         parts: list[str] = []
         for fragment in fragments:
             text = escape(self._resolve_fragment_text(fragment, theme, render_index)).replace("\n", "<br/>")
-            font_name = self._resolve_font(
-                fragment.style.font_name or theme.body_font_name,
-                bool(fragment.style.bold),
-                bool(fragment.style.italic),
-            )
-            size = fragment.style.font_size or theme.body_font_size
+            bold = base_bold if fragment.style.bold is None else fragment.style.bold
+            italic = base_italic if fragment.style.italic is None else fragment.style.italic
+            font_name = self._resolve_font(fragment.style.font_name or theme.body_font_name, bold, italic)
+            size = fragment.style.font_size or base_size or theme.body_font_size
 
-            font_attrs = [f'face="{font_name}"', f'size="{size}"']
+            font_attrs: list[str] = []
+            if base_font_name is None or font_name != base_font_name:
+                font_attrs.append(f'face="{font_name}"')
+            if base_size is None or size != base_size:
+                font_attrs.append(f'size="{size}"')
             if fragment.style.color is not None:
                 font_attrs.append(f'color="#{fragment.style.color}"')
-            wrapped = f"<font {' '.join(font_attrs)}>{text}</font>"
+            wrapped = text if not font_attrs else f"<font {' '.join(font_attrs)}>{text}</font>"
             if fragment.style.underline:
                 wrapped = f"<u>{wrapped}</u>"
             parts.append(wrapped)
@@ -370,11 +470,30 @@ class PdfRenderer:
             textColor=colors.black,
         )
         entry_style = self._paragraph_style(ParagraphStyle(space_after=3), theme, styles["BodyText"])
-        story: list[object] = [RLParagraph(self._inline_markup(title or [Text(default_title)], theme, render_index), title_style)]
+        story: list[object] = [
+            RLParagraph(
+                self._inline_markup(
+                    title or [Text(default_title)],
+                    theme,
+                    render_index,
+                    base_font_name=title_style.fontName,
+                    base_size=title_style.fontSize,
+                    base_bold=bold,
+                    base_italic=italic,
+                ),
+                title_style,
+            )
+        ]
         for entry in entries:
             story.append(
                 RLParagraph(
-                    self._inline_markup(self._caption_fragments(label, entry.number, entry.block.caption), theme, render_index),
+                    self._inline_markup(
+                        self._caption_fragments(label, entry.number, entry.block.caption),
+                        theme,
+                        render_index,
+                        base_font_name=entry_style.fontName,
+                        base_size=entry_style.fontSize,
+                    ),
                     entry_style,
                 )
             )
@@ -412,7 +531,21 @@ class PdfRenderer:
             spaceAfter=6,
             textColor=colors.black,
         )
-        story: list[object] = [PageBreak(), RLParagraph(self._inline_markup(title or [Text(theme.references_title)], theme, render_index), title_style)]
+        story: list[object] = [
+            PageBreak(),
+            RLParagraph(
+                self._inline_markup(
+                    title or [Text(theme.references_title)],
+                    theme,
+                    render_index,
+                    base_font_name=title_style.fontName,
+                    base_size=title_style.fontSize,
+                    base_bold=bold,
+                    base_italic=italic,
+                ),
+                title_style,
+            ),
+        ]
         for entry in render_index.citations:
             story.append(RLParagraph(escape(f"[{entry.number}] {entry.source.format_reference()}"), entry_style))
         return story

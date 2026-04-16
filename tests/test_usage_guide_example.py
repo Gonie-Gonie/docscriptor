@@ -17,6 +17,30 @@ def _load_usage_guide_module():
     return module
 
 
+def _pdf_image_draw_count(pdf_path: Path) -> int:
+    count = 0
+    for page in PdfReader(str(pdf_path)).pages:
+        resources = page.get("/Resources")
+        if resources is None or "/XObject" not in resources:
+            continue
+        xobjects = resources["/XObject"].get_object()
+        image_names = {
+            name
+            for name, xobject in xobjects.items()
+            if xobject.get_object().get("/Subtype") == "/Image"
+        }
+        if not image_names:
+            continue
+        content = page.get_contents()
+        if content is None:
+            continue
+        content_bytes = content.get_data()
+        for name in image_names:
+            token = f"{name} Do".encode()
+            count += content_bytes.count(token)
+    return count
+
+
 def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     usage_guide = _load_usage_guide_module()
     docx_path, pdf_path = usage_guide.build_usage_guide(tmp_path)
@@ -46,6 +70,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("class WarningParagraph(Paragraph):" in text for text in paragraph_texts)
     assert any(paragraph.style.name == "List Bullet" for paragraph in word_document.paragraphs)
     assert any(paragraph.style.name == "List Number" for paragraph in word_document.paragraphs)
+    assert len(word_document.inline_shapes) == 2
     assert len(word_document.tables) == 2
     assert word_document.tables[0].cell(2, 1).text == "Paragraph, BulletList, NumberedList, CodeBlock, Table, Figure"
     assert word_document.tables[1].cell(1, 0).text == "Editable review"
@@ -81,3 +106,4 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "from docscriptor import Chapter, Document, Paragraph, Section" in pdf_text
     assert "class WarningParagraph(Paragraph):" in pdf_text
     assert "https://github.com/Gonie-Gonie/pydocs" in pdf_text
+    assert _pdf_image_draw_count(pdf_path) == 2

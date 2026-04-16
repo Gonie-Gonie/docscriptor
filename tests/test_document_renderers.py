@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import base64
 from pathlib import Path
+import struct
+import zlib
 
 import docscriptor
 from docx import Document as WordDocument
@@ -33,18 +34,47 @@ from docscriptor import (
     styled,
 )
 
-
-SAMPLE_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0tcAAAAASUVORK5CYII="
-)
-
-
 class HighlightedParagraph(Paragraph):
     pass
 
 
 def _write_sample_image(path: Path) -> None:
-    path.write_bytes(SAMPLE_PNG)
+    path.write_bytes(_build_sample_png())
+
+
+def _build_sample_png(width: int = 360, height: int = 220) -> bytes:
+    rows: list[bytes] = []
+    for y in range(height):
+        row = bytearray([0])
+        for x in range(width):
+            if y < 34:
+                pixel = (34, 58, 94)
+            elif x < 18 or x >= width - 18 or y < 52 or y >= height - 18:
+                pixel = (214, 221, 233)
+            elif 26 < x < width - 26 and 70 < y < 102:
+                pixel = (205, 121, 62)
+            elif (x - 36) // 54 % 2 == 0 and 122 < y < 182:
+                pixel = (89, 132, 198)
+            else:
+                pixel = (247, 249, 252)
+            row.extend(pixel)
+        rows.append(bytes(row))
+
+    raw_image = b"".join(rows)
+    return b"".join(
+        (
+            b"\x89PNG\r\n\x1a\n",
+            _png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)),
+            _png_chunk(b"IDAT", zlib.compress(raw_image, level=9)),
+            _png_chunk(b"IEND", b""),
+        )
+    )
+
+
+def _png_chunk(chunk_type: bytes, data: bytes) -> bytes:
+    payload = chunk_type + data
+    checksum = zlib.crc32(payload) & 0xFFFFFFFF
+    return struct.pack(">I", len(data)) + payload + struct.pack(">I", checksum)
 
 
 def _pdf_font_names(pdf_path: Path) -> set[str]:
@@ -60,6 +90,44 @@ def _pdf_font_names(pdf_path: Path) -> set[str]:
             if base_font is not None:
                 font_names.add(str(base_font))
     return font_names
+
+
+def _pdf_image_draw_count(pdf_path: Path) -> int:
+    count = 0
+    for page in PdfReader(str(pdf_path)).pages:
+        resources = page.get("/Resources")
+        if resources is None or "/XObject" not in resources:
+            continue
+        xobjects = resources["/XObject"].get_object()
+        image_names = {
+            name
+            for name, xobject in xobjects.items()
+            if xobject.get_object().get("/Subtype") == "/Image"
+        }
+        if not image_names:
+            continue
+        content = page.get_contents()
+        if content is None:
+            continue
+        content_bytes = content.get_data()
+        for name in image_names:
+            token = f"{name} Do".encode()
+            count += content_bytes.count(token)
+    return count
+
+
+def _pdf_content_bytes(pdf_path: Path) -> bytes:
+    parts: list[bytes] = []
+    for page in PdfReader(str(pdf_path)).pages:
+        contents = page.get_contents()
+        if contents is None:
+            continue
+        if isinstance(contents, list):
+            for item in contents:
+                parts.append(item.get_data())
+        else:
+            parts.append(contents.get_data())
+    return b"\n".join(parts)
 
 
 def test_version_is_defined() -> None:
@@ -315,6 +383,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert any("from docscriptor import Document" in text for text in paragraph_texts)
     assert any(paragraph.style.name == "List Bullet" for paragraph in word_document.paragraphs)
     assert any(paragraph.style.name == "List Number" for paragraph in word_document.paragraphs)
+    assert len(word_document.inline_shapes) == 2
 
     assert len(word_document.tables) == 2
     assert word_document.tables[0].cell(1, 0).text == "DOCX"
@@ -356,7 +425,13 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "from docscriptor import Document" in pdf_text
     assert "1\nLists render into both DOCX and PDF." not in pdf_text
     assert "1\nCreate the model" in pdf_text
+    assert _pdf_image_draw_count(pdf_path) == 2
     pdf_fonts = _pdf_font_names(pdf_path)
     assert "/Times-Roman" in pdf_fonts
     assert "/Times-Bold" in pdf_fonts
     assert pdf_fonts & {"/Times-BoldItalic", "/Times-Italic"}
+    pdf_content = _pdf_content_bytes(pdf_path)
+    assert b"18 Tf" in pdf_content
+    assert b"15 Tf" in pdf_content
+    assert b"13 Tf" in pdf_content
+    assert b"11.5 Tf" in pdf_content

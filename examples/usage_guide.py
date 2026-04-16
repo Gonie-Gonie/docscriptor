@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import base64
 from pathlib import Path
+import struct
+import zlib
 
 from docscriptor import (
     BulletList,
@@ -30,9 +31,6 @@ from docscriptor import (
 
 
 OUTPUT_DIR = Path("artifacts") / "usage-guide"
-SAMPLE_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0tcAAAAASUVORK5CYII="
-)
 
 QUICK_START_SNIPPET = """from docscriptor import Chapter, Document, Paragraph, Section
 
@@ -76,7 +74,42 @@ class NoteParagraph(Paragraph):
 
 
 def _write_sample_image(path: Path) -> None:
-    path.write_bytes(SAMPLE_PNG)
+    path.write_bytes(_build_sample_png())
+
+
+def _build_sample_png(width: int = 360, height: int = 220) -> bytes:
+    rows: list[bytes] = []
+    for y in range(height):
+        row = bytearray([0])
+        for x in range(width):
+            if y < 34:
+                pixel = (34, 58, 94)
+            elif x < 18 or x >= width - 18 or y < 52 or y >= height - 18:
+                pixel = (214, 221, 233)
+            elif 26 < x < width - 26 and 70 < y < 102:
+                pixel = (205, 121, 62)
+            elif (x - 36) // 54 % 2 == 0 and 122 < y < 182:
+                pixel = (89, 132, 198)
+            else:
+                pixel = (247, 249, 252)
+            row.extend(pixel)
+        rows.append(bytes(row))
+
+    raw_image = b"".join(rows)
+    return b"".join(
+        (
+            b"\x89PNG\r\n\x1a\n",
+            _png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)),
+            _png_chunk(b"IDAT", zlib.compress(raw_image, level=9)),
+            _png_chunk(b"IEND", b""),
+        )
+    )
+
+
+def _png_chunk(chunk_type: bytes, data: bytes) -> bytes:
+    payload = chunk_type + data
+    checksum = zlib.crc32(payload) & 0xFFFFFFFF
+    return struct.pack(">I", len(data)) + payload + struct.pack(">I", checksum)
 
 
 def build_usage_guide_document(output_dir: Path) -> Document:
