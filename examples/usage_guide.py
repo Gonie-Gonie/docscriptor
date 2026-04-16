@@ -125,6 +125,58 @@ def _png_chunk(chunk_type: bytes, data: bytes) -> bytes:
     return struct.pack(">I", len(data)) + payload + struct.pack(">I", checksum)
 
 
+class UsageGuideTables:
+    def __init__(self, *, primitive_summary: Table, workflow_output: Table) -> None:
+        self.primitive_summary = primitive_summary
+        self.workflow_output = workflow_output
+
+
+class UsageGuideFigures:
+    def __init__(self, *, hierarchy_overview: Figure, rendering_preview: Figure) -> None:
+        self.hierarchy_overview = hierarchy_overview
+        self.rendering_preview = rendering_preview
+
+
+def _build_usage_guide_tables() -> UsageGuideTables:
+    return UsageGuideTables(
+        primitive_summary=Table(
+            headers=["Kind", "Examples", "Purpose"],
+            rows=[
+                ["Hierarchy", "Chapter, Section, Subsection, Subsubsection", "Document structure"],
+                ["Blocks", "Paragraph, BulletList, NumberedList, CodeBlock, Table, Figure", "Content layout"],
+                ["Inline", "Text, Bold, Italic, Monospace", "Inline emphasis"],
+                ["Helpers", "markup, styled, cite", "Authoring shortcuts"],
+            ],
+            caption="Core authoring primitives.",
+            column_widths=[1.6, 3.1, 1.8],
+        ),
+        workflow_output=Table(
+            headers=["Goal", "Preferred Output"],
+            rows=[
+                ["Editable review", "DOCX"],
+                ["Stable distribution", "PDF"],
+            ],
+            caption="Rendering outputs by goal.",
+            column_widths=[2.4, 2.6],
+        ),
+    )
+
+
+def _build_usage_guide_figures(figure_path: Path) -> UsageGuideFigures:
+    return UsageGuideFigures(
+        hierarchy_overview=Figure(
+            figure_path,
+            caption="Heading hierarchy example output.",
+            width_inches=1.4,
+        ),
+        rendering_preview=Figure(
+            figure_path,
+            caption="Repeated figure rendering example.",
+            width_inches=1.8,
+        ),
+    )
+
+
 def build_usage_guide_document(output_dir: Path) -> Document:
     """Build the in-memory usage guide document."""
 
@@ -138,36 +190,8 @@ def build_usage_guide_document(output_dir: Path) -> Document:
         year="2026",
         url="https://github.com/Gonie-Gonie/pydocs",
     )
-    primitive_summary_table = Table(
-        headers=["Kind", "Examples", "Purpose"],
-        rows=[
-            ["Hierarchy", "Chapter, Section, Subsection, Subsubsection", "Document structure"],
-            ["Blocks", "Paragraph, BulletList, NumberedList, CodeBlock, Table, Figure", "Content layout"],
-            ["Inline", "Text, Bold, Italic, Monospace", "Inline emphasis"],
-            ["Helpers", "markup, styled, cite", "Authoring shortcuts"],
-        ],
-        caption="Core authoring primitives.",
-        column_widths=[1.6, 3.1, 1.8],
-    )
-    hierarchy_overview_figure = Figure(
-        figure_path,
-        caption="Heading hierarchy example output.",
-        width_inches=1.4,
-    )
-    workflow_output_table = Table(
-        headers=["Goal", "Preferred Output"],
-        rows=[
-            ["Editable review", "DOCX"],
-            ["Stable distribution", "PDF"],
-        ],
-        caption="Rendering outputs by goal.",
-        column_widths=[2.4, 2.6],
-    )
-    rendering_preview_figure = Figure(
-        figure_path,
-        caption="Repeated figure rendering example.",
-        width_inches=1.8,
-    )
+    tables = _build_usage_guide_tables()
+    figures = _build_usage_guide_figures(figure_path)
 
     return Document(
         "Using docscriptor",
@@ -202,9 +226,9 @@ def build_usage_guide_document(output_dir: Path) -> Document:
                 ),
                 Paragraph(
                     "See ",
-                    primitive_summary_table,
+                    tables.primitive_summary,
                     " for the core block inventory and ",
-                    hierarchy_overview_figure,
+                    figures.hierarchy_overview,
                     " for a compact figure example that can be cited from prose.",
                 ),
                 NumberedList(
@@ -227,10 +251,10 @@ def build_usage_guide_document(output_dir: Path) -> Document:
                 Paragraph(
                     "The current model mixes heading classes, block objects, inline fragments, and a small set of authoring helpers so documents stay easy to read in plain Python."
                 ),
-                primitive_summary_table,
+                tables.primitive_summary,
                 Paragraph(
                     "The rendering matrix in ",
-                    workflow_output_table,
+                    tables.workflow_output,
                     " complements the structural summary with output-oriented guidance.",
                 ),
                 Subsection(
@@ -246,7 +270,7 @@ def build_usage_guide_document(output_dir: Path) -> Document:
                         Bold("Subsubsection"),
                         " as the document becomes more specific.",
                     ),
-                    hierarchy_overview_figure,
+                    figures.hierarchy_overview,
                     Subsubsection(
                         "When To Use CodeBlock",
                         BulletList(
@@ -271,13 +295,13 @@ def build_usage_guide_document(output_dir: Path) -> Document:
                 "Rendering Workflow",
                 Paragraph(
                     "Use ",
-                    rendering_preview_figure,
+                    figures.rendering_preview,
                     " together with ",
-                    workflow_output_table,
+                    tables.workflow_output,
                     " when comparing delivery formats."
                 ),
-                workflow_output_table,
-                rendering_preview_figure,
+                tables.workflow_output,
+                figures.rendering_preview,
                 BulletList(
                     "Use DOCX when you want editable handoff files.",
                     "Use PDF when you want stable distribution output.",
