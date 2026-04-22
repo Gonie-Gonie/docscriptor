@@ -4,6 +4,7 @@ import importlib.util
 from io import BytesIO
 from pathlib import Path
 
+import docscriptor
 from docx import Document as WordDocument
 from pypdf import PdfReader
 
@@ -65,6 +66,16 @@ def _pdf_text_context(pdf_path: Path, text: str, window: int = 160) -> bytes:
     return content[start : index + len(needle) + window]
 
 
+def _docx_table_texts(word_document: WordDocument) -> list[str]:
+    texts: list[str] = []
+    for table in word_document.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                if cell.text:
+                    texts.append(cell.text)
+    return texts
+
+
 def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     usage_guide = _load_usage_guide_module()
     docx_path, pdf_path = usage_guide.build_usage_guide(tmp_path)
@@ -75,14 +86,23 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
 
     word_document = WordDocument(docx_path)
     paragraph_texts = [paragraph.text for paragraph in word_document.paragraphs]
+    table_texts = _docx_table_texts(word_document)
+    docx_text = "\n".join(paragraph_texts + table_texts)
+    compact_docx_text = "".join(docx_text.split())
     assert "Using docscriptor" in paragraph_texts
     assert "Getting Started" in paragraph_texts
     assert "Authoring Model" in paragraph_texts
+    assert "API Reference" in paragraph_texts
     assert "Quick Start" in paragraph_texts
     assert "Hierarchy Depth" in paragraph_texts
     assert "When To Use CodeBlock" in paragraph_texts
     assert "Reusable Abstractions" in paragraph_texts
     assert "Generated Lists" in paragraph_texts
+    assert "Document and Structure" in paragraph_texts
+    assert "Blocks and Generated Pages" in paragraph_texts
+    assert "Text, Style, and Theme" in paragraph_texts
+    assert "Citations, Helpers, and Errors" in paragraph_texts
+    assert "Public Methods" in paragraph_texts
     assert "Contents" in paragraph_texts
     assert "List of Tables" in paragraph_texts
     assert "List of Figures" in paragraph_texts
@@ -94,13 +114,19 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("literate-programming tradition described in [2]" in text for text in paragraph_texts)
     assert any("from docscriptor import Chapter, Document, Paragraph, Section" in text for text in paragraph_texts)
     assert any("class WarningParagraph(Paragraph):" in text for text in paragraph_texts)
+    assert any("every stable name exported from docscriptor" in text for text in paragraph_texts)
+    assert any("__version__ exposes the package version string" in text for text in paragraph_texts)
+    assert any("Body," in text for text in paragraph_texts)
     assert any(paragraph.style.name == "List Bullet" for paragraph in word_document.paragraphs)
     assert any(paragraph.style.name == "List Number" for paragraph in word_document.paragraphs)
     assert len(word_document.inline_shapes) == 2
-    assert len(word_document.tables) == 2
+    assert len(word_document.tables) == 8
     assert word_document.tables[0].cell(2, 1).text == "Paragraph, BulletList, NumberedList, CodeBlock, Table, Figure"
     assert word_document.tables[1].cell(1, 0).text == "Editable review"
     assert word_document.tables[1].cell(2, 1).text == "PDF"
+    assert word_document.tables[2].cell(1, 0).text == "Document"
+    assert word_document.tables[6].cell(6, 0).text == "__version__"
+    assert word_document.tables[7].cell(1, 0).text == "Document.save_docx(path)"
     assert paragraph_texts.count("Table 1. Core authoring primitives.") >= 2
     assert paragraph_texts.count("Table 2. Rendering outputs by goal.") >= 2
     assert paragraph_texts.count("Figure 1. Heading hierarchy example output.") >= 2
@@ -116,14 +142,39 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert heading_styles["List of Tables"] == "Heading 2"
     assert heading_styles["List of Figures"] == "Heading 2"
     assert heading_styles["References"] == "Heading 2"
+    for public_name in docscriptor.__all__:
+        assert public_name in compact_docx_text
+    for method_name in (
+        "save_docx",
+        "save_pdf",
+        "plain_text",
+        "plain_title",
+        "merged",
+        "heading_size",
+        "heading_emphasis",
+        "heading_alignment",
+        "format_reference",
+        "resolve",
+        "from_bibtex",
+        "add",
+    ):
+        assert method_name in compact_docx_text
 
     pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    normalized_pdf_text = " ".join(pdf_text.split())
+    compact_pdf_text = "".join(pdf_text.split())
     assert "Using docscriptor" in pdf_text
     assert "Getting Started" in pdf_text
     assert "Core Building Blocks" in pdf_text
     assert "Hierarchy Depth" in pdf_text
     assert "When To Use CodeBlock" in pdf_text
     assert "Generated Lists" in pdf_text
+    assert "API Reference" in pdf_text
+    assert "Document and Structure" in pdf_text
+    assert "Blocks and Generated Pages" in pdf_text
+    assert "Text, Style, and Theme" in pdf_text
+    assert "Citations, Helpers, and Errors" in pdf_text
+    assert "Public Methods" in pdf_text
     assert "Contents" in pdf_text
     assert "List of Tables" in pdf_text
     assert "List of Figures" in pdf_text
@@ -142,6 +193,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "literate-programming tradition described in [2]" in pdf_text
     assert "from docscriptor import Chapter, Document, Paragraph, Section" in pdf_text
     assert "class WarningParagraph(Paragraph):" in pdf_text
+    assert "every stable name exported from docscriptor" in normalized_pdf_text
+    assert "__version__ exposes the package version string" in normalized_pdf_text
+    assert "Body" in pdf_text
     assert "https://github.com/Gonie-Gonie/pydocs" in pdf_text
     assert "Literate Programming" in pdf_text
     assert "https://doi.org/10.1093/comjnl/27.2.97" in pdf_text
@@ -153,3 +207,20 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert b"15 Tf" in _pdf_text_context(pdf_path, "List of Tables")
     assert b"15 Tf" in _pdf_text_context(pdf_path, "List of Figures")
     assert b"15 Tf" in _pdf_text_context(pdf_path, "References")
+    for public_name in docscriptor.__all__:
+        assert public_name in compact_pdf_text
+    for method_name in (
+        "save_docx",
+        "save_pdf",
+        "plain_text",
+        "plain_title",
+        "merged",
+        "heading_size",
+        "heading_emphasis",
+        "heading_alignment",
+        "format_reference",
+        "resolve",
+        "from_bibtex",
+        "add",
+    ):
+        assert method_name in compact_pdf_text
