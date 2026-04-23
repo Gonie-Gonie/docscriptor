@@ -57,7 +57,7 @@ class TextStyle:
 class ParagraphStyle:
     """Block-level paragraph spacing and alignment settings."""
 
-    alignment: str = "left"
+    alignment: str = "justify"
     space_after: float | None = 12.0
     leading: float | None = None
 

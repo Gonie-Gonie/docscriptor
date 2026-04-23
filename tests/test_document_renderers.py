@@ -8,9 +8,11 @@ import zipfile
 
 import docscriptor
 from docx import Document as WordDocument
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import RGBColor
 from pypdf import PdfReader
 
+from docscriptor.model import build_render_index
 from docscriptor import (
     Bold,
     Box,
@@ -285,6 +287,12 @@ def test_theme_validates_page_number_configuration() -> None:
         raise AssertionError("Expected page_number_format validation to fail")
 
 
+def test_paragraph_style_defaults_to_justify_alignment() -> None:
+    paragraph = Paragraph("Default alignment paragraph.")
+
+    assert paragraph.style.alignment == "justify"
+
+
 def test_numbering_and_list_styles_are_customizable() -> None:
     heading_numbering = HeadingNumbering(formats=("upper-roman", "lower-alpha"), prefix="[", suffix="]")
     ordered_style = ListStyle(marker_format="upper-roman", prefix="(", suffix=")")
@@ -339,6 +347,17 @@ def test_heading_hierarchy_uses_latex_like_levels() -> None:
     assert chapter.children[0].level == 2
     assert chapter.children[0].children[0].level == 3
     assert chapter.children[0].children[0].children[0].level == 4
+
+
+def test_sections_can_be_rendered_without_numbering() -> None:
+    unnumbered = Section("Abstract", Paragraph("Summary."), level=2, numbered=False)
+    numbered = Section("Introduction", Paragraph("Body."), level=1)
+    document = Document("Article", unnumbered, numbered)
+
+    render_index = build_render_index(document)
+
+    assert render_index.heading_number(unnumbered) is None
+    assert render_index.heading_number(numbered) == "1"
 
 
 def test_public_api_prefers_classes_for_structural_nodes() -> None:
@@ -657,6 +676,12 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert all("internal-draft" not in text.lower() for text in paragraph_texts)
     assert any("from docscriptor import Document" in text for text in paragraph_texts)
     assert len(word_document.inline_shapes) == 3
+    summary_paragraph = next(
+        paragraph
+        for paragraph in word_document.paragraphs
+        if "The review note[1] appears inline" in paragraph.text
+    )
+    assert summary_paragraph.alignment == WD_ALIGN_PARAGRAPH.JUSTIFY
 
     assert len(word_document.tables) == 4
     assert "Review Box" in word_document.tables[0].cell(0, 0).text

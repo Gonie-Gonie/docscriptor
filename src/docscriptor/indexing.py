@@ -187,20 +187,25 @@ def _index_blocks(
             continue
         if isinstance(block, Section):
             _index_inlines(block.title, render_index, citations)
-            current_counters = _advance_heading_counters(
-                heading_counters,
-                block.level,
-            )
-            number_label = theme.format_heading_label(current_counters[: block.level])
-            render_index.headings.append(
-                HeadingEntry(
-                    level=block.level,
-                    title=block.title,
-                    number=number_label,
+            current_counters = heading_counters
+            number_label: str | None = None
+            if block.numbered:
+                current_counters = _advance_heading_counters(
+                    heading_counters,
+                    block.level,
                 )
-            )
-            if number_label is not None:
-                render_index.heading_numbers[id(block)] = number_label
+                number_label = theme.format_heading_label(
+                    current_counters[: block.level]
+                )
+                render_index.headings.append(
+                    HeadingEntry(
+                        level=block.level,
+                        title=block.title,
+                        number=number_label,
+                    )
+                )
+                if number_label is not None:
+                    render_index.heading_numbers[id(block)] = number_label
             _index_blocks(
                 block.children,
                 render_index,

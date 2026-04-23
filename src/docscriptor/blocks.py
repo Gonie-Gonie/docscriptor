@@ -430,18 +430,21 @@ class Section(Block):
     title: list[Text]
     children: list[Block]
     level: int
+    numbered: bool
 
     def __init__(
         self,
         title: InlineInput,
         *children: BlockInput,
         level: int = 2,
+        numbered: bool = True,
     ) -> None:
         if level < 1:
             raise ValueError("Section level must be >= 1")
         self.title = coerce_inlines((title,))
         self.children = coerce_blocks(children)
         self.level = level
+        self.numbered = numbered
 
     def plain_title(self) -> str:
         """Return the title without styling metadata."""
@@ -459,7 +462,11 @@ class Section(Block):
             self.title,
             self.level,
             context,
-            number_label=context.render_index.heading_number(self),
+            number_label=(
+                context.render_index.heading_number(self)
+                if self.numbered
+                else None
+            ),
         )
         for child in self.children:
             child.render_to_docx(renderer, container, context)
@@ -478,22 +485,37 @@ class Section(Block):
 class Chapter(Section):
     """First-level document division."""
 
-    def __init__(self, title: InlineInput, *children: BlockInput) -> None:
-        super().__init__(title, *children, level=1)
+    def __init__(
+        self,
+        title: InlineInput,
+        *children: BlockInput,
+        numbered: bool = True,
+    ) -> None:
+        super().__init__(title, *children, level=1, numbered=numbered)
 
 
 class Subsection(Section):
     """Third-level document division."""
 
-    def __init__(self, title: InlineInput, *children: BlockInput) -> None:
-        super().__init__(title, *children, level=3)
+    def __init__(
+        self,
+        title: InlineInput,
+        *children: BlockInput,
+        numbered: bool = True,
+    ) -> None:
+        super().__init__(title, *children, level=3, numbered=numbered)
 
 
 class Subsubsection(Section):
     """Fourth-level document division."""
 
-    def __init__(self, title: InlineInput, *children: BlockInput) -> None:
-        super().__init__(title, *children, level=4)
+    def __init__(
+        self,
+        title: InlineInput,
+        *children: BlockInput,
+        numbered: bool = True,
+    ) -> None:
+        super().__init__(title, *children, level=4, numbered=numbered)
 
 
 CellInput = Paragraph | InlineInput

@@ -54,33 +54,39 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
 
     word_document = WordDocument(docx_path)
     paragraph_texts = [paragraph.text for paragraph in word_document.paragraphs]
-    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    pdf_reader = PdfReader(BytesIO(pdf_path.read_bytes()))
+    pdf_text = "\n".join(page.extract_text() or "" for page in pdf_reader.pages)
     normalized_pdf_text = " ".join(pdf_text.split())
 
     assert "A Python-Native Workflow for Reproducible Journal Manuscripts" in paragraph_texts
-    assert any(text.endswith("Abstract") for text in paragraph_texts)
-    assert any(text.endswith("Highlights") for text in paragraph_texts)
-    assert any(text.endswith("Introduction") for text in paragraph_texts)
-    assert any(text.endswith("Methods") for text in paragraph_texts)
-    assert any(text.endswith("Results") for text in paragraph_texts)
-    assert any(text.endswith("Discussion") for text in paragraph_texts)
-    assert any(text.endswith("Acknowledgements") for text in paragraph_texts)
+    assert "Abstract" in paragraph_texts
+    assert "Highlights" in paragraph_texts
+    assert "Acknowledgements" in paragraph_texts
+    assert "1 Introduction" in paragraph_texts
+    assert "2 Related Work" in paragraph_texts
+    assert "3 Methods" in paragraph_texts
+    assert "4 Experimental Setup" in paragraph_texts
+    assert "5 Results" in paragraph_texts
+    assert "7 Discussion" in paragraph_texts
+    assert "8 Conclusion" in paragraph_texts
     assert "References" in paragraph_texts
-    assert any(text.endswith("Asset Layout") for text in paragraph_texts)
-    assert any(text.endswith("Data Integration") for text in paragraph_texts)
-    assert any(text.endswith("Benchmark Performance") for text in paragraph_texts)
-    assert any(text.endswith("Ablation Study") for text in paragraph_texts)
+    assert "3.1 Asset Layout" in paragraph_texts
+    assert "3.2 Data Integration" in paragraph_texts
+    assert "5.1 Benchmark Performance" in paragraph_texts
+    assert "5.2 Ablation Study" in paragraph_texts
     assert all(text not in paragraph_texts for text in ("Contents", "List of Tables", "List of Figures"))
     assert any("pandas.read_csv" in text for text in paragraph_texts)
     assert any("matplotlib" in text for text in paragraph_texts)
     assert any("benchmark CSV" in text for text in paragraph_texts)
-    assert any("As summarized in Table 1" in text and "Figure 2" in text for text in paragraph_texts)
-    assert paragraph_texts.count("Table 1. Benchmark results loaded directly from the experiment CSV file.") >= 1
-    assert paragraph_texts.count("Table 2. Ablation results for major document-pipeline design decisions.") >= 1
+    assert any("As summarized in Table 2" in text and "Figure 2" in text for text in paragraph_texts)
+    assert paragraph_texts.count("Table 1. Corpus summary used for the manuscript automation study.") >= 1
+    assert paragraph_texts.count("Table 2. Benchmark results loaded directly from the experiment CSV file.") >= 1
+    assert paragraph_texts.count("Table 3. Ablation results for major document-pipeline design decisions.") >= 1
     assert paragraph_texts.count("Figure 1. System overview diagram stored under the example asset directory.") >= 1
     assert paragraph_texts.count("Figure 2. Accuracy and latency curves generated directly from the benchmark CSV with matplotlib.") >= 1
-    assert len(word_document.tables) == 2
-    assert len(word_document.inline_shapes) == 2
+    assert paragraph_texts.count("Figure 3. Ablation accuracy chart generated from the ablation CSV with matplotlib.") >= 1
+    assert len(word_document.tables) == 3
+    assert len(word_document.inline_shapes) == 3
 
     assert "Journal Manuscripts" in pdf_text
     assert "Abstract" in pdf_text
@@ -103,4 +109,6 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     assert "benchmark CSV" in pdf_text
     assert "Open Research Consortium" in pdf_text
     assert "Practical Research Systems" in normalized_pdf_text
-    assert _pdf_image_draw_count(pdf_path) == 2
+    assert "Applied Workflow Journal" in normalized_pdf_text
+    assert 6 <= len(pdf_reader.pages) <= 7
+    assert _pdf_image_draw_count(pdf_path) == 3
