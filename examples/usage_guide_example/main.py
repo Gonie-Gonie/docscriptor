@@ -1,10 +1,17 @@
-"""Standalone usage guide example for docscriptor."""
+"""Standalone usage guide example for docscriptor.
+
+This file intentionally keeps almost all of the document assembly in one place.
+The goal is not only to build a detailed guide, but also to let a new user read
+the Python source and immediately see how the document tree maps to the output.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 from docscriptor import (
+    Box,
+    BoxStyle,
     BulletList,
     Chapter,
     CitationLibrary,
@@ -18,6 +25,7 @@ from docscriptor import (
     FigureList,
     Footnote,
     FootnotesPage,
+    HeadingNumbering,
     ListStyle,
     Math,
     NumberedList,
@@ -26,6 +34,7 @@ from docscriptor import (
     ReferencesPage,
     Section,
     Table,
+    TableCell,
     TableList,
     TableOfContents,
     Text,
@@ -67,68 +76,168 @@ report.save_docx("artifacts/hello.docx")
 report.save_pdf("artifacts/hello.pdf")
 """
 
-REUSABLE_SNIPPET = """from docscriptor import Paragraph, ParagraphStyle, Text
+NUMBERING_SNIPPET = """from docscriptor import HeadingNumbering, ListStyle, Paragraph, Section, Theme
 
+theme = Theme(
+    heading_numbering=HeadingNumbering(
+        formats=("decimal", "decimal", "lower-alpha"),
+    ),
+    numbered_list_style=ListStyle(
+        marker_format="upper-roman",
+        prefix="(",
+        suffix=")",
+    ),
+)
 
-class WarningParagraph(Paragraph):
-    def __init__(self, *content):
-        super().__init__(
-            Text.bold("Warning: "),
-            *content,
-            style=ParagraphStyle(space_after=14),
-        )
+abstract = Section(
+    "Abstract",
+    Paragraph("Article-style front matter can be left unnumbered."),
+    level=2,
+    numbered=False,
+)
+"""
+
+DATA_INTEGRATION_SNIPPET = """import pandas as pd
+import matplotlib.pyplot as plt
+from docscriptor import Figure, Paragraph, Table
+
+results = pd.read_csv("assets/results.csv")
+results_table = Table.from_dataframe(
+    results,
+    caption="Results loaded directly from a CSV file.",
+)
+
+figure, axis = plt.subplots()
+axis.plot(results["step"], results["score"])
+results_plot = Figure(
+    figure,
+    caption=Paragraph("Plot generated directly from matplotlib."),
+)
+"""
+
+PROJECT_LAYOUT_SNIPPET = """my-report/
+  main.py
+  assets/
+    architecture.png
+    team-photo.png
+  data/
+    results.csv
+    ablation.csv
+  artifacts/
+    report.docx
+    report.pdf
 """
 
 
 def build_usage_guide_document() -> Document:
-    """Build the in-memory usage guide document."""
+    """Build a detailed usage guide while keeping the code easy to follow."""
 
     related_work = CitationLibrary.from_bibtex(RELATED_WORK_BIBTEX)
     repository_source = CitationSource(
-        "pydocs",
+        "docscriptor repository",
         organization="Gonie-Gonie",
         publisher="GitHub repository",
         year="2026",
         url="https://github.com/Gonie-Gonie/pydocs",
     )
 
-    core_blocks_table = Table(
-        headers=["Kind", "Examples", "Purpose"],
+    rendering_outputs_table = Table(
+        headers=["Goal", "Preferred Output", "Why"],
         rows=[
-            [
-                "Structure",
-                "Document, Chapter, Section, Paragraph",
-                "Build a readable document tree directly with Python objects.",
-            ],
-            [
-                "Content",
-                "BulletList, NumberedList, CodeBlock, Table, Figure",
-                "Mix prose, lists, code, tables, and images in one source file.",
-            ],
-            [
-                "Inline actions",
-                "Text.bold, Text.from_markup, Comment.annotated",
-                "Apply styling or annotations where content is authored.",
-            ],
+            ["Editable review", "DOCX", "Works well for tracked changes and collaborator edits."],
+            ["Stable distribution", "PDF", "Preserves layout for export and submission."],
+            ["One source of truth", "Both", "The same document tree can render to both outputs."],
         ],
-        caption="Core authoring primitives.",
-        column_widths=[1.5, 3.1, 2.0],
+        caption="Rendering goals and output formats.",
+        column_widths=[1.8, 1.5, 3.0],
     )
-    output_table = Table(
-        headers=["Goal", "Preferred Output"],
+    core_objects_table = Table(
+        headers=["Layer", "Objects", "Role"],
         rows=[
-            ["Editable review", "DOCX"],
-            ["Stable distribution", "PDF"],
+            ["Structure", "Document, Chapter, Section, Paragraph", "Define the document tree directly in Python."],
+            ["Content", "BulletList, NumberedList, CodeBlock, Box, Table, Figure", "Insert readable block-level content."],
+            ["Inline actions", "Text.bold, Text.from_markup, Comment.annotated, Footnote.annotated", "Apply emphasis and annotations explicitly where text is authored."],
         ],
-        caption="Rendering outputs by goal.",
-        column_widths=[2.5, 2.2],
+        caption="Core authoring objects by responsibility.",
+        column_widths=[1.5, 3.2, 2.0],
+    )
+    generated_pages_table = Table(
+        headers=["Generated page", "What triggers it", "Why it matters"],
+        rows=[
+            ["TableOfContents", "Add TableOfContents()", "Render a contents page from authored headings."],
+            ["TableList / FigureList", "Add TableList() or FigureList()", "Collect captioned tables and figures automatically."],
+            [
+                "FootnotesPage",
+                Paragraph(
+                    "Add FootnotesPage() to collect portable notes ",
+                    Footnote.annotated(
+                        "including table-cell notes",
+                        "This footnote was created from a table cell inside the usage guide.",
+                    ),
+                    ".",
+                ),
+                "Keeps footnotes stable in both DOCX and PDF.",
+            ],
+            ["CommentsPage", "Add CommentsPage()", "Exports inline review comments to a dedicated page."],
+            ["ReferencesPage", "Add ReferencesPage()", "Only cited bibliography entries are rendered."],
+        ],
+        caption="Generated pages available in a document.",
+        column_widths=[1.6, 2.6, 2.2],
+    )
+    numbering_table = Table(
+        headers=["Target", "Default", "Customize with"],
+        rows=[
+            ["Heading labels", "1 / 1.1 / 1.1.1", "Theme(heading_numbering=HeadingNumbering(...))"],
+            ["Ordered lists", "1. 2. 3.", "ListStyle(marker_format=..., prefix=..., suffix=...)"],
+            ["Unnumbered headings", "Disabled by default", "Section(..., numbered=False)"],
+        ],
+        caption="Default numbering behavior and customization hooks.",
+        column_widths=[1.5, 1.8, 3.3],
+    )
+    table_layout_table = Table(
+        headers=[
+            [TableCell("Feature", rowspan=2), TableCell("Simple Use", colspan=2)],
+            ["Common", "Advanced"],
+        ],
+        rows=[
+            ["Headers", "headers=['A', 'B']", "headers=[[TableCell('Metrics', colspan=2)], ['Latency', 'Quality']]"],
+            ["Cells", "plain strings or Paragraph(...)", "TableCell(..., rowspan=2) and TableCell(..., colspan=2)"],
+            ["Styling", "TableStyle(...)", "Per-cell background colors plus banded rows"],
+        ],
+        caption="Table layout options from simple headers to merged spans.",
+        column_widths=[1.2, 2.3, 3.1],
     )
     preview_figure = Figure(
         FIGURE_PATH,
         caption=Paragraph(
             "Example figure loaded directly from the example asset directory."
         ),
-        width_inches=1.7,
+        width_inches=3.8,
+    )
+    grouped_content_box = Box(
+        Paragraph(
+            "Boxes are meant to be stable grouped containers rather than floating page objects. They render inline in document order."
+        ),
+        BulletList(
+            "Use them for notes, warnings, callouts, or grouped examples.",
+            "Regular block objects such as paragraphs, lists, tables, and figures can be nested inside.",
+            "Generated pages such as a table of contents or reference list should remain at the document level.",
+        ),
+        Table(
+            headers=["Inside Box", "Status"],
+            rows=[
+                ["Paragraphs and lists", "supported"],
+                ["Tables and figures", "supported"],
+            ],
+            column_widths=[2.0, 1.4],
+        ),
+        Figure(FIGURE_PATH, width_inches=1.5),
+        title="Grouped Content Example",
+        style=BoxStyle(
+            border_color="#7A8CA5",
+            background_color="#F6F9FC",
+            title_background_color="#DDE8F4",
+        ),
     )
 
     return Document(
@@ -139,17 +248,9 @@ def build_usage_guide_document() -> Document:
         Chapter(
             "Getting Started",
             Section(
-                "Quick Start",
+                "What docscriptor is",
                 Paragraph(
-                    "Build a document tree with Python objects and render the same structure to ",
-                    Text.styled("DOCX", bold=True),
-                    " and ",
-                    Text.styled("PDF", bold=True),
-                    ".",
-                    style=ParagraphStyle(space_after=14),
-                ),
-                Paragraph(
-                    "Use classes such as ",
+                    "Docscriptor is a Python-first document system. You build a document tree with classes such as ",
                     Text.bold("Document"),
                     ", ",
                     Text.bold("Chapter"),
@@ -157,101 +258,346 @@ def build_usage_guide_document() -> Document:
                     Text.bold("Section"),
                     ", and ",
                     Text.bold("Paragraph"),
-                    " for structure. Inline actions stay explicit with methods such as ",
-                    Text.code("Text.bold(...)"),
+                    ", then render the same source into DOCX and PDF.",
+                ),
+                Paragraph(
+                    "This usage guide is intentionally assembled in one ",
+                    Text.code("main.py"),
+                    " file. New users should be able to read the output document and then read the code beside it without chasing a large helper hierarchy."
+                ),
+                Paragraph(
+                    "The repository itself can be cited directly as ",
+                    repository_source.cite(),
+                    ". That makes it easy to keep project metadata in the same Python source as the manuscript or report."
+                ),
+                rendering_outputs_table,
+            ),
+            Section(
+                "Quick Start",
+                Paragraph(
+                    "The smallest useful workflow is: import the classes you need, compose a document tree, and call ",
+                    Text.code("save_docx(...)"),
                     " and ",
-                    Text.code("Text.from_markup(...)"),
+                    Text.code("save_pdf(...)"),
                     ".",
                 ),
-                output_table,
                 NumberedList(
-                    "Import the objects you need.",
-                    "Compose sections and paragraphs as regular Python instances.",
-                    "Call save_docx() and save_pdf() on the document.",
+                    "Create a Document and give it a title.",
+                    "Add Chapter and Section objects to define structure.",
+                    "Write prose with Paragraph and inline Text methods.",
+                    "Render the same source into DOCX and PDF.",
                 ),
                 CodeBlock(QUICK_START_SNIPPET, language="python"),
             ),
-        ),
-        Chapter(
-            "Authoring Model",
             Section(
-                "Core Blocks",
+                "How to read this file",
                 Paragraph(
-                    "Tables and figures can be referenced directly by reusing the same object instance. See ",
-                    core_blocks_table,
-                    " for the main building blocks and ",
-                    preview_figure,
-                    " for a simple asset-based figure example.",
+                    "Most real projects start simple. Keep one script, one asset directory, and a small number of data files until repetition becomes obvious. Add extra modules later only when there is enough repeated logic to justify them."
                 ),
-                core_blocks_table,
-                preview_figure,
-                BulletList(
-                    "Keep reusable assets in an asset directory beside the example script.",
-                    "Use Tables for structured summaries that should stay synchronized across outputs.",
-                    "Use Figures for either stored files or savefig()-compatible Python objects.",
+                Paragraph(
+                    "That is the reason this guide keeps the object definitions close to the final ",
+                    Text.code("Document(...)"),
+                    " call. The code is meant to teach the model as much as the rendered document teaches the API."
                 ),
             ),
+        ),
+        Chapter(
+            "Document Model",
             Section(
-                "Inline Actions",
+                "Structural objects",
                 Paragraph(
-                    "Text styling can stay explicit with ",
-                    Text.code("Text.bold"),
-                    " and ",
-                    Text.code("Text.styled"),
-                    ", while markdown-like content can still be written with ",
-                    Text.code("Text.from_markup"),
-                    ".",
+                    "A good rule of thumb is: use classes to create things and use methods to perform inline actions. Structural nodes such as ",
+                    Text.code("Document"),
+                    ", ",
+                    Text.code("Chapter"),
+                    ", ",
+                    Text.code("Section"),
+                    ", ",
+                    Text.code("Table"),
+                    ", and ",
+                    Text.code("Figure"),
+                    " are instantiated as objects."
+                ),
+                Paragraph(
+                    "This keeps the source readable. When you skim the file, the tree of Python objects closely resembles the tree of headings and blocks in the final document."
+                ),
+                core_objects_table,
+            ),
+            Section(
+                "Inline actions",
+                Paragraph(
+                    "Inline formatting remains explicit. You can write ",
+                    Text.code("Text.bold(...)"),
+                    ", ",
+                    Text.code("Text.italic(...)"),
+                    ", ",
+                    Text.code("Text.code(...)"),
+                    ", or ",
+                    Text.code("Text.from_markup(...)"),
+                    " directly where the text appears."
                 ),
                 Paragraph(
                     "This sentence mixes ",
                     Text.from_markup("**bold** text, *italic* text, and `code` fragments"),
-                    " inside one paragraph.",
+                    " in a single paragraph without changing how the surrounding document is assembled.",
                 ),
                 Paragraph(
                     "Portable comments such as ",
                     Comment.annotated(
-                        "review note",
+                        "review notes",
                         "Comments are collected on a generated comments page.",
                     ),
                     ", footnotes such as ",
                     Footnote.annotated(
-                        "term",
-                        "Portable footnotes remain stable in both DOCX and PDF.",
+                        "portable markers",
+                        "Portable footnotes stay stable in DOCX and PDF, including inside table cells.",
                     ),
                     ", and inline math such as ",
                     Math.inline(r"\alpha^2 + \beta^2 = \gamma^2"),
-                    " can all be authored in plain Python.",
+                    " can all be authored directly in plain Python.",
                 ),
                 Equation(r"\int_0^1 \alpha x^2 \, dx = \frac{\alpha}{3}"),
+            ),
+            Section(
+                "Generated pages",
                 Paragraph(
-                    "The project repository can be cited directly as ",
-                    repository_source.cite(),
-                    ", and related work can be cited from a small library as ",
-                    related_work.cite("knuth1984literate"),
-                    ".",
+                    "Generated pages are regular block objects. Add ",
+                    Text.code("TableOfContents()"),
+                    ", ",
+                    Text.code("TableList()"),
+                    ", ",
+                    Text.code("FigureList()"),
+                    ", ",
+                    Text.code("FootnotesPage()"),
+                    ", ",
+                    Text.code("CommentsPage()"),
+                    ", or ",
+                    Text.code("ReferencesPage()"),
+                    " where you want them to appear in the document."
+                ),
+                Paragraph(
+                    "Because they are just blocks, the document remains predictable: authored content stays in order, while generated summaries are inserted exactly where you place them."
+                ),
+                generated_pages_table,
+            ),
+        ),
+        Chapter(
+            "Layout and Styling",
+            Section(
+                "Paragraph alignment and spacing",
+                Paragraph(
+                    "Body paragraphs are justified by default. That gives reports and papers a conventional dense layout without requiring extra style configuration."
+                ),
+                Paragraph(
+                    "If a specific paragraph should be left-aligned, centered, or right-aligned, override it with ",
+                    Text.code("ParagraphStyle(alignment=...)"),
+                    ". Spacing can be tuned in the same place with ",
+                    Text.code("space_after"),
+                    " and ",
+                    Text.code("leading"),
+                    "."
+                ),
+                Paragraph(
+                    "This paragraph is intentionally left-aligned to show a local override.",
+                    style=ParagraphStyle(alignment="left", space_after=14),
                 ),
             ),
             Section(
-                "Reusable Patterns",
+                "Heading and list numbering",
                 Paragraph(
-                    "When a pattern repeats, subclassing a block is often enough. The example below keeps the custom logic small and local."
+                    "Headings use ",
+                    Text.bold("1"),
+                    ", ",
+                    Text.bold("1.1"),
+                    ", and ",
+                    Text.bold("1.1.1"),
+                    " by default. Ordered lists use ordinary decimal markers such as ",
+                    Text.bold("1."),
+                    " and ",
+                    Text.bold("2."),
+                    "."
                 ),
-                CodeBlock(REUSABLE_SNIPPET, language="python"),
+                Paragraph(
+                    "Both behaviors can be customized. You can change heading counters with ",
+                    Text.code("HeadingNumbering(...)"),
+                    ", list markers with ",
+                    Text.code("ListStyle(...)"),
+                    ", and turn numbering off for article-style front matter with ",
+                    Text.code("Section(..., numbered=False)"),
+                    "."
+                ),
+                numbering_table,
+                CodeBlock(NUMBERING_SNIPPET, language="python"),
+                NumberedList(
+                    "Default ordered lists work without any extra configuration.",
+                    "Per-list customization is available when a section needs a different marker style.",
+                    "Theme-level customization keeps numbering consistent across an entire project.",
+                    style=ListStyle(
+                        marker_format="upper-roman",
+                        prefix="(",
+                        suffix=")",
+                    ),
+                ),
+            ),
+            Section(
+                "Boxes and grouped content",
+                Paragraph(
+                    "A ",
+                    Text.code("Box(...)"),
+                    " is the closest equivalent to a simple LaTeX-style callout container. The goal is stability rather than page-floating behavior, so boxes stay inline and follow the normal document flow."
+                ),
+                Paragraph(
+                    "That makes them a good place for notes, review checklists, method summaries, or any grouped content that should not jump around between DOCX and PDF outputs."
+                ),
+                grouped_content_box,
+            ),
+        ),
+        Chapter(
+            "Tables and Figures",
+            Section(
+                "Tables",
+                Paragraph(
+                    "Tables can be created directly from headers and rows, or built from dataframe-like objects with ",
+                    Text.code("Table.from_dataframe(...)"),
+                    ". Table styling lives in ",
+                    Text.code("TableStyle(...)"),
+                    ", and more precise layouts are available through ",
+                    Text.code("TableCell(...)"),
+                    " with row and column spans."
+                ),
+                Paragraph(
+                    "The journal paper example in ",
+                    Text.code("examples/journal_paper_example/main.py"),
+                    " shows the dataframe route in a more realistic workflow. For this guide, the example stays focused on readability and keeps the tables defined inline."
+                ),
+                table_layout_table,
+                CodeBlock(DATA_INTEGRATION_SNIPPET, language="python"),
+            ),
+            Section(
+                "Figures",
+                Paragraph(
+                    "Figures can come from a stored image file or from any Python object that exposes ",
+                    Text.code("savefig()"),
+                    ". That makes it easy to insert both pre-made assets and live matplotlib figures."
+                ),
+                Paragraph(
+                    "The figure below is loaded from the local asset directory. In prose, you can refer to the same figure object directly, which renders as ",
+                    preview_figure,
+                    " once the caption number is known."
+                ),
+                preview_figure,
+            ),
+            Section(
+                "Referencing captions from prose",
+                Paragraph(
+                    "Caption references stay stable because they are based on object identity, not on a copied number typed by hand. Reuse the same table or figure object in prose, then place the object later in the document."
+                ),
+                Paragraph(
+                    "For example, ",
+                    rendering_outputs_table,
+                    " introduces the output strategy for the project, while ",
+                    preview_figure,
+                    " shows a concrete asset loaded from disk. If the order changes later, the references update with the captions."
+                ),
+            ),
+        ),
+        Chapter(
+            "Notes and References",
+            Section(
+                "Footnotes and comments",
+                Paragraph(
+                    "Docscriptor uses portable footnotes rather than fragile page-bottom placement. Markers appear inline where the note is referenced, and a generated footnotes page collects the full text."
+                ),
+                Paragraph(
+                    "That approach is especially useful when the same content needs to render to both DOCX and PDF. It avoids the layout edge cases that often appear around tables, figures, and page breaks."
+                ),
+                Paragraph(
+                    "Comments work similarly. Use ",
+                    Text.code("Comment.annotated(...)"),
+                    " for reviewer-style annotations and add ",
+                    Text.code("CommentsPage()"),
+                    " near the end of the document to collect them."
+                ),
+            ),
+            Section(
+                "Citations",
+                Paragraph(
+                    "Citations can come from direct ",
+                    Text.code("CitationSource(...)"),
+                    " instances or from a small ",
+                    Text.code("CitationLibrary"),
+                    ". The direct source route works well for a repository or dataset citation, while a library becomes useful once you have several references to manage."
+                ),
+                Paragraph(
+                    "This guide cites the repository directly as ",
+                    repository_source.cite(),
+                    " and cites related work from a BibTeX-backed library as ",
+                    related_work.cite("knuth1984literate"),
+                    ". Only cited sources are included on the generated references page."
+                ),
+            ),
+        ),
+        Chapter(
+            "Project Layout",
+            Section(
+                "A simple directory shape",
+                Paragraph(
+                    "Keep the project layout ordinary. A single script, an asset directory, and a data directory are usually enough until repeated patterns become obvious."
+                ),
+                Paragraph(
+                    "The goal is not to hide document assembly behind a large framework. Most users are better served by a small script they can read from top to bottom."
+                ),
+                CodeBlock(PROJECT_LAYOUT_SNIPPET, language="text"),
+            ),
+            Section(
+                "Practical workflow",
+                Paragraph(
+                    "A good working pattern is: keep external assets under version control, generate tables and figures from Python when the source data is already in code, and leave static diagrams as regular files in ",
+                    Text.code("assets/"),
+                    "."
+                ),
+                BulletList(
+                    "Start with one document script until repetition is clear.",
+                    "Keep assets beside the script instead of embedding them in temporary output folders.",
+                    "Move repeated data preparation into helper functions before you move presentational code into helper classes.",
+                    "Use tests to render representative documents so regressions are caught early.",
+                ),
+            ),
+        ),
+        Chapter(
+            "End-to-End Workflow",
+            Section(
+                "Typical sequence",
+                NumberedList(
+                    "Define sources, assets, tables, and figures as ordinary Python variables.",
+                    "Build the document tree with Chapter, Section, Paragraph, and other block objects.",
+                    "Insert generated pages where they should appear.",
+                    "Call save_docx(...) and save_pdf(...).",
+                    "Review the rendered outputs and keep the script under version control.",
+                ),
+                Paragraph(
+                    "The same pattern scales from a short internal report to a structured journal manuscript. The main difference is usually the amount of source data and the number of reusable objects, not a change in the authoring model."
+                ),
+            ),
+            Section(
+                "Rule of thumb",
+                Paragraph(
+                    "If the document is mostly prose, keep the code direct and obvious. If the document is driven by experiment outputs, keep the data loading and plotting logic close enough that the rendered tables and figures can still be traced back to their source."
+                ),
+                Paragraph(
+                    "That balance is the practical center of docscriptor: enough Python to stay synchronized with real project data, but not so much abstraction that a moderately experienced Python user can no longer understand the document source."
+                ),
             ),
         ),
         FootnotesPage(),
         CommentsPage(),
         ReferencesPage(),
         author="docscriptor examples",
-        summary="Usage guide document",
+        summary="Detailed usage guide document",
         theme=Theme(
             show_page_numbers=True,
             page_number_format="Page {page}",
-            bullet_list_style=ListStyle(
-                marker_format="bullet",
-                bullet="\u2022",
-                suffix="",
-            ),
+            heading_numbering=HeadingNumbering(),
         ),
         citations=related_work,
     )

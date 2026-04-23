@@ -52,7 +52,14 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
 
     word_document = WordDocument(docx_path)
     paragraph_texts = [paragraph.text for paragraph in word_document.paragraphs]
-    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    table_text = "\n".join(
+        cell.text
+        for table in word_document.tables
+        for row in table.rows
+        for cell in row.cells
+    )
+    pdf_reader = PdfReader(BytesIO(pdf_path.read_bytes()))
+    pdf_text = "\n".join(page.extract_text() or "" for page in pdf_reader.pages)
 
     assert "Using docscriptor" in paragraph_texts
     assert "List of Tables" in paragraph_texts
@@ -62,23 +69,40 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Comments" in paragraph_texts
     assert "References" in paragraph_texts
     assert "1 Getting Started" in paragraph_texts
-    assert "1.1 Quick Start" in paragraph_texts
-    assert "2 Authoring Model" in paragraph_texts
-    assert "2.1 Core Blocks" in paragraph_texts
-    assert "2.2 Inline Actions" in paragraph_texts
-    assert "2.3 Reusable Patterns" in paragraph_texts
+    assert "1.1 What docscriptor is" in paragraph_texts
+    assert "1.2 Quick Start" in paragraph_texts
+    assert "2 Document Model" in paragraph_texts
+    assert "2.1 Structural objects" in paragraph_texts
+    assert "2.2 Inline actions" in paragraph_texts
+    assert "2.3 Generated pages" in paragraph_texts
+    assert "3 Layout and Styling" in paragraph_texts
+    assert "3.2 Heading and list numbering" in paragraph_texts
+    assert "3.3 Boxes and grouped content" in paragraph_texts
+    assert "4 Tables and Figures" in paragraph_texts
+    assert "4.1 Tables" in paragraph_texts
+    assert "4.2 Figures" in paragraph_texts
+    assert "5 Notes and References" in paragraph_texts
+    assert "6 Project Layout" in paragraph_texts
+    assert "7 End-to-End Workflow" in paragraph_texts
     assert any("Text.bold(...)" in text for text in paragraph_texts)
     assert any("Text.from_markup(...)" in text for text in paragraph_texts)
-    assert any("The project repository can be cited directly as [1]" in text for text in paragraph_texts)
+    assert any("The repository itself can be cited directly as [1]" in text for text in paragraph_texts)
     assert any("generated comments page" in text for text in paragraph_texts)
-    assert any("Portable footnotes remain stable" in text for text in paragraph_texts)
+    assert any("Portable footnotes stay stable" in text for text in paragraph_texts)
+    assert any("This footnote was created from a table cell inside the usage guide." in text for text in paragraph_texts)
     assert any("dx = (" in text and ")/(3)" in text for text in paragraph_texts)
-    assert any("Keep reusable assets in an asset directory beside the example script." in text for text in paragraph_texts)
+    assert any("This usage guide is intentionally assembled in one main.py file." in text for text in paragraph_texts)
+    assert any("The smallest useful workflow is: import the classes you need" in text for text in paragraph_texts)
+    assert "Grouped Content Example" in table_text
+    assert any("examples/journal_paper_example/main.py" in text for text in paragraph_texts)
     assert word_document.sections[0].footer.paragraphs[0].text.startswith("Page ")
-    assert len(word_document.tables) == 2
-    assert len(word_document.inline_shapes) == 1
-    assert paragraph_texts.count("Table 1. Rendering outputs by goal.") >= 2
-    assert paragraph_texts.count("Table 2. Core authoring primitives.") >= 2
+    assert len(word_document.tables) == 6
+    assert len(word_document.inline_shapes) == 2
+    assert paragraph_texts.count("Table 1. Rendering goals and output formats.") >= 2
+    assert paragraph_texts.count("Table 2. Core authoring objects by responsibility.") >= 2
+    assert paragraph_texts.count("Table 3. Generated pages available in a document.") >= 2
+    assert paragraph_texts.count("Table 4. Default numbering behavior and customization hooks.") >= 2
+    assert paragraph_texts.count("Table 5. Table layout options from simple headers to merged spans.") >= 2
     assert paragraph_texts.count("Figure 1. Example figure loaded directly from the example asset directory.") >= 2
 
     assert "Using docscriptor" in pdf_text
@@ -89,15 +113,21 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Comments" in pdf_text
     assert "References" in pdf_text
     assert "Getting Started" in pdf_text
-    assert "Authoring Model" in pdf_text
+    assert "Document Model" in pdf_text
     assert "Quick Start" in pdf_text
-    assert "Core Blocks" in pdf_text
-    assert "Inline Actions" in pdf_text
-    assert "Reusable Patterns" in pdf_text
-    assert "The project repository can be cited directly as [1]" in pdf_text
-    assert "Portable footnotes remain stable" in pdf_text
+    assert "Structural objects" in pdf_text
+    assert "Inline actions" in pdf_text
+    assert "Generated pages" in pdf_text
+    assert "Boxes and grouped content" in pdf_text
+    assert "Project Layout" in pdf_text
+    assert "End-to-End Workflow" in pdf_text
+    assert "The repository itself can be cited directly as [1]" in pdf_text
+    assert "Portable footnotes stay stable" in pdf_text
     assert "Text.bold(...)" in pdf_text
     assert "Text.from_markup(...)" in pdf_text
     assert "Literate Programming" in pdf_text
     assert "https://github.com/Gonie-Gonie/pydocs" in pdf_text
-    assert _pdf_image_draw_count(pdf_path) == 1
+    assert "This footnote was created from a table cell inside the usage guide." in pdf_text
+    assert "examples/journal_paper_example/main.py" in pdf_text
+    assert len(pdf_reader.pages) >= 10
+    assert _pdf_image_draw_count(pdf_path) == 2
