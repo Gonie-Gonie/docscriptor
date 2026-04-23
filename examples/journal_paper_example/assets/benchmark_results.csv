@@ -1,0 +1,5 @@
+Model,Accuracy,F1,Latency_ms
+Baseline,0.874,0.861,42
+StructuredDoc,0.913,0.904,51
+StructuredDoc+Review,0.928,0.919,57
+StructuredDoc+Review+Checks,0.941,0.934,63

@@ -1,0 +1,5 @@
+Setting,Accuracy,Latency_ms
+Full system,0.941,63
+Without table automation,0.926,58
+Without citation checks,0.919,55
+Without asset reuse,0.907,49

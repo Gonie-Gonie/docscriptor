@@ -142,21 +142,25 @@ report = Document(
 )
 ```
 
-## Example Script
+## Example Scripts
 
-The repository includes a package-style usage guide example under `examples/usage_guide_example/`.
-That example keeps its reusable snippets, citations, tables, and bundled assets in separate files while preserving a simple compatibility entrypoint:
+The repository includes two standalone example directories:
+
+- `examples/usage_guide_example/`
+- `examples/journal_paper_example/`
+
+Each directory is meant to be understandable on its own and executable as a regular script:
 
 ```powershell
-python -m examples.usage_guide
+python .\examples\usage_guide_example\main.py
+python .\examples\journal_paper_example\main.py
 ```
 
-By default it writes these files under `artifacts/usage-guide/`:
+The usage-guide example demonstrates the core authoring model, generated pages, inline actions, and asset-backed figures.
+The journal-paper example demonstrates a more realistic submission workflow with abstract, highlights, acknowledgements, CSV-backed tables, and a matplotlib figure inserted directly from a live Python object.
 
-- `docscriptor-usage-guide.docx`
-- `docscriptor-usage-guide.pdf`
-
-This example is also covered by automated tests so the generated outputs stay exercised continuously.
+By default they write these files under `artifacts/usage-guide/` and `artifacts/journal-paper/` respectively.
+Both examples are covered by automated tests so the generated outputs stay exercised continuously.
 
 ## Development
 
@@ -177,7 +181,7 @@ The script will:
 - find Python 3.14
 - create or reuse `.venv`
 - upgrade `pip`
-- install the project in editable mode with `dev` dependencies
+- install the project in editable mode with `dev` dependencies, including `pandas` and `matplotlib` for the example scripts
 
 To activate the virtual environment manually after setup:
 

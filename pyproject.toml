@@ -31,6 +31,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "build>=1.2.0",
+  "matplotlib>=3.10.0",
+  "pandas>=2.3.0",
   "pypdf>=5.4.0",
   "pytest>=8.0.0",
 ]

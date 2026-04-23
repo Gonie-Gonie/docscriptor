@@ -182,13 +182,13 @@ def _index_blocks(
                 render_index,
                 citations,
                 theme,
-                heading_counters=list(heading_counters),
+                heading_counters=heading_counters,
             )
             continue
         if isinstance(block, Section):
             _index_inlines(block.title, render_index, citations)
             current_counters = _advance_heading_counters(
-                list(heading_counters),
+                heading_counters,
                 block.level,
             )
             number_label = theme.format_heading_label(current_counters[: block.level])
