@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence
 
-from docscriptor.inline import InlineInput, Text, coerce_inlines
+from docscriptor.components.inline import InlineInput, Text, coerce_inlines
 from docscriptor.styles import (
     BoxStyle,
     HeadingNumbering,

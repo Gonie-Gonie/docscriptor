@@ -16,7 +16,7 @@ from pypdf import PdfReader
 
 import docscriptor.components.generated as generated_components
 import docscriptor.components.inline as inline_components
-from docscriptor.model import build_render_index
+from docscriptor.indexing import build_render_index
 from docscriptor import (
     Box,
     BoxStyle,
@@ -505,7 +505,7 @@ def test_auto_footnotes_page_can_be_disabled(tmp_path: Path) -> None:
             footnote("term", "Suppressed footnote note."),
             " stays inline.",
         ),
-        theme=Theme(auto_footnotes_page=False),
+        settings=DocumentSettings(theme=Theme(auto_footnotes_page=False)),
     )
 
     docx_path = tmp_path / "inline-notes.docx"
@@ -705,15 +705,17 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
         FigureList(),
         CommentsPage(),
         ReferencesPage(),
-        author="pytest",
-        summary="Renderer integration test",
-        theme=Theme(
+        settings=DocumentSettings(
+            author="pytest",
+            summary="Renderer integration test",
+            theme=Theme(
             show_page_numbers=True,
             page_number_format="Page {page}",
             page_number_alignment="center",
             heading_numbering=HeadingNumbering(),
             bullet_list_style=ListStyle(marker_format="bullet", bullet="•", suffix=""),
             numbered_list_style=ListStyle(marker_format="decimal", suffix="."),
+            ),
         ),
         citations=[registered_source, unused_source],
     )

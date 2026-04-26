@@ -72,7 +72,7 @@ report.save_pdf("artifacts/hello.pdf")
 report.save_html("artifacts/hello.html")
 ```
 
-When document metadata starts to grow, group it with `DocumentSettings(...)` instead of passing many keyword arguments directly to `Document(...)`.
+Document metadata and renderer defaults live under `DocumentSettings(...)`, so title matter and theme changes stay in one place.
 
 ## Authoring Model
 
@@ -134,8 +134,7 @@ The package is organized by responsibility:
 
 - `src/docscriptor/document.py` for the root `Document`
 - `src/docscriptor/settings.py` for `DocumentSettings` plus grouped configuration exports
-- `src/docscriptor/components/` for more granular component imports
-- `src/docscriptor/blocks.py`, `src/docscriptor/inline.py`, and `src/docscriptor/tables.py` as compatibility modules for the underlying model
+- `src/docscriptor/components/` for the concrete authoring model (`base.py`, `blocks.py`, `inline.py`, `media.py`, and `generated.py`)
 - `src/docscriptor/styles.py` for low-level style and theme definitions
 - `src/docscriptor/references.py` for bibliography objects and BibTeX import
 - `src/docscriptor/renderers/docx.py`, `src/docscriptor/renderers/pdf.py`, and `src/docscriptor/renderers/html.py` for format-specific layout

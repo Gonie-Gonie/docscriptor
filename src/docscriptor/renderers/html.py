@@ -8,26 +8,24 @@ from io import BytesIO
 from mimetypes import guess_type
 from pathlib import Path
 
-from docscriptor.blocks import (
+from docscriptor.components.blocks import (
     Box,
     BulletList,
     CodeBlock,
-    CommentsPage,
     Equation,
-    FigureList,
-    FootnotesPage,
     NumberedList,
     Paragraph,
-    ReferencesPage,
     Section,
+)
+from docscriptor.components.generated import (
+    CommentsPage,
+    FigureList,
+    FootnotesPage,
+    ReferencesPage,
     TableList,
     TableOfContents,
 )
-from docscriptor.core import DocscriptorError, PathLike
-from docscriptor.document import Document
-from docscriptor.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
-from docscriptor.indexing import RenderIndex, build_render_index
-from docscriptor.inline import (
+from docscriptor.components.inline import (
     _BlockReference,
     Citation,
     Comment,
@@ -36,9 +34,13 @@ from docscriptor.inline import (
     Math,
     Text,
 )
+from docscriptor.components.media import Figure, Table, TablePlacement, build_table_layout
+from docscriptor.core import DocscriptorError, PathLike
+from docscriptor.document import Document
+from docscriptor.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
+from docscriptor.indexing import RenderIndex, build_render_index
 from docscriptor.renderers.context import HtmlRenderContext
 from docscriptor.styles import ParagraphStyle, Theme
-from docscriptor.tables import Figure, Table, TablePlacement, build_table_layout
 
 
 class HtmlRenderer:

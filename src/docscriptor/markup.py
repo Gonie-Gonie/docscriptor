@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from docscriptor.inline import Bold, Italic, Monospace, Text
+from docscriptor.components.inline import Bold, Italic, Monospace, Text
 from docscriptor.styles import TextStyle
 
 

@@ -1,5 +1,6 @@
 """Top-level package for docscriptor."""
 
+from docscriptor.core import DocscriptorError
 from docscriptor.components.blocks import (
     Box,
     BulletList,
@@ -15,7 +16,6 @@ from docscriptor.components.blocks import (
 from docscriptor.components.generated import CommentsPage, FigureList, ReferencesPage, TableList, TableOfContents
 from docscriptor.components.media import Figure, Table, TableCell
 from docscriptor.document import Document
-from docscriptor.core import DocscriptorError
 from docscriptor.components.inline import (
     Comment,
     Footnote,

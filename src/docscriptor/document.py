@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
-from docscriptor.blocks import BlockInput, Body
+from docscriptor.components.base import BlockInput, Body
+from docscriptor.components.inline import Text
 from docscriptor.core import PathLike
-from docscriptor.inline import InlineInput, Text
 from docscriptor.references import CitationLibrary, CitationSource, coerce_citation_library
 from docscriptor.settings import DocumentSettings
 from docscriptor.styles import Theme
@@ -38,47 +38,14 @@ class Document:
         *children: BlockInput,
         body: Body | None = None,
         settings: DocumentSettings | None = None,
-        author: str | None = None,
-        summary: str | None = None,
-        subtitle: InlineInput | None = None,
-        authors: Sequence[InlineInput] | None = None,
-        affiliations: Sequence[InlineInput] | None = None,
-        cover_page: bool = False,
-        theme: Theme | None = None,
         citations: CitationLibrary | Sequence[CitationSource] | str | None = None,
     ) -> None:
         if body is not None and children:
             raise ValueError("Pass either body=... or positional blocks, not both")
-        if settings is not None and any(
-            value is not None
-            for value in (
-                author,
-                summary,
-                subtitle,
-                authors,
-                affiliations,
-                theme,
-            )
-        ):
-            raise ValueError(
-                "Pass either settings=... or individual document settings, not both"
-            )
-        if settings is not None and cover_page:
-            raise ValueError(
-                "Pass cover_page via DocumentSettings when settings=... is used"
-            )
 
         self.title = title
         self.body = body if body is not None else Body(*children)
-        self.settings = settings or DocumentSettings(
-            author=author,
-            summary=summary,
-            subtitle=subtitle,
-            authors=authors,
-            affiliations=affiliations,
-            cover_page=cover_page,
-            theme=theme,
-        )
+        self.settings = settings or DocumentSettings()
         self.citations = coerce_citation_library(citations)
 
     @property

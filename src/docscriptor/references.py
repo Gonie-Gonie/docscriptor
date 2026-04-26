@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Sequence
 from docscriptor.core import DocscriptorError
 
 if TYPE_CHECKING:
-    from docscriptor.inline import Citation, Text
+    from docscriptor.components.inline import Citation, Text
     from docscriptor.styles import TextStyle
 
 
@@ -70,7 +70,7 @@ class CitationSource:
     def reference_fragments(self) -> list[Text]:
         """Return renderer-friendly inline fragments for a reference entry."""
 
-        from docscriptor.inline import Hyperlink, Text
+        from docscriptor.components.inline import Hyperlink, Text
 
         fragments: list[Text] = []
         text_segments: list[str] = []
@@ -106,7 +106,7 @@ class CitationSource:
     def cite(self, *, style: TextStyle | None = None) -> Citation:
         """Create an inline citation that points to this source."""
 
-        from docscriptor.inline import Citation
+        from docscriptor.components.inline import Citation
 
         return Citation.reference(self, style=style)
 
@@ -144,7 +144,7 @@ class CitationLibrary:
     def cite(self, key: str, *, style: TextStyle | None = None) -> Citation:
         """Create an inline citation from a registered citation key."""
 
-        from docscriptor.inline import Citation
+        from docscriptor.components.inline import Citation
 
         return Citation.reference(key, style=style)
 

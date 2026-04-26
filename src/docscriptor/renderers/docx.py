@@ -13,26 +13,24 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
-from docscriptor.blocks import (
+from docscriptor.components.blocks import (
     Box,
     BulletList,
     CodeBlock,
-    CommentsPage,
     Equation,
-    FigureList,
-    FootnotesPage,
     NumberedList,
     Paragraph,
-    ReferencesPage,
     Section,
+)
+from docscriptor.components.generated import (
+    CommentsPage,
+    FigureList,
+    FootnotesPage,
+    ReferencesPage,
     TableList,
     TableOfContents,
 )
-from docscriptor.document import Document
-from docscriptor.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
-from docscriptor.core import DocscriptorError, PathLike
-from docscriptor.indexing import RenderIndex, build_render_index
-from docscriptor.inline import (
+from docscriptor.components.inline import (
     _BlockReference,
     Citation,
     Comment,
@@ -41,9 +39,13 @@ from docscriptor.inline import (
     Math,
     Text,
 )
+from docscriptor.components.media import Figure, Table, build_table_layout
+from docscriptor.document import Document
+from docscriptor.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
+from docscriptor.core import DocscriptorError, PathLike
+from docscriptor.indexing import RenderIndex, build_render_index
 from docscriptor.renderers.context import DocxRenderContext
 from docscriptor.styles import ParagraphStyle, TextStyle, Theme
-from docscriptor.tables import Figure, Table, build_table_layout
 
 
 ALIGNMENTS = {

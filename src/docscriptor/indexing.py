@@ -5,27 +5,29 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Sequence
 
-from docscriptor.blocks import (
-    Block,
+from docscriptor.components.base import Block
+from docscriptor.components.blocks import (
     Box,
     BulletList,
-    CommentsPage,
     Equation,
-    FigureList,
-    FootnotesPage,
     NumberedList,
     Paragraph,
-    ReferencesPage,
     Section,
+)
+from docscriptor.components.generated import (
+    CommentsPage,
+    FigureList,
+    FootnotesPage,
+    ReferencesPage,
     TableList,
     TableOfContents,
 )
+from docscriptor.components.inline import Citation, Comment, Footnote, Hyperlink, Text
+from docscriptor.components.media import Figure, Table
+from docscriptor.core import DocscriptorError
 from docscriptor.document import Document
-from docscriptor.inline import Citation, Comment, Footnote, Hyperlink, Text
 from docscriptor.references import CitationLibrary, CitationSource
 from docscriptor.styles import Theme
-from docscriptor.tables import Figure, Table
-from docscriptor.core import DocscriptorError
 
 
 @dataclass(slots=True)
