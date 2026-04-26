@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from importlib.metadata import version as package_version
 from html import unescape
 from io import BytesIO
 from pathlib import Path
@@ -229,7 +230,8 @@ def _normalized_html_text(html_path: Path) -> str:
 def test_version_is_defined() -> None:
     from docscriptor import __version__
 
-    assert __version__ == "0.2.0"
+    assert __version__ == package_version("docscriptor")
+    assert __version__
 
 
 def test_markup_creates_styled_fragments() -> None:

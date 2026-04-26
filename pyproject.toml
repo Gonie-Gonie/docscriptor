@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=77", "wheel"]
+requires = ["setuptools>=77", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "docscriptor"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Python-first document authoring toolkit for generating DOCX, PDF, and HTML outputs from the same source."
 readme = "README.md"
 requires-python = ">=3.14"
@@ -40,6 +40,7 @@ dev = [
   "pandas>=2.3.0",
   "pypdf>=5.4.0",
   "pytest>=8.0.0",
+  "setuptools-scm>=8.0.0",
   "twine>=6.1.0",
 ]
 
@@ -55,6 +56,10 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["docscriptor*"]
+
+[tool.setuptools_scm]
+fallback_version = "0.2.0"
+tag_regex = "^v(?P<version>\\d+\\.\\d+\\.\\d+)$"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

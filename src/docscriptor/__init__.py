@@ -1,5 +1,7 @@
 """Top-level package for docscriptor."""
 
+from importlib.metadata import PackageNotFoundError, version as package_version
+
 from docscriptor.core import DocscriptorError
 from docscriptor.components.blocks import (
     Box,
@@ -45,7 +47,24 @@ from docscriptor.settings import (
     Theme,
 )
 
-__version__ = "0.2.0"
+
+def _resolve_version() -> str:
+    try:
+        return package_version("docscriptor")
+    except PackageNotFoundError:
+        try:
+            from setuptools_scm import get_version
+        except ImportError:
+            return "0.2.0"
+        return get_version(
+            root="../..",
+            relative_to=__file__,
+            fallback_version="0.2.0",
+            tag_regex=r"^v(?P<version>\d+\.\d+\.\d+)$",
+        )
+
+
+__version__ = _resolve_version()
 
 __all__ = [
     "Box",
@@ -100,4 +119,5 @@ __all__ = [
 for _module_name in ("components", "core", "document", "references", "settings"):
     globals().pop(_module_name, None)
 
+del _resolve_version
 del _module_name

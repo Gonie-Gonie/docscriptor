@@ -172,3 +172,15 @@ Build distribution artifacts:
 ```powershell
 .\.venv\Scripts\python.exe -m build
 ```
+
+## Releases
+
+Docscriptor versions are derived from git tags through `setuptools-scm`.
+
+Create and push a release tag like this:
+
+```powershell
+.\scripts\release.ps1 0.3.0
+```
+
+That pushes `v0.3.0`, and the GitHub release workflow builds the wheel/sdist artifacts and attaches them to the matching GitHub Release automatically.
