@@ -86,6 +86,7 @@ Docscriptor tries to keep the source readable:
 The default behavior is intentionally conventional:
 
 - paragraphs are justified by default
+- tables, figures, boxes, and their captions are centered by default
 - headings are numbered as `1`, `1.1`, `1.1.1`, and so on
 - ordered and bullet lists can be customized with `ListStyle(...)`
 - heading numbering can be customized with `HeadingNumbering(...)`

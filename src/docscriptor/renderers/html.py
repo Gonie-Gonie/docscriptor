@@ -225,7 +225,7 @@ class HtmlRenderer:
         )
         return (
             '<section class="docscriptor-box" '
-            f'style="{self._box_css(block)}">'
+            f'style="{self._box_css(block, context.theme)}">'
             + title_html
             + children_html
             + "</section>"
@@ -300,7 +300,8 @@ class HtmlRenderer:
             else ""
         )
         table_html = (
-            '<div class="docscriptor-table-wrapper">'
+            '<div class="docscriptor-table-wrapper" '
+            f'style="{self._table_wrapper_css(context.theme)}">'
             + (
                 caption_html
                 if block.caption is not None and context.theme.table_caption_position == "above"
@@ -348,7 +349,12 @@ class HtmlRenderer:
         content_parts.append(image_html)
         if block.caption is not None and context.theme.figure_caption_position == "below":
             content_parts.append(caption_html)
-        return '<figure class="docscriptor-figure">' + "".join(content_parts) + "</figure>"
+        return (
+            '<figure class="docscriptor-figure" '
+            f'style="{self._figure_css(context.theme)}">'
+            + "".join(content_parts)
+            + "</figure>"
+        )
 
     def render_table_list(
         self,
@@ -1054,13 +1060,39 @@ class HtmlRenderer:
             f" line-height: {line_height:.1f}pt;"
         )
 
-    def _box_css(self, block: Box) -> str:
+    def _box_css(self, block: Box, theme: Theme) -> str:
         return (
             f"border: {block.style.border_width:.2f}pt solid #{block.style.border_color};"
             f" background: #{block.style.background_color};"
             f" padding: {block.style.padding:.1f}pt;"
             f" margin: 0 0 {block.style.space_after:.1f}pt;"
+            f" {self._block_alignment_css(theme.box_alignment)}"
         )
+
+    def _table_wrapper_css(self, theme: Theme) -> str:
+        return (
+            "width: fit-content;"
+            " max-width: 100%;"
+            " overflow-x: auto;"
+            " padding: 14px 16px;"
+            " margin: 0 0 12pt;"
+            f" {self._block_alignment_css(theme.table_alignment)}"
+        )
+
+    def _figure_css(self, theme: Theme) -> str:
+        return (
+            "padding: 16px;"
+            f" text-align: {theme.figure_alignment};"
+            " margin: 0 0 12pt;"
+            f" {self._block_alignment_css(theme.figure_alignment)}"
+        )
+
+    def _block_alignment_css(self, alignment: str) -> str:
+        if alignment == "right":
+            return "margin-left: auto; margin-right: 0;"
+        if alignment == "center":
+            return "margin-left: auto; margin-right: auto;"
+        return "margin-left: 0; margin-right: auto;"
 
     def _box_title_css(self, block: Box, theme: Theme) -> str:
         parts = [
@@ -1210,11 +1242,10 @@ body {{
   overflow: hidden;
 }}
 .docscriptor-table-wrapper {{
-  padding: 14px 16px;
-  margin: 0 0 12pt;
 }}
 .docscriptor-table {{
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   border-collapse: collapse;
 }}
 .docscriptor-table .docscriptor-paragraph {{
@@ -1224,9 +1255,6 @@ body {{
   margin: 6pt 0;
 }}
 .docscriptor-figure {{
-  margin: 0 0 12pt;
-  padding: 16px;
-  text-align: center;
 }}
 .docscriptor-figure-image {{
   display: inline-block;

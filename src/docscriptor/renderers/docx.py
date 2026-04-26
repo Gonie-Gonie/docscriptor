@@ -6,6 +6,7 @@ from io import BytesIO
 from pathlib import Path
 
 from docx import Document as WordDocument
+from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
@@ -53,6 +54,12 @@ ALIGNMENTS = {
     "center": WD_ALIGN_PARAGRAPH.CENTER,
     "right": WD_ALIGN_PARAGRAPH.RIGHT,
     "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
+}
+
+TABLE_ALIGNMENTS = {
+    "left": WD_TABLE_ALIGNMENT.LEFT,
+    "center": WD_TABLE_ALIGNMENT.CENTER,
+    "right": WD_TABLE_ALIGNMENT.RIGHT,
 }
 
 
@@ -823,6 +830,7 @@ class DocxRenderer:
         word_document: WordDocument,
         ) -> None:
         outer_table = container.add_table(rows=1, cols=1)
+        outer_table.alignment = TABLE_ALIGNMENTS[theme.box_alignment]
         cell = outer_table.rows[0].cells[0]
         cell._tc.clear_content()
         self._initialized_cells.discard(id(cell))
@@ -892,6 +900,7 @@ class DocxRenderer:
         layout = build_table_layout(table_block.header_rows, table_block.rows)
         table = container.add_table(rows=layout.row_count, cols=layout.column_count)
         table.style = "Table Grid"
+        table.alignment = TABLE_ALIGNMENTS[theme.table_alignment]
         if table_block.column_widths is not None:
             for column_index, width in enumerate(table_block.column_widths):
                 table.columns[column_index].width = Inches(width)
@@ -967,7 +976,7 @@ class DocxRenderer:
             render_caption()
 
         paragraph = self._add_paragraph(container)
-        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.alignment = ALIGNMENTS[theme.figure_alignment]
         run = paragraph.add_run()
         width = Inches(figure.width_inches) if figure.width_inches is not None else None
         run.add_picture(self._figure_picture_source(figure), width=width)

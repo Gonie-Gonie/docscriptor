@@ -317,6 +317,15 @@ def test_paragraph_style_defaults_to_justify_alignment() -> None:
     assert paragraph.style.alignment == "justify"
 
 
+def test_theme_defaults_center_media_objects_and_captions() -> None:
+    theme = Theme()
+
+    assert theme.caption_alignment == "center"
+    assert theme.table_alignment == "center"
+    assert theme.figure_alignment == "center"
+    assert theme.box_alignment == "center"
+
+
 def test_numbering_and_list_styles_are_customizable() -> None:
     heading_numbering = HeadingNumbering(formats=("upper-roman", "lower-alpha"), prefix="[", suffix="]")
     ordered_style = ListStyle(marker_format="upper-roman", prefix="(", suffix=")")

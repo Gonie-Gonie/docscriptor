@@ -7,6 +7,8 @@ from pathlib import Path
 import re
 
 from docx import Document as WordDocument
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from pypdf import PdfReader
 
 
@@ -109,6 +111,27 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("Python-first document authoring toolkit" in text for text in paragraph_texts)
     assert "Grouped Content Example" in table_text
     assert any("examples/journal_paper_example/main.py" in text for text in paragraph_texts)
+    assert all(table.alignment == WD_TABLE_ALIGNMENT.CENTER for table in word_document.tables)
+    expected_captions = {
+        "Table 1. Rendering goals and output formats.",
+        "Table 2. Core authoring objects by responsibility.",
+        "Table 3. Generated pages available in a document.",
+        "Table 4. Default numbering behavior and customization hooks.",
+        "Table 5. Table layout options from simple headers to merged spans.",
+        "Figure 1. Example figure loaded directly from the example asset directory.",
+    }
+    caption_alignments = {
+        paragraph.text: paragraph.alignment
+        for paragraph in word_document.paragraphs
+        if paragraph.text in expected_captions
+    }
+    assert set(caption_alignments) == expected_captions
+    assert all(alignment == WD_ALIGN_PARAGRAPH.CENTER for alignment in caption_alignments.values())
+    assert all(
+        paragraph.alignment == WD_ALIGN_PARAGRAPH.CENTER
+        for paragraph in word_document.paragraphs
+        if "<w:drawing" in paragraph._p.xml
+    )
     assert 'w:instr="PAGE"' in word_document.sections[0].footer.paragraphs[0]._p.xml
     assert len(word_document.tables) == 6
     assert len(word_document.inline_shapes) == 2
@@ -168,6 +191,10 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Portable footnotes stay stable in DOCX, PDF, and HTML" in normalized_html_text
     assert "https://github.com/Gonie-Gonie/pydocs" in normalized_html_text
     assert "examples/journal_paper_example/main.py" in normalized_html_text
+    assert 'class="docscriptor-table-wrapper" style="' in html_text
+    assert 'class="docscriptor-figure" style="padding: 16px; text-align: center;' in html_text
+    assert 'class="docscriptor-caption docscriptor-table-caption" style="text-align: center;' in html_text
+    assert 'margin-left: auto; margin-right: auto;' in html_text
     assert html_text.count("data:image/png;base64,") == 2
     assert 'href="#table_1"' in html_text
     assert 'href="#figure_1"' in html_text

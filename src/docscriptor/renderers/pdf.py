@@ -69,6 +69,12 @@ ALIGNMENTS = {
     "justify": TA_JUSTIFY,
 }
 
+FLOWABLE_ALIGNMENTS = {
+    "left": "LEFT",
+    "center": "CENTER",
+    "right": "RIGHT",
+}
+
 PDF_FONT_VARIANTS = {
     "Courier": {
         (False, False): "Courier",
@@ -671,7 +677,11 @@ class PdfRenderer:
                     )
 
         column_widths = [width * inch for width in block.column_widths] if block.column_widths is not None else None
-        table = RLTable(table_rows, colWidths=column_widths, hAlign="LEFT")
+        table = RLTable(
+            table_rows,
+            colWidths=column_widths,
+            hAlign=FLOWABLE_ALIGNMENTS[theme.table_alignment],
+        )
         table.setStyle(TableStyle(style_commands))
 
         story: list[object] = []
@@ -820,7 +830,11 @@ class PdfRenderer:
         if not rows:
             rows.append([Spacer(1, 1)])
 
-        table = RLTable(rows, hAlign="LEFT", repeatRows=0)
+        table = RLTable(
+            rows,
+            hAlign=FLOWABLE_ALIGNMENTS[theme.box_alignment],
+            repeatRows=0,
+        )
         style_commands: list[tuple[str, tuple[int, int], tuple[int, int], object]] = [
             ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(f"#{block.style.background_color}")),
             ("BOX", (0, 0), (-1, -1), block.style.border_width, colors.HexColor(f"#{block.style.border_color}")),
@@ -891,6 +905,7 @@ class PdfRenderer:
 
     def _render_figure(self, block: Figure, theme: Theme, styles: object, render_index: RenderIndex) -> list[object]:
         image = RLImage(self._figure_image_source(block))
+        image.hAlign = FLOWABLE_ALIGNMENTS[theme.figure_alignment]
         if block.width_inches is not None:
             target_width = block.width_inches * inch
             scale = target_width / image.drawWidth

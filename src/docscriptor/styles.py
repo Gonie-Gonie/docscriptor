@@ -187,7 +187,10 @@ class Theme:
     body_font_size: float = 11.0
     heading_sizes: tuple[float, ...] = (18.0, 15.0, 13.0, 11.5)
     caption_font_size: float | None = None
-    caption_alignment: str = "left"
+    caption_alignment: str = "center"
+    table_alignment: str = "center"
+    figure_alignment: str = "center"
+    box_alignment: str = "center"
     table_caption_position: str = "above"
     figure_caption_position: str = "below"
     table_label: str = "Table"
@@ -222,6 +225,14 @@ class Theme:
             raise ValueError(
                 f"Unsupported caption alignment: {self.caption_alignment!r}"
             )
+        for field_name in (
+            "table_alignment",
+            "figure_alignment",
+            "box_alignment",
+        ):
+            value = getattr(self, field_name)
+            if value not in {"left", "center", "right"}:
+                raise ValueError(f"Unsupported alignment for {field_name}: {value!r}")
         if self.table_caption_position not in {"above", "below"}:
             raise ValueError(
                 "table_caption_position must be 'above' or 'below'"
