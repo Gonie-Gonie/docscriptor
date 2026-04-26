@@ -17,8 +17,10 @@ from pypdf import PdfReader
 
 import docscriptor.components.generated as generated_components
 import docscriptor.components.inline as inline_components
-from docscriptor.indexing import build_render_index
+from docscriptor.layout.indexing import build_render_index
 from docscriptor import (
+    Affiliation,
+    Author,
     Box,
     BoxStyle,
     BulletList,
@@ -268,7 +270,7 @@ def test_comment_and_math_helpers_create_renderable_fragments() -> None:
     assert isinstance(inline_footnote, Footnote)
     assert inline_footnote.plain_text() == "term[?]"
     assert isinstance(inline_math, Math)
-    assert inline_math.plain_text() == "α2 + β2"
+    assert inline_math.plain_text() == "alpha2 + beta2"
     assert equation.plain_text() == "(1)/(2)"
 
 
@@ -296,7 +298,7 @@ def test_method_style_inline_actions_create_renderable_fragments() -> None:
     assert library.cite("guide").plain_text() == "[?]"
     assert Comment.annotated("term", "Expanded note").plain_text() == "term[?]"
     assert Footnote.annotated("term", "Portable footnote note").plain_text() == "term[?]"
-    assert Math.inline(r"\alpha^2").plain_text() == "α2"
+    assert Math.inline(r"\alpha^2").plain_text() == "alpha2"
 
 
 def test_theme_validates_page_number_configuration() -> None:
@@ -490,8 +492,12 @@ def test_document_accepts_document_settings() -> None:
         author="Docscriptor",
         summary="Settings test",
         subtitle="Grouped metadata",
-        authors=["Example Author"],
-        affiliations=["Example Lab"],
+        authors=[
+            Author(
+                "Example Author",
+                affiliations=[Affiliation(organization="Example Lab")],
+            )
+        ],
         cover_page=True,
         theme=Theme(show_page_numbers=True),
     )
@@ -502,8 +508,8 @@ def test_document_accepts_document_settings() -> None:
     assert document.summary == "Settings test"
     assert document.subtitle is not None
     assert document.subtitle[0].plain_text() == "Grouped metadata"
-    assert document.authors[0][0].plain_text() == "Example Author"
-    assert document.affiliations[0][0].plain_text() == "Example Lab"
+    assert document.authors[0].name == "Example Author"
+    assert document.authors[0].affiliations[0].formatted() == "Example Lab"
     assert document.cover_page is True
     assert document.theme.show_page_numbers is True
 

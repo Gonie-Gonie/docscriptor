@@ -175,11 +175,7 @@ class TableStyle:
 
 @dataclass(slots=True)
 class Theme:
-    """Document-wide renderer defaults.
-
-    The theme controls typography, generated section titles, heading numbering,
-    list marker defaults, and footer page numbering.
-    """
+    """Document-wide renderer defaults."""
 
     body_font_name: str = "Times New Roman"
     monospace_font_name: str = "Courier New"
@@ -214,6 +210,7 @@ class Theme:
     subtitle_alignment: str = "left"
     author_alignment: str = "left"
     affiliation_alignment: str = "left"
+    author_detail_alignment: str = "left"
     heading_numbering: HeadingNumbering = field(default_factory=HeadingNumbering)
     bullet_list_style: ListStyle = field(
         default_factory=lambda: ListStyle(marker_format="bullet", suffix="")
@@ -258,6 +255,7 @@ class Theme:
             "subtitle_alignment",
             "author_alignment",
             "affiliation_alignment",
+            "author_detail_alignment",
         ):
             value = getattr(self, field_name)
             if value not in {"left", "center", "right", "justify"}:
@@ -316,3 +314,14 @@ class Theme:
         """Return the default style for bullet or ordered lists."""
 
         return self.numbered_list_style if ordered else self.bullet_list_style
+
+
+__all__ = [
+    "BoxStyle",
+    "HeadingNumbering",
+    "ListStyle",
+    "ParagraphStyle",
+    "TableStyle",
+    "TextStyle",
+    "Theme",
+]

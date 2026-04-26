@@ -6,9 +6,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from docscriptor.components.base import Block, BlockInput, coerce_blocks
+from docscriptor.components.equations import equation_plain_text
 from docscriptor.components.inline import InlineInput, Text, coerce_inlines
-from docscriptor.equations import equation_plain_text
-from docscriptor.styles import BoxStyle, ListStyle, ParagraphStyle
+from docscriptor.layout.theme import BoxStyle, ListStyle, ParagraphStyle
 
 if TYPE_CHECKING:
     from docscriptor.renderers.context import DocxRenderContext, HtmlRenderContext, PdfRenderContext

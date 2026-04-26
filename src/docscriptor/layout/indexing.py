@@ -6,14 +6,7 @@ from dataclasses import dataclass, field
 from typing import Sequence
 
 from docscriptor.components.base import Block
-from docscriptor.components.blocks import (
-    Box,
-    BulletList,
-    Equation,
-    NumberedList,
-    Paragraph,
-    Section,
-)
+from docscriptor.components.blocks import Box, BulletList, Equation, NumberedList, Paragraph, Section
 from docscriptor.components.generated import (
     CommentsPage,
     FigureList,
@@ -24,10 +17,10 @@ from docscriptor.components.generated import (
 )
 from docscriptor.components.inline import Citation, Comment, Footnote, Hyperlink, Text
 from docscriptor.components.media import Figure, Table
+from docscriptor.components.references import CitationLibrary, CitationSource
 from docscriptor.core import DocscriptorError
 from docscriptor.document import Document
-from docscriptor.references import CitationLibrary, CitationSource
-from docscriptor.styles import Theme
+from docscriptor.layout.theme import Theme
 
 
 @dataclass(slots=True)
@@ -350,3 +343,14 @@ def _index_inlines(
             render_index.citation_source_numbers[id(source)] = number
             if source.key is not None:
                 render_index.citation_numbers[source.key] = number
+
+
+__all__ = [
+    "CaptionEntry",
+    "CitationReferenceEntry",
+    "CommentReferenceEntry",
+    "FootnoteReferenceEntry",
+    "HeadingEntry",
+    "RenderIndex",
+    "build_render_index",
+]

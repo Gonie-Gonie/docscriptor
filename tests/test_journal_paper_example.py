@@ -54,7 +54,7 @@ def _normalized_html_text(html_path: Path) -> str:
 def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     paper_example = _load_example_module("journal_paper_example")
     docx_path, pdf_path = paper_example.build_journal_paper(tmp_path)
-    html_path = tmp_path / "journal-paper.html"
+    html_path = tmp_path / "docscriptor-development-philosophy.html"
 
     assert docx_path.exists()
     assert pdf_path.exists()
@@ -69,9 +69,12 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     pdf_text = "\n".join(page.extract_text() or "" for page in pdf_reader.pages)
     normalized_pdf_text = " ".join(pdf_text.split())
 
-    assert "A Python-Native Workflow for Reproducible Journal Manuscripts" in paragraph_texts
-    assert "Jiyoon Kim, Minho Lee, and Sujin Park" in paragraph_texts
-    assert "Department of Computational Publishing, Seoul" in paragraph_texts
+    assert "Docscriptor Development Philosophy" in paragraph_texts
+    assert "Hyeong-Gon Jo*" in paragraph_texts
+    assert "Codex" in paragraph_texts
+    assert "Building Simulation LAB, Seoul National University, Seoul, Republic of Korea" in paragraph_texts
+    assert "OpenAI" in paragraph_texts
+    assert any("ORCID 0009-0004-8821-275X" in text for text in paragraph_texts)
     assert "Abstract" in paragraph_texts
     assert "Highlights" in paragraph_texts
     assert "Acknowledgements" in paragraph_texts
@@ -101,7 +104,7 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     assert len(word_document.tables) == 3
     assert len(word_document.inline_shapes) == 3
 
-    assert "Journal Manuscripts" in pdf_text
+    assert "Docscriptor Development Philosophy" in pdf_text
     assert "Abstract" in pdf_text
     assert "Highlights" in pdf_text
     assert "Introduction" in pdf_text
@@ -130,9 +133,11 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
 
     html_text = html_path.read_text(encoding="utf-8")
     normalized_html_text = _normalized_html_text(html_path)
-    assert "A Python-Native Workflow for Reproducible Journal Manuscripts" in normalized_html_text
-    assert "Jiyoon Kim, Minho Lee, and Sujin Park" in normalized_html_text
-    assert "Department of Computational Publishing, Seoul" in normalized_html_text
+    assert "Docscriptor Development Philosophy" in normalized_html_text
+    assert "Hyeong-Gon Jo*" in normalized_html_text
+    assert "Codex" in normalized_html_text
+    assert "Building Simulation LAB, Seoul National University, Seoul, Republic of Korea" in normalized_html_text
+    assert "OpenAI" in normalized_html_text
     assert "Abstract" in normalized_html_text
     assert "Highlights" in normalized_html_text
     assert "Introduction" in normalized_html_text

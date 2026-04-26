@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from docscriptor.indexing import RenderIndex
-from docscriptor.styles import Theme
+from docscriptor.layout.indexing import RenderIndex
+from docscriptor.layout.theme import Theme
 
 
 @dataclass(slots=True)

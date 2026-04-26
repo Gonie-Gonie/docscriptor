@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from docscriptor.components.inline import Bold, Italic, Monospace, Text
-from docscriptor.styles import TextStyle
+from docscriptor.layout.theme import TextStyle
 
 
 def markup(source: str, *, style: TextStyle | None = None) -> list[Text]:
@@ -34,13 +34,23 @@ def _parse_markup(source: str, base_style: TextStyle) -> list[Text]:
         if source.startswith("**", cursor):
             end = source.find("**", cursor + 2)
             if end != -1:
-                fragments.extend(_rebase(markup(source[cursor + 2 : end]), base_style.merged(TextStyle(bold=True))))
+                fragments.extend(
+                    _rebase(
+                        markup(source[cursor + 2 : end]),
+                        base_style.merged(TextStyle(bold=True)),
+                    )
+                )
                 cursor = end + 2
                 continue
         if source[cursor] == "*":
             end = source.find("*", cursor + 1)
             if end != -1:
-                fragments.extend(_rebase(markup(source[cursor + 1 : end]), base_style.merged(TextStyle(italic=True))))
+                fragments.extend(
+                    _rebase(
+                        markup(source[cursor + 1 : end]),
+                        base_style.merged(TextStyle(italic=True)),
+                    )
+                )
                 cursor = end + 1
                 continue
         if source[cursor] == "`":
@@ -80,3 +90,6 @@ def _rebase(fragments: list[Text], style: TextStyle) -> list[Text]:
         else:
             rebased.append(Text(fragment.value, style=style.merged(fragment.style)))
     return rebased
+
+
+__all__ = ["md", "markup"]

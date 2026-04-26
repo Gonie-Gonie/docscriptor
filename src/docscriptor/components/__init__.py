@@ -1,83 +1,64 @@
 """Grouped component namespaces for more granular imports."""
 
-from docscriptor.components.blocks import (
-    Box,
-    BulletList,
-    Chapter,
-    CodeBlock,
-    Equation,
-    NumberedList,
-    Paragraph,
-    Section,
-    Subsection,
-    Subsubsection,
-)
-from docscriptor.components.generated import (
-    CommentsPage,
-    FigureList,
-    FootnotesPage,
-    ReferencesPage,
-    TableList,
-    TableOfContents,
-)
-from docscriptor.components.inline import (
-    Bold,
-    Comment,
-    Footnote,
-    Hyperlink,
-    Italic,
-    Math,
-    Monospace,
-    Text,
-    bold,
-    code,
-    color,
-    cite,
-    comment,
-    footnote,
-    italic,
-    link,
-    math,
-    styled,
-)
-from docscriptor.components.media import Figure, Table, TableCell
+from __future__ import annotations
 
-__all__ = [
-    "Bold",
-    "Box",
-    "BulletList",
-    "Chapter",
-    "CodeBlock",
-    "Comment",
-    "CommentsPage",
-    "Equation",
-    "Figure",
-    "FigureList",
-    "Footnote",
-    "FootnotesPage",
-    "Hyperlink",
-    "Italic",
-    "Math",
-    "Monospace",
-    "NumberedList",
-    "Paragraph",
-    "ReferencesPage",
-    "Section",
-    "Subsection",
-    "Subsubsection",
-    "Table",
-    "TableCell",
-    "TableList",
-    "TableOfContents",
-    "Text",
-    "bold",
-    "code",
-    "color",
-    "cite",
-    "comment",
-    "footnote",
-    "italic",
-    "link",
-    "math",
-    "styled",
-]
+from importlib import import_module
+
+
+_EXPORTS = {
+    "Affiliation": "docscriptor.components.people",
+    "Author": "docscriptor.components.people",
+    "Bold": "docscriptor.components.inline",
+    "Box": "docscriptor.components.blocks",
+    "BulletList": "docscriptor.components.blocks",
+    "Chapter": "docscriptor.components.blocks",
+    "Citation": "docscriptor.components.inline",
+    "CitationLibrary": "docscriptor.components.references",
+    "CitationSource": "docscriptor.components.references",
+    "CodeBlock": "docscriptor.components.blocks",
+    "Comment": "docscriptor.components.inline",
+    "CommentsPage": "docscriptor.components.generated",
+    "Equation": "docscriptor.components.blocks",
+    "Figure": "docscriptor.components.media",
+    "FigureList": "docscriptor.components.generated",
+    "Footnote": "docscriptor.components.inline",
+    "FootnotesPage": "docscriptor.components.generated",
+    "Hyperlink": "docscriptor.components.inline",
+    "Italic": "docscriptor.components.inline",
+    "Math": "docscriptor.components.inline",
+    "Monospace": "docscriptor.components.inline",
+    "NumberedList": "docscriptor.components.blocks",
+    "Paragraph": "docscriptor.components.blocks",
+    "ReferencesPage": "docscriptor.components.generated",
+    "Section": "docscriptor.components.blocks",
+    "Subsection": "docscriptor.components.blocks",
+    "Subsubsection": "docscriptor.components.blocks",
+    "Table": "docscriptor.components.media",
+    "TableCell": "docscriptor.components.media",
+    "TableList": "docscriptor.components.generated",
+    "TableOfContents": "docscriptor.components.generated",
+    "Text": "docscriptor.components.inline",
+    "bold": "docscriptor.components.inline",
+    "code": "docscriptor.components.inline",
+    "color": "docscriptor.components.inline",
+    "cite": "docscriptor.components.inline",
+    "comment": "docscriptor.components.inline",
+    "footnote": "docscriptor.components.inline",
+    "italic": "docscriptor.components.inline",
+    "link": "docscriptor.components.inline",
+    "math": "docscriptor.components.inline",
+    "md": "docscriptor.components.markup",
+    "markup": "docscriptor.components.markup",
+    "styled": "docscriptor.components.inline",
+}
+
+__all__ = list(_EXPORTS)
+
+
+def __getattr__(name: str) -> object:
+    module_name = _EXPORTS.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(module_name), name)
+    globals()[name] = value
+    return value

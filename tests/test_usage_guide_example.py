@@ -56,12 +56,13 @@ def _normalized_html_text(html_path: Path) -> str:
 def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     usage_guide = _load_example_module("usage_guide_example")
     docx_path, pdf_path = usage_guide.build_usage_guide(tmp_path)
-    html_path = tmp_path / "docscriptor-usage-guide.html"
+    html_path = tmp_path / "docscriptor-user-guide.html"
 
     assert docx_path.exists()
     assert pdf_path.exists()
     assert html_path.exists()
     assert (Path(usage_guide.__file__).resolve().parent / "assets" / "usage-guide-figure.png").exists()
+    assert (Path(usage_guide.__file__).resolve().parent / "assets" / "docscriptor-logo.png").exists()
 
     word_document = WordDocument(docx_path)
     paragraph_texts = [paragraph.text for paragraph in word_document.paragraphs]
@@ -74,7 +75,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     pdf_reader = PdfReader(BytesIO(pdf_path.read_bytes()))
     pdf_text = "\n".join(page.extract_text() or "" for page in pdf_reader.pages)
 
-    assert "Using docscriptor" in paragraph_texts
+    assert "Docscriptor User Guide" in paragraph_texts
     assert "List of Tables" in paragraph_texts
     assert "List of Figures" in paragraph_texts
     assert "Contents" in paragraph_texts
@@ -107,7 +108,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("This usage guide is intentionally assembled in one main.py file." in text for text in paragraph_texts)
     assert any("The smallest useful workflow is: import the classes you need" in text for text in paragraph_texts)
     assert "Detailed usage guide and API walkthrough" in paragraph_texts
-    assert "docscriptor examples" in paragraph_texts
+    assert "Docscriptor Contributors" in paragraph_texts
     assert any("Python-first document authoring toolkit" in text for text in paragraph_texts)
     assert "Grouped Content Example" in table_text
     assert any("examples/journal_paper_example/main.py" in text for text in paragraph_texts)
@@ -134,7 +135,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     )
     assert 'w:instr="PAGE"' in word_document.sections[0].footer.paragraphs[0]._p.xml
     assert len(word_document.tables) == 6
-    assert len(word_document.inline_shapes) == 2
+    assert len(word_document.inline_shapes) == 3
     assert paragraph_texts.count("Table 1. Rendering goals and output formats.") >= 2
     assert paragraph_texts.count("Table 2. Core authoring objects by responsibility.") >= 2
     assert paragraph_texts.count("Table 3. Generated pages available in a document.") >= 2
@@ -142,7 +143,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert paragraph_texts.count("Table 5. Table layout options from simple headers to merged spans.") >= 2
     assert paragraph_texts.count("Figure 1. Example figure loaded directly from the example asset directory.") >= 2
 
-    assert "Using docscriptor" in pdf_text
+    assert "Docscriptor User Guide" in pdf_text
     assert "List of Tables" in pdf_text
     assert "List of Figures" in pdf_text
     assert "Contents" in pdf_text
@@ -168,11 +169,11 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "This footnote was created from a table cell inside the usage guide." in pdf_text
     assert "examples/journal_paper_example/main.py" in pdf_text
     assert len(pdf_reader.pages) >= 10
-    assert _pdf_image_draw_count(pdf_path) == 2
+    assert _pdf_image_draw_count(pdf_path) == 3
 
     html_text = html_path.read_text(encoding="utf-8")
     normalized_html_text = _normalized_html_text(html_path)
-    assert "Using docscriptor" in normalized_html_text
+    assert "Docscriptor User Guide" in normalized_html_text
     assert "List of Tables" in normalized_html_text
     assert "List of Figures" in normalized_html_text
     assert "Contents" in normalized_html_text
@@ -195,6 +196,6 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert 'class="docscriptor-figure" style="padding: 16px; text-align: center;' in html_text
     assert 'class="docscriptor-caption docscriptor-table-caption" style="text-align: center;' in html_text
     assert 'margin-left: auto; margin-right: auto;' in html_text
-    assert html_text.count("data:image/png;base64,") == 2
+    assert html_text.count("data:image/png;base64,") == 3
     assert 'href="#table_1"' in html_text
     assert 'href="#figure_1"' in html_text

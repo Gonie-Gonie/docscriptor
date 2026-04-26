@@ -16,95 +16,94 @@ LATEX_SYMBOLS = {
     ",": " ",
     ";": "  ",
     "!": "",
-    "alpha": "α",
-    "beta": "β",
-    "gamma": "γ",
-    "delta": "δ",
-    "epsilon": "ϵ",
-    "varepsilon": "ε",
-    "zeta": "ζ",
-    "eta": "η",
-    "theta": "θ",
-    "vartheta": "ϑ",
-    "iota": "ι",
-    "kappa": "κ",
-    "lambda": "λ",
-    "mu": "μ",
-    "nu": "ν",
-    "xi": "ξ",
-    "pi": "π",
-    "varpi": "ϖ",
-    "rho": "ρ",
-    "varrho": "ϱ",
-    "sigma": "σ",
-    "varsigma": "ς",
-    "tau": "τ",
-    "upsilon": "υ",
-    "phi": "φ",
-    "varphi": "ϕ",
-    "chi": "χ",
-    "psi": "ψ",
-    "omega": "ω",
-    "Gamma": "Γ",
-    "Delta": "Δ",
-    "Theta": "Θ",
-    "Lambda": "Λ",
-    "Xi": "Ξ",
-    "Pi": "Π",
-    "Sigma": "Σ",
-    "Upsilon": "Υ",
-    "Phi": "Φ",
-    "Psi": "Ψ",
-    "Omega": "Ω",
-    "cdot": "·",
-    "times": "×",
-    "pm": "±",
-    "mp": "∓",
-    "neq": "≠",
-    "ne": "≠",
-    "leq": "≤",
-    "geq": "≥",
-    "approx": "≈",
-    "sim": "∼",
-    "equiv": "≡",
-    "propto": "∝",
-    "infty": "∞",
-    "partial": "∂",
-    "nabla": "∇",
-    "sum": "∑",
-    "prod": "∏",
-    "int": "∫",
-    "oint": "∮",
-    "forall": "∀",
-    "exists": "∃",
-    "in": "∈",
-    "notin": "∉",
-    "subset": "⊂",
-    "subseteq": "⊆",
-    "supset": "⊃",
-    "supseteq": "⊇",
-    "cup": "∪",
-    "cap": "∩",
-    "vee": "∨",
-    "wedge": "∧",
-    "to": "→",
-    "rightarrow": "→",
-    "leftarrow": "←",
-    "leftrightarrow": "↔",
-    "Rightarrow": "⇒",
-    "Leftarrow": "⇐",
-    "Leftrightarrow": "⇔",
-    "ldots": "…",
-    "cdots": "⋯",
-    "dots": "…",
+    "alpha": "alpha",
+    "beta": "beta",
+    "gamma": "gamma",
+    "delta": "delta",
+    "epsilon": "epsilon",
+    "varepsilon": "epsilon",
+    "zeta": "zeta",
+    "eta": "eta",
+    "theta": "theta",
+    "vartheta": "theta",
+    "iota": "iota",
+    "kappa": "kappa",
+    "lambda": "lambda",
+    "mu": "mu",
+    "nu": "nu",
+    "xi": "xi",
+    "pi": "pi",
+    "varpi": "pi",
+    "rho": "rho",
+    "varrho": "rho",
+    "sigma": "sigma",
+    "varsigma": "sigma",
+    "tau": "tau",
+    "upsilon": "upsilon",
+    "phi": "phi",
+    "varphi": "phi",
+    "chi": "chi",
+    "psi": "psi",
+    "omega": "omega",
+    "Gamma": "Gamma",
+    "Delta": "Delta",
+    "Theta": "Theta",
+    "Lambda": "Lambda",
+    "Xi": "Xi",
+    "Pi": "Pi",
+    "Sigma": "Sigma",
+    "Upsilon": "Upsilon",
+    "Phi": "Phi",
+    "Psi": "Psi",
+    "Omega": "Omega",
+    "cdot": "*",
+    "times": "x",
+    "pm": "+/-",
+    "mp": "-/+",
+    "neq": "!=",
+    "ne": "!=",
+    "leq": "<=",
+    "geq": ">=",
+    "approx": "~=",
+    "sim": "~",
+    "equiv": "==",
+    "propto": "prop to",
+    "infty": "inf",
+    "partial": "d",
+    "nabla": "nabla",
+    "sum": "sum",
+    "prod": "prod",
+    "int": "int",
+    "oint": "oint",
+    "forall": "forall",
+    "exists": "exists",
+    "in": "in",
+    "notin": "notin",
+    "subset": "subset",
+    "subseteq": "subseteq",
+    "supset": "supset",
+    "supseteq": "supseteq",
+    "cup": "union",
+    "cap": "intersect",
+    "vee": "or",
+    "wedge": "and",
+    "to": "->",
+    "rightarrow": "->",
+    "leftarrow": "<-",
+    "leftrightarrow": "<->",
+    "Rightarrow": "=>",
+    "Leftarrow": "<=",
+    "Leftrightarrow": "<=>",
+    "ldots": "...",
+    "cdots": "...",
+    "dots": "...",
     "mid": "|",
     "vert": "|",
-    "Vert": "‖",
-    "degree": "°",
+    "Vert": "||",
+    "degree": "deg",
 }
 
 GROUP_COMMANDS = {"text", "mathrm", "mathit", "mathbf", "operatorname", "operatorname*"}
-
 DELIMITER_COMMANDS = {"left", "right"}
 
 
@@ -158,8 +157,7 @@ class _EquationParser:
             if char in "^_":
                 self.position += 1
                 aligned = SUPERSCRIPT if char == "^" else SUBSCRIPT
-                token = self._read_token()
-                segments.extend(_apply_vertical_alignment(token, aligned))
+                segments.extend(_apply_vertical_alignment(self._read_token(), aligned))
                 continue
             segments.append(EquationSegment(char))
             self.position += 1
@@ -186,10 +184,15 @@ class _EquationParser:
         if command in {"frac", "dfrac", "tfrac"}:
             numerator = self._read_token()
             denominator = self._read_token()
-            return [EquationSegment("(")] + numerator + [EquationSegment(")/(")] + denominator + [EquationSegment(")")]
+            return (
+                [EquationSegment("(")]
+                + numerator
+                + [EquationSegment(")/(")]
+                + denominator
+                + [EquationSegment(")")]
+            )
         if command == "sqrt":
-            radicand = self._read_token()
-            return [EquationSegment("√(")] + radicand + [EquationSegment(")")]
+            return [EquationSegment("sqrt(")] + self._read_token() + [EquationSegment(")")]
         if command == "overline":
             return self._read_token()
         if command in {"quad", "qquad"}:
@@ -224,13 +227,15 @@ class _EquationParser:
         return token
 
 
-def _apply_vertical_alignment(segments: list[EquationSegment], vertical_align: str) -> list[EquationSegment]:
-    aligned: list[EquationSegment] = []
-    for segment in segments:
-        if not segment.text:
-            continue
-        aligned.append(EquationSegment(segment.text, vertical_align=vertical_align))
-    return aligned
+def _apply_vertical_alignment(
+    segments: list[EquationSegment],
+    vertical_align: str,
+) -> list[EquationSegment]:
+    return [
+        EquationSegment(segment.text, vertical_align=vertical_align)
+        for segment in segments
+        if segment.text
+    ]
 
 
 def _merge_adjacent(segments: list[EquationSegment]) -> list[EquationSegment]:
@@ -239,7 +244,24 @@ def _merge_adjacent(segments: list[EquationSegment]) -> list[EquationSegment]:
         if not segment.text:
             continue
         if merged and merged[-1].vertical_align == segment.vertical_align:
-            merged[-1] = EquationSegment(merged[-1].text + segment.text, vertical_align=segment.vertical_align)
-        else:
-            merged.append(segment)
+            merged[-1] = EquationSegment(
+                merged[-1].text + segment.text,
+                vertical_align=segment.vertical_align,
+            )
+            continue
+        merged.append(segment)
     return merged
+
+
+__all__ = [
+    "BASELINE",
+    "DELIMITER_COMMANDS",
+    "EquationSegment",
+    "GROUP_COMMANDS",
+    "LATEX_SYMBOLS",
+    "SUBSCRIPT",
+    "SUPERSCRIPT",
+    "VERTICAL_ALIGNMENTS",
+    "equation_plain_text",
+    "parse_latex_segments",
+]

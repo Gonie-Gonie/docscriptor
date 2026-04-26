@@ -17,6 +17,9 @@ from docscriptor.components.blocks import (
 )
 from docscriptor.components.generated import CommentsPage, FigureList, ReferencesPage, TableList, TableOfContents
 from docscriptor.components.media import Figure, Table, TableCell
+from docscriptor.components.markup import md, markup
+from docscriptor.components.people import Affiliation, Author
+from docscriptor.components.references import CitationLibrary, CitationSource
 from docscriptor.document import Document
 from docscriptor.components.inline import (
     Comment,
@@ -34,8 +37,6 @@ from docscriptor.components.inline import (
     math,
     styled,
 )
-from docscriptor.markup import md, markup
-from docscriptor.references import CitationLibrary, CitationSource
 from docscriptor.settings import (
     BoxStyle,
     DocumentSettings,
@@ -55,11 +56,11 @@ def _resolve_version() -> str:
         try:
             from setuptools_scm import get_version
         except ImportError:
-            return "0.2.0"
+            return "0.3.0"
         return get_version(
             root="../..",
             relative_to=__file__,
-            fallback_version="0.2.0",
+            fallback_version="0.3.0",
             tag_regex=r"^v(?P<version>\d+\.\d+\.\d+)$",
         )
 
@@ -67,6 +68,8 @@ def _resolve_version() -> str:
 __version__ = _resolve_version()
 
 __all__ = [
+    "Affiliation",
+    "Author",
     "Box",
     "BoxStyle",
     "BulletList",
@@ -116,7 +119,7 @@ __all__ = [
     "styled",
 ]
 
-for _module_name in ("components", "core", "document", "references", "settings"):
+for _module_name in ("components", "core", "document", "layout", "settings"):
     globals().pop(_module_name, None)
 
 del _resolve_version

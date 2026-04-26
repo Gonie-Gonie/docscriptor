@@ -10,7 +10,7 @@ from docscriptor.core import DocscriptorError
 
 if TYPE_CHECKING:
     from docscriptor.components.inline import Citation, Text
-    from docscriptor.styles import TextStyle
+    from docscriptor.layout.theme import TextStyle
 
 
 @dataclass(slots=True, init=False)
@@ -93,12 +93,12 @@ class CitationSource:
         if self.url:
             fragments.append(Hyperlink.external(self.url, self.url))
             if self.note:
-                fragments.append(Text(f". {self.note.strip().rstrip('.')}."))
+                fragments.append(Text(f". {self.note.strip().rstrip('.')}.")) 
             else:
                 fragments.append(Text("."))
             return fragments
         if self.note:
-            fragments.append(Text(f"{self.note.strip().rstrip('.')}."))
+            fragments.append(Text(f"{self.note.strip().rstrip('.')}.")) 
         elif not fragments:
             fragments.append(Text(""))
         return fragments
@@ -262,3 +262,10 @@ def _split_bibtex_fields(source: str) -> list[str]:
     if tail:
         parts.append(tail)
     return parts
+
+
+__all__ = [
+    "CitationLibrary",
+    "CitationSource",
+    "coerce_citation_library",
+]

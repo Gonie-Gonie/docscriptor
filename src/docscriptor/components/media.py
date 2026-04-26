@@ -9,7 +9,7 @@ from typing import Sequence, TYPE_CHECKING
 from docscriptor.components.base import Block
 from docscriptor.components.blocks import CellInput, Paragraph, coerce_cell
 from docscriptor.core import PathLike, normalize_color
-from docscriptor.styles import TableStyle
+from docscriptor.layout.theme import TableStyle
 
 if TYPE_CHECKING:
     from docscriptor.renderers.context import DocxRenderContext, HtmlRenderContext, PdfRenderContext

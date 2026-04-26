@@ -8,10 +8,11 @@ from typing import Sequence
 
 from docscriptor.components.base import BlockInput, Body
 from docscriptor.components.inline import Text
+from docscriptor.components.people import Author, AuthorInput, coerce_authors
+from docscriptor.components.references import CitationLibrary, CitationSource, coerce_citation_library
 from docscriptor.core import PathLike
-from docscriptor.references import CitationLibrary, CitationSource, coerce_citation_library
+from docscriptor.layout.theme import Theme
 from docscriptor.settings import DocumentSettings
-from docscriptor.styles import Theme
 
 
 @dataclass(slots=True, init=False)
@@ -50,7 +51,7 @@ class Document:
 
     @property
     def author(self) -> str | None:
-        return self.settings.author
+        return self.settings.resolved_author()
 
     @author.setter
     def author(self, value: str | None) -> None:
@@ -73,20 +74,12 @@ class Document:
         self.settings.subtitle = value
 
     @property
-    def authors(self) -> tuple[list[Text], ...]:
+    def authors(self) -> tuple[Author, ...]:
         return self.settings.authors
 
     @authors.setter
-    def authors(self, value: tuple[list[Text], ...]) -> None:
-        self.settings.authors = value
-
-    @property
-    def affiliations(self) -> tuple[list[Text], ...]:
-        return self.settings.affiliations
-
-    @affiliations.setter
-    def affiliations(self, value: tuple[list[Text], ...]) -> None:
-        self.settings.affiliations = value
+    def authors(self, value: Sequence[AuthorInput]) -> None:
+        self.settings.authors = coerce_authors(value)
 
     @property
     def cover_page(self) -> bool:

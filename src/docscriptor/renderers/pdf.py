@@ -54,12 +54,13 @@ from docscriptor.components.inline import (
     Text,
 )
 from docscriptor.components.media import Figure, Table, build_table_layout
+from docscriptor.components.people import AuthorTitleLine
 from docscriptor.document import Document
-from docscriptor.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
+from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
 from docscriptor.core import DocscriptorError, PathLike
-from docscriptor.indexing import RenderIndex, build_render_index
+from docscriptor.layout.indexing import RenderIndex, build_render_index
+from docscriptor.layout.theme import ParagraphStyle, Theme
 from docscriptor.renderers.context import PdfRenderContext
-from docscriptor.styles import ParagraphStyle, Theme
 
 
 ALIGNMENTS = {
@@ -497,32 +498,34 @@ class PdfRenderer:
                     space_after=12,
                 )
             )
-        for author_line in document.authors:
+        for line, is_last_for_author in document.settings.iter_author_title_lines():
             story.append(
                 self._title_paragraph(
-                    author_line,
+                    list(line.fragments),
                     theme,
                     styles,
-                    style_name="DocscriptorAuthor",
-                    font_size=theme.body_font_size,
-                    alignment=theme.author_alignment,
-                    space_after=4,
-                )
-            )
-        for index, affiliation_line in enumerate(document.affiliations):
-            story.append(
-                self._title_paragraph(
-                    affiliation_line,
-                    theme,
-                    styles,
-                    style_name="DocscriptorAffiliation",
-                    font_size=max(theme.body_font_size - 0.5, 9),
-                    alignment=theme.affiliation_alignment,
-                    italic=True,
-                    space_after=12 if index == len(document.affiliations) - 1 else 3,
+                    style_name=f"DocscriptorAuthor{line.kind.title()}",
+                    font_size=self._title_line_font_size(line, theme),
+                    alignment=self._title_line_alignment(line, theme),
+                    italic=line.kind == "affiliation",
+                    space_after=12 if is_last_for_author else (4 if line.kind == "name" else 3),
                 )
             )
         return story
+
+    def _title_line_alignment(self, line: AuthorTitleLine, theme: Theme) -> str:
+        if line.kind == "name":
+            return theme.author_alignment
+        if line.kind == "affiliation":
+            return theme.affiliation_alignment
+        return theme.author_detail_alignment
+
+    def _title_line_font_size(self, line: AuthorTitleLine, theme: Theme) -> float:
+        if line.kind == "name":
+            return theme.body_font_size
+        if line.kind == "affiliation":
+            return max(theme.body_font_size - 0.5, 9)
+        return max(theme.body_font_size - 1, 9)
 
     def _title_paragraph(
         self,

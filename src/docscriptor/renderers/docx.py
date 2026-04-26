@@ -41,12 +41,13 @@ from docscriptor.components.inline import (
     Text,
 )
 from docscriptor.components.media import Figure, Table, build_table_layout
+from docscriptor.components.people import AuthorTitleLine
 from docscriptor.document import Document
-from docscriptor.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
+from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
 from docscriptor.core import DocscriptorError, PathLike
-from docscriptor.indexing import RenderIndex, build_render_index
+from docscriptor.layout.indexing import RenderIndex, build_render_index
+from docscriptor.layout.theme import ParagraphStyle, TextStyle, Theme
 from docscriptor.renderers.context import DocxRenderContext
-from docscriptor.styles import ParagraphStyle, TextStyle, Theme
 
 
 ALIGNMENTS = {
@@ -414,22 +415,14 @@ class DocxRenderer:
                 italic=True,
                 space_after=10,
             )
-        for author_line in document.authors:
+        for line, is_last_for_author in document.settings.iter_author_title_lines():
             self._add_title_line(
                 word_document,
-                author_line,
-                font_size=context.theme.body_font_size,
-                alignment=context.theme.author_alignment,
-                space_after=4,
-            )
-        for index, affiliation_line in enumerate(document.affiliations):
-            self._add_title_line(
-                word_document,
-                affiliation_line,
-                font_size=max(context.theme.body_font_size - 0.5, 9),
-                alignment=context.theme.affiliation_alignment,
-                italic=True,
-                space_after=10 if index == len(document.affiliations) - 1 else 3,
+                list(line.fragments),
+                font_size=self._title_line_font_size(line, context.theme),
+                alignment=self._title_line_alignment(line, context.theme),
+                italic=line.kind == "affiliation",
+                space_after=10 if is_last_for_author else (4 if line.kind == "name" else 3),
             )
 
     def _add_title_line(
@@ -446,13 +439,9 @@ class DocxRenderer:
         paragraph = self._add_paragraph(container)
         paragraph.alignment = ALIGNMENTS[alignment]
         paragraph.paragraph_format.space_after = Pt(space_after)
+        base_style = TextStyle(font_size=font_size, bold=bold, italic=italic)
         for fragment in fragments:
-            run = paragraph.add_run(fragment.plain_text())
-            style = TextStyle(
-                font_size=font_size,
-                bold=bold,
-                italic=italic,
-            ).merged(
+            style = base_style.merged(
                 TextStyle(
                     font_name=fragment.style.font_name,
                     font_size=fragment.style.font_size,
@@ -462,7 +451,32 @@ class DocxRenderer:
                     underline=fragment.style.underline,
                 )
             )
+            if isinstance(fragment, Hyperlink):
+                self._append_hyperlink_runs(
+                    paragraph,
+                    fragment.target,
+                    fragment.label,
+                    internal=fragment.internal,
+                    style=style,
+                    default_size=font_size,
+                )
+                continue
+            run = paragraph.add_run(self._resolve_fragment_text(fragment, None, None))
             self._apply_run_style(run, style, default_size=font_size)
+
+    def _title_line_alignment(self, line: AuthorTitleLine, theme: Theme) -> str:
+        if line.kind == "name":
+            return theme.author_alignment
+        if line.kind == "affiliation":
+            return theme.affiliation_alignment
+        return theme.author_detail_alignment
+
+    def _title_line_font_size(self, line: AuthorTitleLine, theme: Theme) -> float:
+        if line.kind == "name":
+            return theme.body_font_size
+        if line.kind == "affiliation":
+            return max(theme.body_font_size - 0.5, 9)
+        return max(theme.body_font_size - 1, 9)
 
     def _is_paginated_generated_page(self, block: object) -> bool:
         return isinstance(block, (TableList, FigureList, TableOfContents))

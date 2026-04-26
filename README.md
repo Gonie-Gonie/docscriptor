@@ -49,7 +49,7 @@ On Windows, the repository also includes a helper that creates `.venv` and insta
 ## Quick Start
 
 ```python
-from docscriptor import Chapter, Document, Paragraph, Section, Text
+from docscriptor import Chapter, Document, DocumentSettings, Paragraph, Section, Text
 
 report = Document(
     "Hello docscriptor",
@@ -64,7 +64,7 @@ report = Document(
             ),
         ),
     ),
-    author="Docscriptor",
+    settings=DocumentSettings(author="Docscriptor"),
 )
 
 report.save_docx("artifacts/hello.docx")
@@ -102,7 +102,7 @@ The default behavior is intentionally conventional:
 - table support for `TableCell(...)`, `rowspan`, `colspan`, banded rows, and dataframe-like inputs
 - figure support for both stored image files and `savefig()`-compatible Python objects
 - bibliography support through `CitationSource`, `CitationLibrary`, direct citation objects, and BibTeX import
-- optional title matter such as subtitle, author lines, affiliations, and a cover page
+- optional title matter such as subtitle, structured `Author(...)` metadata, affiliations, and a cover page
 - inline hyperlinks and heading/caption anchors for cross-references
 
 ## Example Scripts
@@ -129,15 +129,19 @@ By default they write outputs under:
 - `artifacts/usage-guide/`
 - `artifacts/journal-paper/`
 
+The main exported filenames are:
+
+- `artifacts/usage-guide/docscriptor-user-guide.pdf`
+- `artifacts/journal-paper/docscriptor-development-philosophy.pdf`
+
 ## Project Layout
 
 The package is organized by responsibility:
 
 - `src/docscriptor/document.py` for the root `Document`
 - `src/docscriptor/settings.py` for `DocumentSettings` plus grouped configuration exports
-- `src/docscriptor/components/` for the concrete authoring model (`base.py`, `blocks.py`, `inline.py`, `media.py`, and `generated.py`)
-- `src/docscriptor/styles.py` for low-level style and theme definitions
-- `src/docscriptor/references.py` for bibliography objects and BibTeX import
+- `src/docscriptor/components/` for the concrete authoring model (`base.py`, `blocks.py`, `equations.py`, `generated.py`, `inline.py`, `markup.py`, `media.py`, `people.py`, and `references.py`)
+- `src/docscriptor/layout/` for low-level theme and indexing support
 - `src/docscriptor/renderers/docx.py`, `src/docscriptor/renderers/pdf.py`, and `src/docscriptor/renderers/html.py` for format-specific layout
 
 ## Development
@@ -183,4 +187,4 @@ Create and push a release tag like this:
 .\scripts\release.ps1 0.3.0
 ```
 
-That pushes `v0.3.0`, and the GitHub release workflow builds the wheel/sdist artifacts and attaches them to the matching GitHub Release automatically.
+That pushes `v0.3.0`, and the GitHub release workflow builds the wheel/sdist artifacts plus the two example PDFs and attaches them to the matching GitHub Release automatically.

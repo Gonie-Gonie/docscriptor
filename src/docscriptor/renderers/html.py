@@ -35,12 +35,13 @@ from docscriptor.components.inline import (
     Text,
 )
 from docscriptor.components.media import Figure, Table, TablePlacement, build_table_layout
+from docscriptor.components.people import AuthorTitleLine
 from docscriptor.core import DocscriptorError, PathLike
 from docscriptor.document import Document
-from docscriptor.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
-from docscriptor.indexing import RenderIndex, build_render_index
+from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
+from docscriptor.layout.indexing import RenderIndex, build_render_index
+from docscriptor.layout.theme import ParagraphStyle, Theme
 from docscriptor.renderers.context import HtmlRenderContext
-from docscriptor.styles import ParagraphStyle, Theme
 
 
 class HtmlRenderer:
@@ -553,27 +554,19 @@ class HtmlRenderer:
                     italic=True,
                     class_name="docscriptor-subtitle",
                     theme=context.theme,
+                    space_after=10,
                 )
             )
-        for author_line in document.authors:
+        for line, is_last_for_author in document.settings.iter_author_title_lines():
             lines.append(
                 self._title_line_html(
-                    author_line,
-                    font_size=context.theme.body_font_size,
-                    alignment=context.theme.author_alignment,
-                    class_name="docscriptor-author",
+                    list(line.fragments),
+                    font_size=self._title_line_font_size(line, context.theme),
+                    alignment=self._title_line_alignment(line, context.theme),
+                    italic=line.kind == "affiliation",
+                    class_name=self._title_line_class(line),
                     theme=context.theme,
-                )
-            )
-        for affiliation_line in document.affiliations:
-            lines.append(
-                self._title_line_html(
-                    affiliation_line,
-                    font_size=max(context.theme.body_font_size - 0.5, 9),
-                    alignment=context.theme.affiliation_alignment,
-                    italic=True,
-                    class_name="docscriptor-affiliation",
-                    theme=context.theme,
+                    space_after=10 if is_last_for_author else (4 if line.kind == "name" else 3),
                 )
             )
         return f'<header class="{" ".join(classes)}">{"".join(lines)}</header>'
@@ -588,10 +581,11 @@ class HtmlRenderer:
         theme: Theme,
         bold: bool = False,
         italic: bool = False,
+        space_after: float = 0,
     ) -> str:
         tag = "h1" if class_name == "docscriptor-title" else "p"
         return (
-            f'<{tag} class="{class_name}" style="text-align: {alignment}; font-size: {font_size:.1f}pt;">'
+            f'<{tag} class="{class_name}" style="text-align: {alignment}; font-size: {font_size:.1f}pt; margin: 0 0 {space_after:.1f}pt;">'
             + self._inline_html(
                 fragments,
                 theme,
@@ -602,6 +596,27 @@ class HtmlRenderer:
             )
             + f"</{tag}>"
         )
+
+    def _title_line_alignment(self, line: AuthorTitleLine, theme: Theme) -> str:
+        if line.kind == "name":
+            return theme.author_alignment
+        if line.kind == "affiliation":
+            return theme.affiliation_alignment
+        return theme.author_detail_alignment
+
+    def _title_line_font_size(self, line: AuthorTitleLine, theme: Theme) -> float:
+        if line.kind == "name":
+            return theme.body_font_size
+        if line.kind == "affiliation":
+            return max(theme.body_font_size - 0.5, 9)
+        return max(theme.body_font_size - 1, 9)
+
+    def _title_line_class(self, line: AuthorTitleLine) -> str:
+        if line.kind == "name":
+            return "docscriptor-author"
+        if line.kind == "affiliation":
+            return "docscriptor-affiliation"
+        return "docscriptor-author-detail"
 
     def _render_caption_list(
         self,
@@ -1193,7 +1208,8 @@ body {{
 }}
 .docscriptor-subtitle,
 .docscriptor-author,
-.docscriptor-affiliation {{
+.docscriptor-affiliation,
+.docscriptor-author-detail {{
   margin-top: 0;
 }}
 .docscriptor-paragraph {{

@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable, Sequence, TYPE_CHECKING
 
-from docscriptor.equations import equation_plain_text
-from docscriptor.styles import TextStyle
+from docscriptor.components.equations import equation_plain_text
+from docscriptor.layout.theme import TextStyle
 
 if TYPE_CHECKING:
-    from docscriptor.references import CitationSource
+    from docscriptor.components.references import CitationSource
 
 
 @dataclass(slots=True)
@@ -76,7 +76,7 @@ class Text:
     ) -> list[Text]:
         """Parse simple markdown-like markup into inline fragments."""
 
-        from docscriptor.markup import markup
+        from docscriptor.components.markup import markup
 
         return markup(source, style=style)
 

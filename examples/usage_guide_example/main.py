@@ -10,6 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from docscriptor import (
+    Affiliation,
+    Author,
     Box,
     BoxStyle,
     BulletList,
@@ -51,6 +53,7 @@ OUTPUT_DIR = Path("artifacts") / "usage-guide"
 EXAMPLE_DIR = Path(__file__).resolve().parent
 ASSET_DIR = EXAMPLE_DIR / "assets"
 FIGURE_PATH = ASSET_DIR / "usage-guide-figure.png"
+LOGO_PATH = ASSET_DIR / "docscriptor-logo.png"
 
 RELATED_WORK_BIBTEX = """@article{knuth1984literate,
   author = {Donald E. Knuth},
@@ -222,6 +225,10 @@ def build_usage_guide_document() -> Document:
         ),
         width_inches=3.8,
     )
+    logo_figure = Figure(
+        LOGO_PATH,
+        width_inches=2.0,
+    )
     grouped_content_box = Box(
         Paragraph(
             "Boxes are meant to be stable grouped containers rather than floating page objects. They render inline in document order."
@@ -249,7 +256,7 @@ def build_usage_guide_document() -> Document:
     )
 
     return Document(
-        "Using docscriptor",
+        "Docscriptor User Guide",
         TableList(),
         FigureList(),
         TableOfContents(),
@@ -268,6 +275,7 @@ def build_usage_guide_document() -> Document:
                     bold("Paragraph"),
                     ", then render the same source into DOCX, PDF, and HTML.",
                 ),
+                logo_figure,
                 Paragraph(
                     "This usage guide is intentionally assembled in one ",
                     code("main.py"),
@@ -606,12 +614,16 @@ def build_usage_guide_document() -> Document:
         CommentsPage(),
         ReferencesPage(),
         settings=DocumentSettings(
-            author="docscriptor examples",
+            author="Docscriptor Contributors",
             summary="Detailed usage guide document",
             subtitle="Detailed usage guide and API walkthrough",
-            authors=["docscriptor examples"],
-            affiliations=[
-                italic("Python-first document authoring toolkit"),
+            authors=[
+                Author(
+                    "Docscriptor Contributors",
+                    affiliations=[
+                        Affiliation(label="Python-first document authoring toolkit"),
+                    ],
+                ),
             ],
             cover_page=True,
             theme=Theme(
@@ -631,9 +643,9 @@ def build_usage_guide(output_dir: str | Path) -> tuple[Path, Path]:
     output_path.mkdir(parents=True, exist_ok=True)
 
     document = build_usage_guide_document()
-    docx_path = output_path / "docscriptor-usage-guide.docx"
-    pdf_path = output_path / "docscriptor-usage-guide.pdf"
-    html_path = output_path / "docscriptor-usage-guide.html"
+    docx_path = output_path / "docscriptor-user-guide.docx"
+    pdf_path = output_path / "docscriptor-user-guide.pdf"
+    html_path = output_path / "docscriptor-user-guide.html"
     document.save_docx(docx_path)
     document.save_pdf(pdf_path)
     document.save_html(html_path)
@@ -644,7 +656,7 @@ def main() -> None:
     """Build the guide into the default example output directory."""
 
     docx_path, pdf_path = build_usage_guide(OUTPUT_DIR)
-    html_path = OUTPUT_DIR / "docscriptor-usage-guide.html"
+    html_path = OUTPUT_DIR / "docscriptor-user-guide.html"
     print(f"Wrote {docx_path}")
     print(f"Wrote {pdf_path}")
     print(f"Wrote {html_path}")

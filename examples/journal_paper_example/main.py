@@ -8,6 +8,8 @@ import matplotlib
 import pandas as pd
 
 from docscriptor import (
+    Affiliation,
+    Author,
     BulletList,
     CitationLibrary,
     CitationSource,
@@ -168,7 +170,7 @@ def build_journal_paper_document() -> Document:
     )
 
     return Document(
-        "A Python-Native Workflow for Reproducible Journal Manuscripts",
+        "Docscriptor Development Philosophy",
         Section(
             "Abstract",
             Paragraph(
@@ -350,10 +352,29 @@ def build_journal_paper_document() -> Document:
         ),
         ReferencesPage(),
         settings=DocumentSettings(
-            author="Jiyoon Kim; Minho Lee; Sujin Park",
-            summary="Journal-style example manuscript",
-            authors=["Jiyoon Kim, Minho Lee, and Sujin Park"],
-            affiliations=["Department of Computational Publishing, Seoul"],
+            summary="Journal-style development philosophy paper",
+            authors=[
+                Author(
+                    "Hyeong-Gon Jo",
+                    affiliations=[
+                        Affiliation(
+                            department="Building Simulation LAB",
+                            organization="Seoul National University",
+                            city="Seoul",
+                            country="Republic of Korea",
+                        )
+                    ],
+                    corresponding=True,
+                    orcid="0009-0004-8821-275X",
+                    note="GitHub: @Gonie-Gonie",
+                ),
+                Author(
+                    "Codex",
+                    affiliations=[Affiliation(organization="OpenAI")],
+                    position="Coding Agent",
+                    note="GitHub: openai/codex",
+                ),
+            ],
             theme=Theme(page_number_format="{page}"),
         ),
         citations=manuscript_sources,
@@ -367,9 +388,9 @@ def build_journal_paper(output_dir: str | Path) -> tuple[Path, Path]:
     output_path.mkdir(parents=True, exist_ok=True)
 
     document = build_journal_paper_document()
-    docx_path = output_path / "journal-paper.docx"
-    pdf_path = output_path / "journal-paper.pdf"
-    html_path = output_path / "journal-paper.html"
+    docx_path = output_path / "docscriptor-development-philosophy.docx"
+    pdf_path = output_path / "docscriptor-development-philosophy.pdf"
+    html_path = output_path / "docscriptor-development-philosophy.html"
     document.save_docx(docx_path)
     document.save_pdf(pdf_path)
     document.save_html(html_path)
@@ -380,7 +401,7 @@ def main() -> None:
     """Build the paper into the default example output directory."""
 
     docx_path, pdf_path = build_journal_paper(OUTPUT_DIR)
-    html_path = OUTPUT_DIR / "journal-paper.html"
+    html_path = OUTPUT_DIR / "docscriptor-development-philosophy.html"
     print(f"Wrote {docx_path}")
     print(f"Wrote {pdf_path}")
     print(f"Wrote {html_path}")
