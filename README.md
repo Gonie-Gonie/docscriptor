@@ -6,22 +6,32 @@ It is aimed at report, documentation, and manuscript workflows where content alr
 
 ## Install
 
-Install the core package:
+Docscriptor is not published on PyPI yet, so `pip install docscriptor` will not work at the moment.
+
+For normal local use, clone the repository and install it from the checkout:
 
 ```powershell
-pip install docscriptor
+git clone https://github.com/Gonie-Gonie/pydocs.git
+cd pydocs
+pip install -e .
 ```
 
-Install the extra dependencies used by the example scripts:
+If you want to run the bundled example scripts as well:
 
 ```powershell
-pip install "docscriptor[examples]"
+pip install -e ".[examples]"
 ```
 
-For local development:
+For local development and tests:
 
 ```powershell
 pip install -e ".[dev]"
+```
+
+On Windows, the repository also includes a helper that creates `.venv` and installs the development dependencies:
+
+```powershell
+.\scripts\setup-repo.cmd
 ```
 
 ## Quick Start
@@ -74,6 +84,8 @@ The default behavior is intentionally conventional:
 - table support for `TableCell(...)`, `rowspan`, `colspan`, banded rows, and dataframe-like inputs
 - figure support for both stored image files and `savefig()`-compatible Python objects
 - bibliography support through `CitationSource`, `CitationLibrary`, direct citation objects, and BibTeX import
+- optional title matter such as subtitle, author lines, affiliations, and a cover page
+- inline hyperlinks and heading/caption anchors for cross-references
 
 ## Example Scripts
 
@@ -82,11 +94,11 @@ The repository includes two standalone example directories:
 - `examples/usage_guide_example/`
 - `examples/journal_paper_example/`
 
-Run them directly:
+Run them directly from the repository checkout:
 
 ```powershell
-python .\examples\usage_guide_example\main.py
-python .\examples\journal_paper_example\main.py
+.\.venv\Scripts\python.exe .\examples\usage_guide_example\main.py
+.\.venv\Scripts\python.exe .\examples\journal_paper_example\main.py
 ```
 
 What they show:
@@ -125,14 +137,21 @@ Or:
 powershell -ExecutionPolicy Bypass -File .\scripts\setup-repo.ps1
 ```
 
+That setup script creates `.venv` and installs `.[dev]`.
+If dependency metadata changes later, rerun the setup script or refresh the environment with:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
+
 Run tests:
 
 ```powershell
-pytest
+.\.venv\Scripts\python.exe -m pytest
 ```
 
 Build distribution artifacts:
 
 ```powershell
-python -m build
+.\.venv\Scripts\python.exe -m build
 ```
