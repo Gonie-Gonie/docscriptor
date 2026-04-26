@@ -8,7 +8,19 @@ It is aimed at report, documentation, and manuscript workflows where content alr
 
 Docscriptor is not published on PyPI yet, so `pip install docscriptor` will not work at the moment.
 
-For normal local use, clone the repository and install it from the checkout:
+For normal use, install it directly from GitHub:
+
+```powershell
+pip install "docscriptor @ git+https://github.com/Gonie-Gonie/pydocs.git"
+```
+
+To upgrade later:
+
+```powershell
+pip install --upgrade "docscriptor @ git+https://github.com/Gonie-Gonie/pydocs.git"
+```
+
+If you want to work from a repository checkout, run the bundled example scripts, or contribute locally:
 
 ```powershell
 git clone https://github.com/Gonie-Gonie/pydocs.git
@@ -16,7 +28,7 @@ cd pydocs
 pip install -e .
 ```
 
-If you want to run the bundled example scripts as well:
+If you want the optional example dependencies from a local checkout:
 
 ```powershell
 pip install -e ".[examples]"
@@ -28,7 +40,7 @@ For local development and tests:
 pip install -e ".[dev]"
 ```
 
-On Windows, the repository also includes a helper that creates `.venv` and installs the development dependencies:
+On Windows, the repository also includes a helper that creates `.venv` and installs the development dependencies from the checkout:
 
 ```powershell
 .\scripts\setup-repo.cmd
