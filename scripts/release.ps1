@@ -45,4 +45,4 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Pushed $tag."
-Write-Host "GitHub Actions will build release artifacts and publish the GitHub Release."
+Write-Host "GitHub Actions will build release artifacts, render the guide PDFs, and publish the GitHub Release."
