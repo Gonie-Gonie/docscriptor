@@ -61,96 +61,79 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     assert html_path.exists()
     assert (Path(paper_example.__file__).resolve().parent / "assets" / "benchmark_results.csv").exists()
     assert (Path(paper_example.__file__).resolve().parent / "assets" / "ablation_results.csv").exists()
-    assert (Path(paper_example.__file__).resolve().parent / "assets" / "system-diagram.png").exists()
 
     word_document = WordDocument(docx_path)
     paragraph_texts = [paragraph.text for paragraph in word_document.paragraphs]
     pdf_reader = PdfReader(BytesIO(pdf_path.read_bytes()))
     pdf_text = "\n".join(page.extract_text() or "" for page in pdf_reader.pages)
-    normalized_pdf_text = " ".join(pdf_text.split())
+    normalized_html_text = _normalized_html_text(html_path)
+    html_text = html_path.read_text(encoding="utf-8")
 
     assert "Docscriptor Development Philosophy" in paragraph_texts
-    assert "Hyeong-Gon Jo*" in paragraph_texts
-    assert "Codex" in paragraph_texts
-    assert "Building Simulation LAB, Seoul National University, Seoul, Republic of Korea" in paragraph_texts
-    assert "OpenAI" in paragraph_texts
+    assert "Hyeong-Gon Jo [1]*, Codex [2]" in paragraph_texts
+    assert "[1] Building Simulation LAB, Seoul National University, Seoul, Republic of Korea" in paragraph_texts
+    assert "[2] OpenAI" in paragraph_texts
+    assert "* Corresponding author: Hyeong-Gon Jo" in paragraph_texts
     assert any("ORCID 0009-0004-8821-275X" in text for text in paragraph_texts)
     assert "Abstract" in paragraph_texts
     assert "Highlights" in paragraph_texts
-    assert "Acknowledgements" in paragraph_texts
     assert "1 Introduction" in paragraph_texts
-    assert "2 Related Work" in paragraph_texts
-    assert "3 Methods" in paragraph_texts
-    assert "4 Experimental Setup" in paragraph_texts
-    assert "5 Results" in paragraph_texts
-    assert "7 Discussion" in paragraph_texts
-    assert "8 Conclusion" in paragraph_texts
+    assert "2 Workflow Design" in paragraph_texts
+    assert "2.1 Evidence Traceability" in paragraph_texts
+    assert "3 Study Assets" in paragraph_texts
+    assert "4 Results" in paragraph_texts
+    assert "4.1 Benchmark Frontier" in paragraph_texts
+    assert "4.2 Ablation Signals" in paragraph_texts
+    assert "4.3 Late-Revision Cost" in paragraph_texts
+    assert "5 Discussion" in paragraph_texts
+    assert "6 Conclusion" in paragraph_texts
+    assert "Acknowledgements" in paragraph_texts
     assert "References" in paragraph_texts
-    assert "3.1 Asset Layout" in paragraph_texts
-    assert "3.2 Data Integration" in paragraph_texts
-    assert "5.1 Benchmark Performance" in paragraph_texts
-    assert "5.2 Ablation Study" in paragraph_texts
     assert all(text not in paragraph_texts for text in ("Contents", "List of Tables", "List of Figures"))
     assert any("pandas.read_csv" in text for text in paragraph_texts)
     assert any("matplotlib" in text for text in paragraph_texts)
-    assert any("benchmark CSV" in text for text in paragraph_texts)
-    assert any("As summarized in Table 2" in text and "Figure 2" in text for text in paragraph_texts)
-    assert paragraph_texts.count("Table 1. Corpus summary used for the manuscript automation study.") >= 1
-    assert paragraph_texts.count("Table 2. Benchmark results loaded directly from the experiment CSV file.") >= 1
-    assert paragraph_texts.count("Table 3. Ablation results for major document-pipeline design decisions.") >= 1
-    assert paragraph_texts.count("Figure 1. System overview diagram stored under the example asset directory.") >= 1
-    assert paragraph_texts.count("Figure 2. Accuracy and latency curves generated directly from the benchmark CSV with matplotlib.") >= 1
-    assert paragraph_texts.count("Figure 3. Ablation accuracy chart generated from the ablation CSV with matplotlib.") >= 1
+    assert any("Traceability pipeline used in the study" in text for text in paragraph_texts)
+    assert any("Quality-latency frontier derived directly from the benchmark CSV used in the manuscript." in text for text in paragraph_texts)
+    assert any("Estimated late-revision synchronization effort comparing manual workflows with a docscriptor-based workflow." in text for text in paragraph_texts)
     assert len(word_document.tables) == 3
     assert len(word_document.inline_shapes) == 3
 
     assert "Docscriptor Development Philosophy" in pdf_text
+    assert "Hyeong-Gon Jo [1]*, Codex [2]" in pdf_text
     assert "Abstract" in pdf_text
     assert "Highlights" in pdf_text
     assert "Introduction" in pdf_text
-    assert "Methods" in pdf_text
+    assert "Workflow Design" in pdf_text
+    assert "Evidence Traceability" in pdf_text
+    assert "Study Assets" in pdf_text
     assert "Results" in pdf_text
     assert "Discussion" in pdf_text
-    assert "Acknowledgements" in pdf_text
+    assert "Conclusion" in pdf_text
     assert "References" in pdf_text
-    assert "Asset Layout" in pdf_text
-    assert "Data Integration" in pdf_text
-    assert "Benchmark Performance" in pdf_text
-    assert "Ablation Study" in pdf_text
     assert "Contents" not in pdf_text
     assert "List of Tables" not in pdf_text
     assert "List of Figures" not in pdf_text
     assert "pandas.read_csv" in pdf_text
     assert "matplotlib" in pdf_text
-    assert "benchmark CSV" in pdf_text
-    assert "Literate Programming" in normalized_pdf_text
-    assert "Statistical Analyses and Reproducible Research" in normalized_pdf_text
-    assert "https://doi.org/10.1093/comjnl/27.2.97" in normalized_pdf_text
-    assert "https://doi.org/10.1198/106186007X178663" in normalized_pdf_text
-    assert "https://yihui.org/knitr/" in normalized_pdf_text
+    assert "Traceability pipeline used in the study" in pdf_text
+    assert "Benchmark results loaded directly from the experiment CSV file." in pdf_text
+    assert "Ablation results for the manuscript automation workflow." in pdf_text
+    assert "late-revision synchronization effort" in pdf_text
+    assert "docscriptor-based workflow" in pdf_text
+    assert "https://doi.org/10.1093/comjnl/27.2.97" in pdf_text
+    assert "https://doi.org/10.1198/106186007X178663" in pdf_text
+    assert "https://yihui.org/knitr/" in pdf_text
     assert 6 <= len(pdf_reader.pages) <= 8
     assert _pdf_image_draw_count(pdf_path) == 3
 
-    html_text = html_path.read_text(encoding="utf-8")
-    normalized_html_text = _normalized_html_text(html_path)
     assert "Docscriptor Development Philosophy" in normalized_html_text
-    assert "Hyeong-Gon Jo*" in normalized_html_text
-    assert "Codex" in normalized_html_text
-    assert "Building Simulation LAB, Seoul National University, Seoul, Republic of Korea" in normalized_html_text
-    assert "OpenAI" in normalized_html_text
-    assert "Abstract" in normalized_html_text
-    assert "Highlights" in normalized_html_text
-    assert "Introduction" in normalized_html_text
-    assert "Methods" in normalized_html_text
-    assert "Experimental Setup" in normalized_html_text
-    assert "Results" in normalized_html_text
-    assert "Discussion" in normalized_html_text
-    assert "Acknowledgements" in normalized_html_text
-    assert "References" in normalized_html_text
-    assert "DOCX, PDF, and HTML outputs are rendered from the same source document." in normalized_html_text
-    assert "The same manuscript source renders to DOCX, PDF, and HTML for review and submission." in normalized_html_text
-    assert "pandas.read_csv" in normalized_html_text
-    assert "matplotlib" in normalized_html_text
+    assert "Hyeong-Gon Jo [1]*, Codex [2]" in normalized_html_text
+    assert "Evidence Traceability" in normalized_html_text
+    assert "Study Assets" in normalized_html_text
+    assert "Benchmark Frontier" in normalized_html_text
+    assert "Ablation Signals" in normalized_html_text
+    assert "Late-Revision Cost" in normalized_html_text
+    assert "The workflow studied here treats the manuscript itself as code." in normalized_html_text
     assert "https://doi.org/10.1093/comjnl/27.2.97" in normalized_html_text
     assert "https://doi.org/10.1198/106186007X178663" in normalized_html_text
     assert "https://yihui.org/knitr/" in normalized_html_text

@@ -49,7 +49,7 @@ On Windows, the repository also includes a helper that creates `.venv` and insta
 ## Quick Start
 
 ```python
-from docscriptor import Chapter, Document, DocumentSettings, Paragraph, Section, Text
+from docscriptor import Chapter, Document, DocumentSettings, Paragraph, Section, bold
 
 report = Document(
     "Hello docscriptor",
@@ -59,7 +59,7 @@ report = Document(
             "Overview",
             Paragraph(
                 "This document was defined with ",
-                Text.bold("Python objects"),
+                bold("Python objects"),
                 ".",
             ),
         ),
@@ -79,7 +79,7 @@ Document metadata and renderer defaults live under `DocumentSettings(...)`, so t
 Docscriptor tries to keep the source readable:
 
 - create objects with classes such as `Document`, `Chapter`, `Section`, `Paragraph`, `Table`, and `Figure`
-- apply inline actions with methods such as `Text.bold(...)`, `Text.italic(...)`, `Text.code(...)`, `Text.from_markup(...)`, `Comment.annotated(...)`, `Footnote.annotated(...)`, and `CitationSource.cite()`
+- apply inline actions with helpers such as `bold(...)`, `italic(...)`, `code(...)`, `Text.from_markup(...)`, `Comment.annotated(...)`, `Footnote.annotated(...)`, and `CitationSource.cite()`
 - keep the document tree explicit so the Python structure matches the final output structure
 - move document-wide metadata and theme options into `DocumentSettings(...)` when you want a single place to adjust title matter, cover pages, and renderer defaults
 
@@ -97,12 +97,12 @@ The default behavior is intentionally conventional:
 - DOCX, PDF, and HTML rendering from the same document tree
 - block objects for paragraphs, lists, code blocks, equations, boxes, tables, figures, and generated pages
 - portable comments and footnotes that stay stable across DOCX, PDF, and HTML
-- footnotes are collected automatically by default, while `FootnotesPage()` remains available for custom placement
+- footnotes target page-bottom placement by default when the renderer supports it; `Theme(footnote_placement="document")` keeps the collected-notes pattern
 - captioned tables and figures with automatic numbering and in-text references
 - table support for `TableCell(...)`, `rowspan`, `colspan`, banded rows, and dataframe-like inputs
 - figure support for both stored image files and `savefig()`-compatible Python objects
 - bibliography support through `CitationSource`, `CitationLibrary`, direct citation objects, and BibTeX import
-- optional title matter such as subtitle, structured `Author(...)` metadata, affiliations, and a cover page
+- optional title matter such as subtitle, structured `Author(...)` metadata, `AuthorLayout(...)`, affiliations, and a cover page
 - inline hyperlinks and heading/caption anchors for cross-references
 
 ## Example Scripts
@@ -188,3 +188,5 @@ Create and push a release tag like this:
 ```
 
 That pushes `v0.3.0`, and the GitHub release workflow builds the wheel/sdist artifacts plus the two example PDFs and attaches them to the matching GitHub Release automatically.
+
+If you want a curated release body instead of GitHub's generated notes, add a file such as `release-notes/v0.3.0.md` before pushing the tag.

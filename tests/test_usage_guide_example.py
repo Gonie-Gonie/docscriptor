@@ -5,10 +5,9 @@ from html import unescape
 from io import BytesIO
 from pathlib import Path
 import re
+import zipfile
 
 from docx import Document as WordDocument
-from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from pypdf import PdfReader
 
 
@@ -61,141 +60,85 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert docx_path.exists()
     assert pdf_path.exists()
     assert html_path.exists()
-    assert (Path(usage_guide.__file__).resolve().parent / "assets" / "usage-guide-figure.png").exists()
     assert (Path(usage_guide.__file__).resolve().parent / "assets" / "docscriptor-logo.png").exists()
 
     word_document = WordDocument(docx_path)
     paragraph_texts = [paragraph.text for paragraph in word_document.paragraphs]
-    table_text = "\n".join(
-        cell.text
-        for table in word_document.tables
-        for row in table.rows
-        for cell in row.cells
-    )
     pdf_reader = PdfReader(BytesIO(pdf_path.read_bytes()))
     pdf_text = "\n".join(page.extract_text() or "" for page in pdf_reader.pages)
-
-    assert "Docscriptor User Guide" in paragraph_texts
-    assert "List of Tables" in paragraph_texts
-    assert "List of Figures" in paragraph_texts
-    assert "Contents" in paragraph_texts
-    assert "Footnotes" in paragraph_texts
-    assert "Comments" in paragraph_texts
-    assert "References" in paragraph_texts
-    assert "1 Getting Started" in paragraph_texts
-    assert "1.1 What docscriptor is" in paragraph_texts
-    assert "1.2 Quick Start" in paragraph_texts
-    assert "2 Document Model" in paragraph_texts
-    assert "2.1 Structural objects" in paragraph_texts
-    assert "2.2 Inline actions" in paragraph_texts
-    assert "2.3 Generated pages" in paragraph_texts
-    assert "3 Layout and Styling" in paragraph_texts
-    assert "3.2 Heading and list numbering" in paragraph_texts
-    assert "3.3 Boxes and grouped content" in paragraph_texts
-    assert "4 Tables and Figures" in paragraph_texts
-    assert "4.1 Tables" in paragraph_texts
-    assert "4.2 Figures" in paragraph_texts
-    assert "5 Notes and References" in paragraph_texts
-    assert "6 Project Layout" in paragraph_texts
-    assert "7 End-to-End Workflow" in paragraph_texts
-    assert any("bold(...)" in text for text in paragraph_texts)
-    assert any("Text.from_markup(...)" in text for text in paragraph_texts)
-    assert any("The repository itself can be cited directly as [1]" in text for text in paragraph_texts)
-    assert any("generated comments page" in text for text in paragraph_texts)
-    assert any("Portable footnotes stay stable" in text for text in paragraph_texts)
-    assert any("This footnote was created from a table cell inside the usage guide." in text for text in paragraph_texts)
-    assert any("dx = (" in text and ")/(3)" in text for text in paragraph_texts)
-    assert any("This usage guide is intentionally assembled in one main.py file." in text for text in paragraph_texts)
-    assert any("The smallest useful workflow is: import the classes you need" in text for text in paragraph_texts)
-    assert "Detailed usage guide and API walkthrough" in paragraph_texts
-    assert "Docscriptor Contributors" in paragraph_texts
-    assert any("Python-first document authoring toolkit" in text for text in paragraph_texts)
-    assert "Grouped Content Example" in table_text
-    assert any("examples/journal_paper_example/main.py" in text for text in paragraph_texts)
-    assert all(table.alignment == WD_TABLE_ALIGNMENT.CENTER for table in word_document.tables)
-    expected_captions = {
-        "Table 1. Rendering goals and output formats.",
-        "Table 2. Core authoring objects by responsibility.",
-        "Table 3. Generated pages available in a document.",
-        "Table 4. Default numbering behavior and customization hooks.",
-        "Table 5. Table layout options from simple headers to merged spans.",
-        "Figure 1. Example figure loaded directly from the example asset directory.",
-    }
-    caption_alignments = {
-        paragraph.text: paragraph.alignment
-        for paragraph in word_document.paragraphs
-        if paragraph.text in expected_captions
-    }
-    assert set(caption_alignments) == expected_captions
-    assert all(alignment == WD_ALIGN_PARAGRAPH.CENTER for alignment in caption_alignments.values())
-    assert all(
-        paragraph.alignment == WD_ALIGN_PARAGRAPH.CENTER
-        for paragraph in word_document.paragraphs
-        if "<w:drawing" in paragraph._p.xml
-    )
-    assert 'w:instr="PAGE"' in word_document.sections[0].footer.paragraphs[0]._p.xml
-    assert len(word_document.tables) == 6
-    assert len(word_document.inline_shapes) == 3
-    assert paragraph_texts.count("Table 1. Rendering goals and output formats.") >= 2
-    assert paragraph_texts.count("Table 2. Core authoring objects by responsibility.") >= 2
-    assert paragraph_texts.count("Table 3. Generated pages available in a document.") >= 2
-    assert paragraph_texts.count("Table 4. Default numbering behavior and customization hooks.") >= 2
-    assert paragraph_texts.count("Table 5. Table layout options from simple headers to merged spans.") >= 2
-    assert paragraph_texts.count("Figure 1. Example figure loaded directly from the example asset directory.") >= 2
-
-    assert "Docscriptor User Guide" in pdf_text
-    assert "List of Tables" in pdf_text
-    assert "List of Figures" in pdf_text
-    assert "Contents" in pdf_text
-    assert "Footnotes" in pdf_text
-    assert "Comments" in pdf_text
-    assert "References" in pdf_text
-    assert "Getting Started" in pdf_text
-    assert "Document Model" in pdf_text
-    assert "Quick Start" in pdf_text
-    assert "Structural objects" in pdf_text
-    assert "Inline actions" in pdf_text
-    assert "Generated pages" in pdf_text
-    assert "Boxes and grouped content" in pdf_text
-    assert "Project Layout" in pdf_text
-    assert "End-to-End Workflow" in pdf_text
-    assert "The repository itself can be cited directly as [1]" in pdf_text
-    assert "Portable footnotes stay stable" in pdf_text
-    assert "bold(...)" in pdf_text
-    assert "Text.from_markup(...)" in pdf_text
-    assert "colored accents" in pdf_text
-    assert "Literate Programming" in pdf_text
-    assert "https://github.com/Gonie-Gonie/pydocs" in pdf_text
-    assert "This footnote was created from a table cell inside the usage guide." in pdf_text
-    assert "examples/journal_paper_example/main.py" in pdf_text
-    assert len(pdf_reader.pages) >= 10
-    assert _pdf_image_draw_count(pdf_path) == 3
-
     html_text = html_path.read_text(encoding="utf-8")
     normalized_html_text = _normalized_html_text(html_path)
+
+    assert "Docscriptor User Guide" in paragraph_texts
+    assert "Reference-style guide for structured Python document authoring" in paragraph_texts
+    assert "Docscriptor Contributors" in paragraph_texts
+    assert "Open-source documentation workflow" in paragraph_texts
+    assert "Hyeong-Gon Jo" in paragraph_texts
+    assert "Repository steward" in paragraph_texts
+    assert "Guide Cover" in paragraph_texts
+    assert "Contents" in paragraph_texts
+    assert "List of Tables" in paragraph_texts
+    assert "List of Figures" in paragraph_texts
+    assert "Comments" in paragraph_texts
+    assert "References" in paragraph_texts
+    assert "1 Overview" in paragraph_texts
+    assert "2 Metadata and Title Matter" in paragraph_texts
+    assert "3 Document Model" in paragraph_texts
+    assert "4 Tables, Figures, and Cross-References" in paragraph_texts
+    assert "5 Notes, Comments, and References" in paragraph_texts
+    assert "6 Layout and Pagination" in paragraph_texts
+    assert "7 Project Structure and Scaling Up" in paragraph_texts
+    assert any("AuthorLayout(mode='stacked')" in text for text in paragraph_texts)
+    assert any("Theme(footnote_placement='document')" in text for text in paragraph_texts)
+    assert any("A reading map for the guide." in text for text in paragraph_texts)
+    assert any("Renderer-specific behavior for notes, review workflows, and cross-reference stability." in text for text in paragraph_texts)
+    assert any("portable footnotes exactly where the text appears." in text for text in paragraph_texts)
+    assert any("github.com/Gonie-Gonie/pydocs" in text for text in paragraph_texts)
+    assert any("The journal example at examples/journal_paper_example/main.py" in text for text in paragraph_texts)
+    assert "Footnotes" not in [text for text in paragraph_texts if text == "Footnotes"]
+    assert len(word_document.tables) == 7
+    assert len(word_document.inline_shapes) == 4
+    assert len(word_document.comments) == 2
+    assert next(paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text == "Comments") == "Heading 2"
+    assert next(paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text == "References") == "Heading 2"
+
+    with zipfile.ZipFile(docx_path) as archive:
+        footnotes_xml = archive.read("word/footnotes.xml").decode("utf-8")
+    assert "DOCX uses page footnotes by default." in footnotes_xml
+    assert "Portable footnotes are authored inline" in footnotes_xml
+    assert all("CommentsPage() collects these review notes onto a dedicated generated page." in "\n".join(p.text for p in comment.paragraphs) or "This note will show up again on the generated comments page." in "\n".join(p.text for p in comment.paragraphs) for comment in word_document.comments)
+
+    assert "Docscriptor User Guide" in pdf_text
+    assert "Contents" in pdf_text
+    assert "List of Tables" in pdf_text
+    assert "List of Figures" in pdf_text
+    assert "Comments" in pdf_text
+    assert "References" in pdf_text
+    assert "Guide Cover" in pdf_text
+    assert "AuthorLayout(mode='stacked')" in pdf_text
+    assert "Theme(footnote_placement='document')" in pdf_text
+    assert "A reading map for the guide." in pdf_text
+    assert "Renderer-specific behavior for notes, review workflows, and cross-reference stability." in pdf_text
+    assert "Portable footnotes are authored inline" in pdf_text
+    assert "github.com/Gonie-Gonie/pydocs" in pdf_text
+    assert "Footnotes" in pdf_text
+    assert len(pdf_reader.pages) >= 14
+    assert _pdf_image_draw_count(pdf_path) == 4
+
     assert "Docscriptor User Guide" in normalized_html_text
+    assert "Guide Cover" in normalized_html_text
     assert "List of Tables" in normalized_html_text
     assert "List of Figures" in normalized_html_text
-    assert "Contents" in normalized_html_text
-    assert "Footnotes" in normalized_html_text
     assert "Comments" in normalized_html_text
     assert "References" in normalized_html_text
-    assert "1 Getting Started" in normalized_html_text
-    assert "2 Document Model" in normalized_html_text
-    assert "3 Layout and Styling" in normalized_html_text
-    assert "4 Tables and Figures" in normalized_html_text
-    assert "5 Notes and References" in normalized_html_text
-    assert "6 Project Layout" in normalized_html_text
-    assert "7 End-to-End Workflow" in normalized_html_text
-    assert "save_html(...)" in normalized_html_text
-    assert "The same document tree can render to DOCX, PDF, and HTML." in normalized_html_text
-    assert "Portable footnotes stay stable in DOCX, PDF, and HTML" in normalized_html_text
-    assert "https://github.com/Gonie-Gonie/pydocs" in normalized_html_text
-    assert "examples/journal_paper_example/main.py" in normalized_html_text
-    assert 'class="docscriptor-table-wrapper" style="' in html_text
-    assert 'class="docscriptor-figure" style="padding: 16px; text-align: center;' in html_text
-    assert 'class="docscriptor-caption docscriptor-table-caption" style="text-align: center;' in html_text
-    assert 'margin-left: auto; margin-right: auto;' in html_text
-    assert html_text.count("data:image/png;base64,") == 3
+    assert "AuthorLayout(mode='stacked')" in normalized_html_text
+    assert "Theme(footnote_placement='document')" in normalized_html_text
+    assert "CommentsPage() collects these review notes onto a dedicated generated page." in normalized_html_text
+    assert "Portable footnotes are authored inline" in normalized_html_text
+    assert "github.com/Gonie-Gonie/pydocs" in normalized_html_text
+    assert "Footnotes" in normalized_html_text
+    assert html_text.count("data:image/png;base64,") == 4
     assert 'href="#table_1"' in html_text
     assert 'href="#figure_1"' in html_text
+    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-1"' in html_text
+    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-2"' in html_text

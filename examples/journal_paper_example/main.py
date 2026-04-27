@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from textwrap import fill
 
 import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.patches import FancyBboxPatch
 
 from docscriptor import (
     Affiliation,
@@ -26,53 +32,190 @@ from docscriptor import (
     italic,
 )
 
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
-
 
 OUTPUT_DIR = Path("artifacts") / "journal-paper"
 EXAMPLE_DIR = Path(__file__).resolve().parent
 ASSET_DIR = EXAMPLE_DIR / "assets"
-SYSTEM_DIAGRAM_PATH = ASSET_DIR / "system-diagram.png"
 RESULTS_CSV_PATH = ASSET_DIR / "benchmark_results.csv"
 ABLATION_CSV_PATH = ASSET_DIR / "ablation_results.csv"
 
 
-def build_performance_figure(results_df: pd.DataFrame):
-    """Create a matplotlib figure directly from the benchmark CSV data."""
+def _wrapped_lines(lines: list[str], *, width: int) -> list[str]:
+    wrapped: list[str] = []
+    for line in lines:
+        wrapped.extend(fill(line, width=width).splitlines())
+    return wrapped
 
-    figure, axes = plt.subplots(1, 2, figsize=(7.0, 3.1))
 
-    axes[0].bar(results_df["Model"], results_df["Accuracy"], color="#4C78A8")
-    axes[0].set_title("Accuracy")
-    axes[0].set_ylabel("Score")
-    axes[0].set_ylim(0.84, 0.96)
-    axes[0].tick_params(axis="x", rotation=18)
-
-    axes[1].plot(
-        results_df["Model"],
-        results_df["Latency_ms"],
-        marker="o",
-        linewidth=2,
-        color="#F58518",
+def _add_box(
+    axis: object,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    color_value: str,
+    title: str,
+    lines: list[str],
+    *,
+    wrap_width: int = 21,
+) -> None:
+    patch = FancyBboxPatch(
+        (x, y),
+        width,
+        height,
+        boxstyle="round,pad=0.02,rounding_size=0.03",
+        linewidth=1.2,
+        edgecolor="#455E74",
+        facecolor=color_value,
     )
-    axes[1].set_title("Latency")
-    axes[1].set_ylabel("ms")
-    axes[1].tick_params(axis="x", rotation=18)
+    axis.add_patch(patch)
+    axis.text(
+        x + width / 2,
+        y + height - 0.07,
+        title,
+        ha="center",
+        va="top",
+        fontsize=10.5,
+        weight="bold",
+        color="#183244",
+        clip_on=True,
+    )
+    wrapped = _wrapped_lines(lines, width=wrap_width)
+    top = y + height - 0.16
+    bottom = y + 0.07
+    step = min(0.065, max((top - bottom) / max(len(wrapped), 1), 0.04))
+    for index, line in enumerate(wrapped):
+        axis.text(
+            x + 0.03,
+            top - (index * step),
+            line,
+            ha="left",
+            va="top",
+            fontsize=8.6,
+            color="#23394A",
+            clip_on=True,
+        )
 
+
+def build_traceability_figure():
+    """Create a diagram showing the manuscript workflow being studied."""
+
+    figure, axis = plt.subplots(figsize=(8.0, 3.8))
+    axis.set_xlim(0, 1)
+    axis.set_ylim(0, 1)
+    axis.axis("off")
+
+    _add_box(
+        axis,
+        0.05,
+        0.22,
+        0.205,
+        0.6,
+        "#EAF3FB",
+        "Evidence Sources",
+        [
+            "Benchmark CSV files",
+            "Static diagrams and logos",
+            "Citation metadata",
+        ],
+    )
+    _add_box(
+        axis,
+        0.31,
+        0.16,
+        0.225,
+        0.72,
+        "#F8F2E8",
+        "Python Authoring Layer",
+        [
+            "Table.from_dataframe(...)",
+            "Figure(matplotlib_object)",
+            "Structured sections and notes",
+        ],
+        wrap_width=22,
+    )
+    _add_box(
+        axis,
+        0.59,
+        0.22,
+        0.17,
+        0.6,
+        "#EDF7EC",
+        "Traceability Checks",
+        [
+            "Caption numbering",
+            "Cross-reference targets",
+            "Generated bibliography",
+        ],
+    )
+    _add_box(
+        axis,
+        0.80,
+        0.22,
+        0.15,
+        0.6,
+        "#FCEDE7",
+        "Submission Outputs",
+        [
+            "DOCX review copy",
+            "PDF submission",
+            "HTML sharing draft",
+        ],
+        wrap_width=18,
+    )
+
+    arrow_kwargs = {"arrowstyle": "->", "lw": 2.0, "color": "#48627A"}
+    axis.annotate("", xy=(0.31, 0.5), xytext=(0.25, 0.5), arrowprops=arrow_kwargs)
+    axis.annotate("", xy=(0.59, 0.5), xytext=(0.53, 0.5), arrowprops=arrow_kwargs)
+    axis.annotate("", xy=(0.80, 0.5), xytext=(0.75, 0.5), arrowprops=arrow_kwargs)
+    axis.text(0.5, 0.93, "The workflow keeps manuscript claims downstream of the evidence that supports them.", ha="center", fontsize=11, color="#183244")
     figure.tight_layout()
     return figure
 
 
-def build_ablation_figure(ablation_df: pd.DataFrame):
-    """Create a matplotlib figure from the ablation CSV data."""
+def build_quality_latency_figure(results_df: pd.DataFrame):
+    """Plot the quality-latency frontier from the benchmark CSV."""
 
-    figure, axis = plt.subplots(figsize=(6.2, 3.0))
-    axis.barh(ablation_df["Setting"], ablation_df["Accuracy"], color="#54A24B")
-    axis.set_xlabel("Accuracy")
-    axis.set_xlim(0.88, 0.95)
-    axis.set_title("Ablation Accuracy")
+    figure, axis = plt.subplots(figsize=(6.4, 3.4))
+    palette = ["#6C8DB0", "#4F8DA1", "#3F9D79", "#D07B42"]
+    axis.scatter(results_df["Latency_ms"], results_df["Accuracy"], s=180, c=palette, edgecolors="#173042", linewidths=1.0)
+    axis.plot(results_df["Latency_ms"], results_df["Accuracy"], color="#7B8E9E", linestyle="--", linewidth=1.5)
+    for _, row in results_df.iterrows():
+        axis.annotate(
+            row["Model"],
+            (row["Latency_ms"], row["Accuracy"]),
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha="center",
+            fontsize=8.5,
+            color="#173042",
+        )
+    axis.set_xlabel("Latency (ms)")
+    axis.set_ylabel("Accuracy")
+    axis.set_ylim(0.865, 0.95)
+    axis.set_title("Quality-Latency Frontier")
+    axis.grid(alpha=0.25, linestyle=":")
+    figure.tight_layout()
+    return figure
+
+
+def build_revision_effort_figure():
+    """Plot the expected synchronization effort during late revisions."""
+
+    revision_rounds = [1, 2, 3, 4]
+    manual_minutes = [36, 49, 63, 79]
+    docscriptor_minutes = [18, 21, 25, 29]
+
+    figure, axis = plt.subplots(figsize=(6.4, 3.4))
+    axis.plot(revision_rounds, manual_minutes, marker="o", linewidth=2.5, color="#D06A44", label="Manual document synchronization")
+    axis.plot(revision_rounds, docscriptor_minutes, marker="o", linewidth=2.5, color="#3F8F6B", label="Docscriptor-based synchronization")
+    axis.fill_between(revision_rounds, docscriptor_minutes, manual_minutes, color="#F6D8CB", alpha=0.45)
+    axis.set_xlabel("Late revision round")
+    axis.set_ylabel("Estimated minutes per update")
+    axis.set_xticks(revision_rounds)
+    axis.set_title("Operational Cost of Late Revisions")
+    axis.legend(frameon=False, fontsize=8.5)
+    axis.grid(alpha=0.25, linestyle=":")
     figure.tight_layout()
     return figure
 
@@ -86,7 +229,7 @@ def build_journal_paper_document() -> Document:
         [
             ["Training", 18420, "system logs + editorial metadata"],
             ["Validation", 2400, "held-out internal documents"],
-            ["Test", 2600, "final blind review split"],
+            ["Test", 2600, "blind review split"],
         ],
         columns=["Split", "Documents", "Source"],
     )
@@ -120,10 +263,19 @@ def build_journal_paper_document() -> Document:
         ]
     )
 
+    dataset_table = Table.from_dataframe(
+        dataset_df,
+        caption="Study corpus used to evaluate the manuscript workflow.",
+        column_widths=[1.2, 1.2, 3.2],
+        style=TableStyle(
+            header_background_color="#E7EEF7",
+            alternate_row_background_color="#FAFCFE",
+        ),
+    )
     benchmark_table = Table.from_dataframe(
         results_df[["Model", "Accuracy", "F1", "Latency_ms"]],
         caption="Benchmark results loaded directly from the experiment CSV file.",
-        column_widths=[1.8, 1.1, 0.9, 1.2],
+        column_widths=[2.0, 1.0, 0.9, 1.3],
         style=TableStyle(
             header_background_color="#DCE8F4",
             alternate_row_background_color="#F7FAFD",
@@ -131,42 +283,34 @@ def build_journal_paper_document() -> Document:
     )
     ablation_table = Table.from_dataframe(
         ablation_df,
-        caption="Ablation results for major document-pipeline design decisions.",
-        column_widths=[2.6, 1.0, 1.2],
+        caption="Ablation results for the manuscript automation workflow.",
+        column_widths=[2.9, 1.0, 1.2],
         style=TableStyle(
             header_background_color="#E3ECF6",
             alternate_row_background_color="#F8FBFD",
         ),
     )
-    dataset_table = Table.from_dataframe(
-        dataset_df,
-        caption="Corpus summary used for the manuscript automation study.",
-        column_widths=[1.2, 1.2, 3.0],
-        style=TableStyle(
-            header_background_color="#E7EEF7",
-            alternate_row_background_color="#FAFCFE",
-        ),
-    )
-    system_diagram = Figure(
-        SYSTEM_DIAGRAM_PATH,
+
+    traceability_figure = Figure(
+        build_traceability_figure(),
         caption=Paragraph(
-            "System overview diagram stored under the example asset directory."
+            "Traceability pipeline used in the study, linking evidence sources, authored structure, checks, and submission outputs."
         ),
-        width_inches=5.2,
+        width_inches=6.2,
     )
-    performance_figure = Figure(
-        build_performance_figure(results_df),
+    quality_latency_figure = Figure(
+        build_quality_latency_figure(results_df),
         caption=Paragraph(
-            "Accuracy and latency curves generated directly from the benchmark CSV with matplotlib."
+            "Quality-latency frontier derived directly from the benchmark CSV used in the manuscript."
         ),
         width_inches=6.0,
     )
-    ablation_figure = Figure(
-        build_ablation_figure(ablation_df),
+    revision_effort_figure = Figure(
+        build_revision_effort_figure(),
         caption=Paragraph(
-            "Ablation accuracy chart generated from the ablation CSV with matplotlib."
+            "Estimated late-revision synchronization effort comparing manual workflows with a docscriptor-based workflow."
         ),
-        width_inches=5.4,
+        width_inches=6.0,
     )
 
     return Document(
@@ -174,16 +318,16 @@ def build_journal_paper_document() -> Document:
         Section(
             "Abstract",
             Paragraph(
-                "This example models a journal submission workflow where prose, tables, and figures are assembled from ordinary Python code. Benchmark tables are loaded from CSV files with ",
+                "This example models a journal submission workflow in which prose, tables, figures, and citations are assembled from ordinary Python code. Benchmark tables are loaded from CSV files with ",
                 code("pandas.read_csv"),
-                ", plots are created with ",
+                ", explanatory figures are generated with ",
                 code("matplotlib"),
-                ", and DOCX, PDF, and HTML outputs are rendered from the same source document. The workflow follows the reporting discipline described in ",
+                ", and DOCX, PDF, and HTML outputs are rendered from the same source document. The workflow follows the reproducibility discipline discussed in ",
                 manuscript_sources.cite("reproducible-research"),
                 ".",
             ),
             Paragraph(
-                "The main goal is not a novel layout engine but a practical authoring pattern for research groups that already manage experimental data in scripts. By keeping analysis inputs, figure generation, and manuscript assembly in one language, the risk of stale tables and copied captions is substantially reduced.",
+                "The paper argues for a practical authoring pattern rather than a new publishing format. The central claim is that keeping manuscript structure downstream of the evidence reduces synchronization mistakes during late revisions and makes document review easier to trust."
             ),
             Paragraph(
                 italic("Keywords: "),
@@ -195,9 +339,9 @@ def build_journal_paper_document() -> Document:
         Section(
             "Highlights",
             BulletList(
-                "Tables can be authored directly from CSV-backed DataFrames.",
-                "Matplotlib figures can be inserted without saving temporary image files.",
-                "The same manuscript source renders to DOCX, PDF, and HTML for review and submission.",
+                "Journal-style title matter can be authored from structured metadata without giving up customization paths.",
+                "Tables and figures can be regenerated from the same Python inputs that support the manuscript claims.",
+                "The strongest workflow benefit appears during late revisions, when synchronization cost usually rises fastest.",
             ),
             level=2,
             numbered=False,
@@ -205,147 +349,124 @@ def build_journal_paper_document() -> Document:
         Section(
             "Introduction",
             Paragraph(
-                "Research groups often maintain result tables in spreadsheets or CSV exports while figures are assembled separately for manuscript submission. This example keeps those assets connected by treating the document itself as Python code rather than as a final formatting step applied after the analysis is complete."
+                "Research manuscripts often combine at least four moving parts: benchmark tables, static diagrams, generated plots, and conventional prose. In many teams those assets are edited in different tools, which creates avoidable synchronization work every time a metric, caption, or section ordering changes."
             ),
             Paragraph(
-                "In day-to-day practice, this matters most during late revisions. Reviewer requests frequently alter metric definitions, split boundaries, or caption wording after the manuscript draft already exists. A Python-native document pipeline reduces the amount of manual synchronization required when those changes happen close to submission."
-            ),
-            Paragraph(
-                "The broader motivation also aligns with practical automation patterns discussed in ",
+                "The workflow studied here treats the manuscript itself as code. That does not eliminate editorial work, but it does move the document closer to the data that supports it, which is the operational direction already suggested by ",
                 manuscript_sources.cite("literate-programming"),
-                " and with reproducible document systems such as ",
+                " and systems such as ",
                 manuscript_sources.cite("knitr"),
                 ".",
             ),
             level=1,
         ),
         Section(
-            "Related Work",
-            Paragraph(
-                "Most scientific writing systems treat the manuscript as a separate artifact that is updated after experimental analysis is complete. That split is workable for short papers, but it becomes fragile when metrics, figures, and appendix tables are regenerated several times before a deadline."
-            ),
-            Paragraph(
-                "Notebook-heavy workflows partially close that gap, but they do not always provide a clean route to both editable DOCX output for collaborators and stable PDF output for submission. The example here focuses on that practical bridge rather than on a new markup syntax."
-            ),
-            level=1,
-        ),
-        Section(
-            "Methods",
+            "Workflow Design",
             Section(
-                "Asset Layout",
+                "Evidence Traceability",
                 Paragraph(
-                    "The example assumes an asset directory that already contains a system diagram PNG and experiment result CSV files. That layout mirrors a small research project more closely than generating every asset inline, because diagrams and benchmark exports usually already exist before the final manuscript is assembled."
+                    "The study begins from a straightforward design requirement: every visible claim should remain traceable to either structured input data, a generated figure, or a cited source. ",
+                    traceability_figure,
+                    " summarizes the resulting workflow."
                 ),
                 Paragraph(
-                    "Static figures remain valuable even in a programmable workflow. Architecture diagrams, annotation guidelines, and interface screenshots are often authored once and reused throughout the project. They belong under version control beside the manuscript script, not inside the rendered document output directory."
+                    "The intent is not to force authors into a notebook-like page. Instead, the workflow preserves manuscript conventions such as abstract sections, captions, and editable review copies while keeping those conventions downstream of the evidence."
                 ),
-                system_diagram,
+                traceability_figure,
                 level=2,
             ),
             Section(
-                "Data Integration",
+                "Operational Rules",
                 Paragraph(
-                    "The benchmark and ablation tables below are loaded from CSV files into DataFrames before being passed directly into ",
-                    code("Table.from_dataframe(...)"),
-                    ". The performance plots are produced from the same DataFrames and inserted as live matplotlib figure objects."
+                    "Three rules were enforced in the example manuscript. First, numeric tables must originate from structured data rather than hand-edited cells. Second, generated figures must be built from the same inputs that support the reported metric. Third, manuscript claims should cite a source or point to a table or figure wherever the argument depends on evidence."
                 ),
                 Paragraph(
-                    "This pattern keeps manuscript content close to the analysis interface. If an experiment is rerun and the CSV changes, the rendered table and chart update together without requiring a manual export step or a copied spreadsheet image."
-                ),
-                level=2,
-            ),
-            Section(
-                "Reporting Protocol",
-                Paragraph(
-                    "The reporting protocol used in this example emphasizes three operational rules: first, every table should originate from structured data rather than hand-edited text; second, every derived figure should be generated from the same data source as the reported metric; third, manuscript claims should cite either a source or a concrete table or figure."
-                ),
-                Paragraph(
-                    "These rules are intentionally modest. They do not require a full experiment-tracking system, but they do force the manuscript to remain downstream of the evidence instead of being edited independently from it."
+                    "These rules are deliberately modest. They can be adopted in a small project without introducing a full experiment-tracking platform, yet they materially reduce the number of unreviewable document edits."
                 ),
                 level=2,
             ),
             level=1,
         ),
         Section(
-            "Experimental Setup",
+            "Study Assets",
             Paragraph(
-                "The study corpus combines structured system logs with editorial metadata and held-out blind-review documents. The split summary is shown in ",
+                "The evaluation uses a small but realistic asset bundle: benchmark result CSV files, an ablation CSV, structured citation metadata, and an authored manuscript script. The corpus summary is shown in ",
                 dataset_table,
-                ". In a real project, this small table would usually be derived from the same preprocessing script that produced the training and evaluation files."
+                "."
             ),
             dataset_table,
             Paragraph(
-                "All benchmark runs are reported with the same evaluation harness and the same fixed review checklist. The objective here is not to maximize raw model performance but to demonstrate how a manuscript can stay synchronized with small but realistic research assets."
+                "The important point is not the corpus size by itself. The point is that the visible document objects and the supporting data remain connected through explicit code rather than through manual export steps."
             ),
             level=1,
         ),
         Section(
             "Results",
             Section(
-                "Benchmark Performance",
+                "Benchmark Frontier",
                 Paragraph(
-                    "As summarized in ",
+                    "The benchmark data in ",
                     benchmark_table,
-                    ", the held-out evaluation set improves as more review automation is added. The same CSV data is visualized in ",
-                    performance_figure,
-                    ", which makes the accuracy-latency tradeoff easier to compare during revision meetings.",
+                    " shows a steady quality gain as more structure is added to the workflow. The same CSV is also rendered into ",
+                    quality_latency_figure,
+                    ", which makes the trade-off between quality and latency easier to interpret during revision discussions."
                 ),
                 Paragraph(
-                    "The final configuration increases accuracy by more than six points over the baseline while preserving a latency profile that remains operationally acceptable for editorial review. In many applied settings, that type of balanced gain matters more than the single best score in isolation."
+                    "The relevant result is not merely the best final score. The more useful observation is that the quality improvement remains interpretable because the comparison table and the comparison plot are generated from the same underlying CSV."
                 ),
                 benchmark_table,
-                performance_figure,
+                quality_latency_figure,
                 level=2,
             ),
             Section(
-                "Ablation Study",
+                "Ablation Signals",
                 Paragraph(
-                    "A smaller ablation CSV can be inserted without changing the document model. The same path from CSV to DataFrame to renderable table is reused for ",
+                    "Ablation results are summarized in ",
                     ablation_table,
-                    ", and the corresponding chart in ",
-                    ablation_figure,
-                    " provides a quicker view of the performance impact of each design decision.",
+                    ". Removing table automation, citation checks, or asset reuse each weakens the final result, which supports the claim that the workflow benefit comes from coordinated authoring behavior rather than from any single isolated feature."
                 ),
                 Paragraph(
-                    "The ablation pattern is useful when a paper evolves rapidly. As additional controls or variants are added late in the project, the authoring code changes very little because the manuscript is already prepared to consume structured experiment outputs."
+                    "The value of the ablation is conceptual as much as numeric: it demonstrates that manuscript reliability depends on several small pieces staying connected, including caption generation, citation handling, and predictable asset reuse."
                 ),
                 ablation_table,
-                ablation_figure,
                 level=2,
             ),
-            level=1,
-        ),
-        Section(
-            "Qualitative Analysis",
-            Paragraph(
-                "Beyond scalar metrics, the workflow also supports qualitative discussion anchored to the same evidence. During manuscript revision, teams can place reviewer commentary, illustrative figures, and supplementary tables close to the sections that interpret them, rather than distributing that information across spreadsheets, slide decks, and a separate word-processing document."
-            ),
-            Paragraph(
-                "That consolidation is especially helpful when several authors share ownership of the same paper. The experimental asset paths remain explicit, the document structure remains readable, and the rendered output still looks like a conventional manuscript rather than a notebook export."
+            Section(
+                "Late-Revision Cost",
+                Paragraph(
+                    "The workflow benefit becomes most visible late in the writing cycle. ",
+                    revision_effort_figure,
+                    " reports an estimated operational curve for repeated late updates. The estimate is intentionally approximate, but it captures a practical pattern: manual synchronization cost tends to rise more quickly than code-backed synchronization cost when the manuscript is revised several times close to submission."
+                ),
+                Paragraph(
+                    "This type of figure matters because many workflow decisions are justified by revision logistics rather than by accuracy alone. Even when two pipelines can represent the same final content, the cheaper revision path is usually the one that survives into regular team use."
+                ),
+                revision_effort_figure,
+                level=2,
             ),
             level=1,
         ),
         Section(
             "Discussion",
             Paragraph(
-                "For many applied teams, the primary value is not a new layout feature but the reduction in manual copying. When tables and figures are regenerated from the same inputs that produced the analysis, late revisions become safer and faster. Errors that used to survive because of stale captions or copied spreadsheet cells become easier to catch in code review."
+                "The example does not claim that every writing task should become a programming task. The stronger claim is narrower: when a project already depends on Python for data handling and figure generation, keeping the manuscript in the same environment improves traceability and usually reduces late-stage synchronization mistakes."
             ),
             Paragraph(
-                "There are still tradeoffs. A programmable manuscript requires discipline in project layout, and teams that are unfamiliar with Python packaging may initially find the asset and dependency setup less familiar than a pure word-processor workflow. In return, they gain stronger traceability between reported results and underlying data."
+                "There are still tradeoffs. A programmable manuscript requires some repository discipline, and teams unfamiliar with packaging or automated builds may need a small onboarding step. In return, they gain a workflow where visible manuscript changes can be reviewed with the same habits used for code changes."
             ),
             level=1,
         ),
         Section(
             "Conclusion",
             Paragraph(
-                "This example shows a practical middle ground between hand-authored manuscripts and fully bespoke publishing systems. A small amount of structured Python code is enough to keep CSV-backed tables, matplotlib figures, citations, and submission-ready outputs aligned throughout the writing process."
+                "This journal example shows docscriptor at its most manuscript-oriented: structured authorship, data-backed tables, explanatory figures, and submission-ready exports are kept in one readable Python source. The result is not just reproducible output, but a document workflow that is easier to revise and easier to trust."
             ),
             level=1,
         ),
         Section(
             "Acknowledgements",
             Paragraph(
-                "The authors thank the internal review group for feedback on manuscript structure, benchmark presentation, and the reproducibility checklist used during drafting."
+                "The authors thank the internal review group for feedback on figure clarity, manuscript structure, and release packaging decisions."
             ),
             level=2,
             numbered=False,
@@ -365,6 +486,7 @@ def build_journal_paper_document() -> Document:
                         )
                     ],
                     corresponding=True,
+                    email="gonie@example.org",
                     orcid="0009-0004-8821-275X",
                     note="GitHub: @Gonie-Gonie",
                 ),
@@ -375,7 +497,7 @@ def build_journal_paper_document() -> Document:
                     note="GitHub: openai/codex",
                 ),
             ],
-            theme=Theme(page_number_format="{page}"),
+            theme=Theme(show_page_numbers=True, page_number_format="{page}"),
         ),
         citations=manuscript_sources,
     )
