@@ -572,6 +572,28 @@ def test_table_of_contents_options_can_hide_pages_and_limit_depth(tmp_path: Path
     assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-2"' not in html_text
 
 
+def test_table_of_contents_default_styles_emphasize_only_top_level(tmp_path: Path) -> None:
+    document = Document(
+        "TOC Style",
+        TableOfContents(),
+        Chapter("Top", Section("Second", Subsection("Third", Paragraph("Body")))),
+    )
+    docx_path = tmp_path / "toc-style.docx"
+    html_path = tmp_path / "toc-style.html"
+    document.save_docx(docx_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    top_toc = docx_xml[docx_xml.find("<w:t>1 Top</w:t>") - 180 : docx_xml.find("<w:t>1 Top</w:t>") + 40]
+    second_toc = docx_xml[docx_xml.find("<w:t>1.1 Second</w:t>") - 180 : docx_xml.find("<w:t>1.1 Second</w:t>") + 40]
+    assert "<w:b/>" in top_toc
+    assert "<w:b/>" not in second_toc
+    html_text = html_path.read_text(encoding="utf-8")
+    assert 'docscriptor-toc-entry-level-1" style="margin-left: 0.00in; margin-top: 12.0pt; margin-bottom: 7.0pt' in html_text
+    assert 'docscriptor-toc-entry-level-2" style="margin-left: 0.24in; margin-top: 3.0pt; margin-bottom: 3.0pt' in html_text
+    assert 'docscriptor-toc-entry-level-2" style=' in html_text and "font-weight: 400" in html_text
+
+
 def test_bibtex_string_creates_citation_library() -> None:
     document = Document(
         "Bibliography Test",

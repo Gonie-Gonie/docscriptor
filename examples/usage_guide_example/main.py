@@ -41,6 +41,8 @@ from docscriptor import (
     Paragraph,
     ReferencesPage,
     Section,
+    Subsection,
+    Subsubsection,
     Table,
     TableList,
     TableOfContents,
@@ -152,8 +154,8 @@ contents = TableOfContents(
     leader=".",
     max_level=3,
     level_styles={
-        1: TocLevelStyle(bold=True, space_before=8, space_after=6),
-        2: TocLevelStyle(bold=True, space_before=2, space_after=3),
+        1: TocLevelStyle(bold=True, space_before=12, space_after=7),
+        2: TocLevelStyle(bold=False, space_before=3, space_after=3),
         3: TocLevelStyle(indent=0.48, font_size_delta=-0.2),
     },
 )
@@ -496,7 +498,7 @@ def build_usage_guide_document() -> Document:
             ["Page numbers", "Shown by default with right-aligned page labels.", "Set TableOfContents(show_page_numbers=False) to hide them."],
             ["Leader dots", "Dotted leaders connect the heading text to the page number.", "Set leader='' for no leader or another short string for a different visual cue."],
             ["Heading depth", "All numbered headings are included.", "Set max_level=2 or max_level=3 for shorter contents pages."],
-            ["Hierarchy styling", "Level 1 and 2 entries are emphasized and spaced more strongly than deeper entries.", "Pass level_styles={level: TocLevelStyle(...)} for per-level spacing, indentation, and emphasis."],
+            ["Hierarchy styling", "Top-level entries are bold; lower levels use normal weight by default.", "Pass level_styles={level: TocLevelStyle(...)} for per-level spacing, indentation, and emphasis."],
         ],
         caption="Table-of-contents defaults and customization options.",
         column_widths=[1.6, 2.7, 2.7],
@@ -774,6 +776,18 @@ def build_usage_guide_document() -> Document:
                 ),
                 contents_style_table,
                 CodeBlock(CONTENTS_CONTROL_SNIPPET, language="python"),
+                Subsection(
+                    "Subsection entries",
+                    Paragraph(
+                        "This subsection is included as a live example of a third-level heading. It should appear in the contents below the section with normal font weight and a deeper indent."
+                    ),
+                    Subsubsection(
+                        "Subsubsection entries",
+                        Paragraph(
+                            "This fourth-level heading gives the contents page one more depth to render, which makes hierarchy checks easier in examples and tests."
+                        ),
+                    ),
+                ),
             ),
             Section(
                 "Figure sizing from document geometry",

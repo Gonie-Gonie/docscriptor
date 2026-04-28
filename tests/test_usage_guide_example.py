@@ -87,6 +87,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "4 Tables, Figures, and Cross-References" in paragraph_texts
     assert "5 Notes, Comments, and References" in paragraph_texts
     assert "6 Layout and Pagination" in paragraph_texts
+    assert "6.3.1 Subsection entries" in paragraph_texts
+    assert "6.3.1.1 Subsubsection entries" in paragraph_texts
     assert "7 Project Structure and Scaling Up" in paragraph_texts
     assert any("AuthorLayout(mode='stacked')" in text for text in paragraph_texts)
     assert any("Theme(footnote_placement='document')" in text for text in paragraph_texts)
@@ -133,6 +135,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "A reading map for the guide." in pdf_text
     assert "Page layout controls shared across renderers." in pdf_text
     assert "Table-of-contents defaults and customization options." in pdf_text
+    assert "6.3.1 Subsection entries" in pdf_text
+    assert "6.3.1.1 Subsubsection entries" in pdf_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in pdf_text
     assert "Renderer-specific behavior for notes, review workflows, and cross-reference stability." in pdf_text
     assert "Portable footnotes are authored inline" in pdf_text
@@ -157,6 +161,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "CommentsPage() collects these review notes onto a dedicated generated page." in normalized_html_text
     assert "Page layout controls shared across renderers." in normalized_html_text
     assert "Table-of-contents defaults and customization options." in normalized_html_text
+    assert "6.3.1 Subsection entries" in normalized_html_text
+    assert "6.3.1.1 Subsubsection entries" in normalized_html_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in normalized_html_text
     assert "Portable footnotes are authored inline" in normalized_html_text
     assert "github.com/Gonie-Gonie/docscriptor" in normalized_html_text
@@ -166,3 +172,5 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert 'href="#figure_1"' in html_text
     assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-1"' in html_text
     assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-2"' in html_text
+    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-3"' in html_text
+    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-4"' in html_text

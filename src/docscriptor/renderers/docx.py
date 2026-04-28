@@ -817,6 +817,26 @@ class DocxRenderer:
         label_text = "".join(fragment.plain_text() for fragment in label_fragments)
         run = OxmlElement("w:r")
         run_properties = OxmlElement("w:rPr")
+        if style.font_name is not None:
+            fonts = OxmlElement("w:rFonts")
+            fonts.set(qn("w:ascii"), style.font_name)
+            fonts.set(qn("w:hAnsi"), style.font_name)
+            run_properties.append(fonts)
+        font_size = style.font_size if style.font_size is not None else default_size
+        if font_size is not None:
+            size = OxmlElement("w:sz")
+            size.set(qn("w:val"), str(int(round(font_size * 2))))
+            run_properties.append(size)
+        if style.bold is not None:
+            bold = OxmlElement("w:b")
+            if not style.bold:
+                bold.set(qn("w:val"), "0")
+            run_properties.append(bold)
+        if style.italic is not None:
+            italic = OxmlElement("w:i")
+            if not style.italic:
+                italic.set(qn("w:val"), "0")
+            run_properties.append(italic)
         if style.color is not None:
             color = OxmlElement("w:color")
             color.set(qn("w:val"), style.color)
@@ -1445,10 +1465,10 @@ class DocxRenderer:
     def _toc_level_style(self, block: TableOfContents, level: int) -> TocLevelStyle:
         defaults = TocLevelStyle(
             indent=0.24 * max(level - 1, 0),
-            space_before=8 if level == 1 else (2 if level == 2 else 0),
-            space_after=6 if level == 1 else 3,
+            space_before=12 if level == 1 else (3 if level == 2 else 0),
+            space_after=7 if level == 1 else (3 if level == 2 else 2),
             font_size_delta=0.6 if level == 1 else 0,
-            bold=True if level == 1 else (True if level == 2 else False),
+            bold=True if level == 1 else False,
             italic=False,
         )
         override = block.style_for_level(level)

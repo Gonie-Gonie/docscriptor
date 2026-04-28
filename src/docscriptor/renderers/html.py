@@ -1120,10 +1120,10 @@ class HtmlRenderer:
     def _toc_level_style(self, block: TableOfContents, level: int) -> TocLevelStyle:
         defaults = TocLevelStyle(
             indent=0.24 * max(level - 1, 0),
-            space_before=8 if level == 1 else (2 if level == 2 else 0),
-            space_after=6 if level == 1 else 3,
+            space_before=12 if level == 1 else (3 if level == 2 else 0),
+            space_after=7 if level == 1 else (3 if level == 2 else 2),
             font_size_delta=0.6 if level == 1 else 0,
-            bold=True if level == 1 else (True if level == 2 else False),
+            bold=True if level == 1 else False,
             italic=False,
         )
         override = block.style_for_level(level)
