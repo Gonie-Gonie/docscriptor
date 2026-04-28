@@ -181,6 +181,7 @@ class PdfRenderer:
         context = PdfRenderContext(
             theme=document.theme,
             render_index=render_index,
+            unit=document.settings.unit,
             styles=styles,
         )
 
@@ -330,6 +331,7 @@ class PdfRenderer:
             context.theme,
             context.styles,
             context.render_index,
+            context.unit,
         )
 
     def render_table(
@@ -344,6 +346,7 @@ class PdfRenderer:
             context.theme,
             context.styles,
             context.render_index,
+            context.unit,
         )
 
     def render_figure(
@@ -358,6 +361,7 @@ class PdfRenderer:
             context.theme,
             context.styles,
             context.render_index,
+            context.unit,
         )
 
     def render_table_list(
@@ -615,7 +619,7 @@ class PdfRenderer:
                 f"{type(child).__name__} cannot be rendered inside a Box"
             )
 
-    def _render_table(self, block: Table, theme: Theme, styles: object, render_index: RenderIndex) -> list[object]:
+    def _render_table(self, block: Table, theme: Theme, styles: object, render_index: RenderIndex, unit: str) -> list[object]:
         body_style = self._paragraph_style(ParagraphStyle(space_after=0), theme, styles["BodyText"])
         header_style = RLParagraphStyle(
             "TableHeader",
@@ -689,7 +693,8 @@ class PdfRenderer:
                         )
                     )
 
-        column_widths = [width * inch for width in block.column_widths] if block.column_widths is not None else None
+        resolved_widths = block.column_widths_in_inches(unit)
+        column_widths = [width * inch for width in resolved_widths] if resolved_widths is not None else None
         table = RLTable(
             table_rows,
             colWidths=column_widths,
@@ -794,7 +799,7 @@ class PdfRenderer:
         )
         return [table, Spacer(1, 8)]
 
-    def _render_box(self, block: Box, theme: Theme, styles: object, render_index: RenderIndex) -> list[object]:
+    def _render_box(self, block: Box, theme: Theme, styles: object, render_index: RenderIndex, unit: str) -> list[object]:
         body_style = self._paragraph_style(ParagraphStyle(space_after=0), theme, styles["BodyText"])
         rows: list[list[object]] = []
         row_styles: list[tuple[str, tuple[int, int], tuple[int, int], object]] = []
@@ -835,6 +840,7 @@ class PdfRenderer:
             context = PdfRenderContext(
                 theme=theme,
                 render_index=render_index,
+                unit=unit,
                 styles=styles,
             )
             for flowable in self._render_block(child, context):
@@ -918,11 +924,12 @@ class PdfRenderer:
             )
         ]
 
-    def _render_figure(self, block: Figure, theme: Theme, styles: object, render_index: RenderIndex) -> list[object]:
+    def _render_figure(self, block: Figure, theme: Theme, styles: object, render_index: RenderIndex, unit: str) -> list[object]:
         image = RLImage(self._figure_image_source(block))
         image.hAlign = FLOWABLE_ALIGNMENTS[theme.figure_alignment]
-        if block.width_inches is not None:
-            target_width = block.width_inches * inch
+        width_inches = block.width_in_inches(unit)
+        if width_inches is not None:
+            target_width = width_inches * inch
             scale = target_width / image.drawWidth
             image.drawWidth = target_width
             image.drawHeight = image.drawHeight * scale

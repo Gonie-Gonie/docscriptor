@@ -130,6 +130,7 @@ class DocxRenderer:
         context = DocxRenderContext(
             theme=document.theme,
             render_index=render_index,
+            unit=document.settings.unit,
             word_document=word_document,
         )
         front_children, main_children = document.split_top_level_children()
@@ -265,6 +266,7 @@ class DocxRenderer:
             box,
             context.theme,
             context.render_index,
+            context.unit,
             word_document=context.word_document,
         )
 
@@ -371,6 +373,7 @@ class DocxRenderer:
             table_block,
             context.theme,
             context.render_index,
+            context.unit,
             word_document=context.word_document,
         )
 
@@ -387,6 +390,7 @@ class DocxRenderer:
             figure,
             context.theme,
             context.render_index,
+            context.unit,
             word_document=context.word_document,
         )
 
@@ -999,6 +1003,7 @@ class DocxRenderer:
         box: Box,
         theme: Theme,
         render_index: RenderIndex,
+        unit: str,
         *,
         word_document: WordDocument,
         ) -> None:
@@ -1028,6 +1033,7 @@ class DocxRenderer:
         context = DocxRenderContext(
             theme=theme,
             render_index=render_index,
+            unit=unit,
             word_document=word_document,
         )
         for child in box.children:
@@ -1043,6 +1049,7 @@ class DocxRenderer:
         table_block: Table,
         theme: Theme,
         render_index: RenderIndex,
+        unit: str,
         *,
         word_document: WordDocument,
     ) -> None:
@@ -1078,8 +1085,9 @@ class DocxRenderer:
         table.style = "Table Grid"
         table.alignment = TABLE_ALIGNMENTS[theme.table_alignment]
         self._prevent_table_row_split(table)
-        if table_block.column_widths is not None:
-            for column_index, width in enumerate(table_block.column_widths):
+        column_widths = table_block.column_widths_in_inches(unit)
+        if column_widths is not None:
+            for column_index, width in enumerate(column_widths):
                 table.columns[column_index].width = Inches(width)
 
         for placement in layout.placements:
@@ -1125,6 +1133,7 @@ class DocxRenderer:
         figure: Figure,
         theme: Theme,
         render_index: RenderIndex,
+        unit: str,
         *,
         word_document: WordDocument,
     ) -> None:
@@ -1160,7 +1169,8 @@ class DocxRenderer:
         if figure.caption is not None and theme.figure_caption_position == "below":
             self._keep_with_next(paragraph)
         run = paragraph.add_run()
-        width = Inches(figure.width_inches) if figure.width_inches is not None else None
+        width_inches = figure.width_in_inches(unit)
+        width = Inches(width_inches) if width_inches is not None else None
         run.add_picture(self._figure_picture_source(figure), width=width)
 
         if figure.caption is not None and theme.figure_caption_position == "below":

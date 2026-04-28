@@ -548,6 +548,7 @@ def test_document_accepts_document_settings() -> None:
         ],
         author_layout=AuthorLayout(mode="stacked"),
         cover_page=True,
+        unit="cm",
         theme=Theme(show_page_numbers=True),
     )
 
@@ -561,7 +562,65 @@ def test_document_accepts_document_settings() -> None:
     assert document.authors[0].affiliations[0].formatted() == "Example Lab"
     assert document.settings.author_layout.mode == "stacked"
     assert document.cover_page is True
+    assert document.unit == "cm"
     assert document.theme.show_page_numbers is True
+
+
+def test_document_unit_applies_to_media_dimensions(tmp_path: Path) -> None:
+    image_path = tmp_path / "sample.png"
+    _write_sample_image(image_path)
+    table = Table(
+        headers=["A", "B"],
+        rows=[["one", "two"]],
+        column_widths=[2.54, 5.08],
+    )
+    figure = Figure(image_path, width=2.54)
+    document = Document(
+        "Metric Dimensions",
+        table,
+        figure,
+        settings=DocumentSettings(unit="cm"),
+    )
+
+    docx_path = tmp_path / "metric.docx"
+    pdf_path = tmp_path / "metric.pdf"
+    html_path = tmp_path / "metric.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_document = WordDocument(docx_path)
+    assert abs(int(word_document.inline_shapes[0].width) - 914400) <= 1
+    assert len(PdfReader(BytesIO(pdf_path.read_bytes())).pages) == 1
+    html_text = html_path.read_text(encoding="utf-8")
+    assert 'style="width: 1.00in;"' in html_text
+    assert 'style="width: 2.00in;"' in html_text
+    assert 'max-width: 1.00in' in html_text
+
+
+def test_object_unit_overrides_document_unit(tmp_path: Path) -> None:
+    image_path = tmp_path / "sample.png"
+    _write_sample_image(image_path)
+    figure = Figure(image_path, width=1.0, unit="in")
+    table = Table(
+        headers=["A"],
+        rows=[["one"]],
+        column_widths=[1.0],
+        unit="in",
+    )
+    document = Document(
+        "Local Dimensions",
+        table,
+        figure,
+        settings=DocumentSettings(unit="cm"),
+    )
+
+    html_path = tmp_path / "local.html"
+    document.save_html(html_path)
+
+    html_text = html_path.read_text(encoding="utf-8")
+    assert 'style="width: 1.00in;"' in html_text
+    assert 'max-width: 1.00in' in html_text
 
 
 def test_auto_footnotes_page_can_be_disabled(tmp_path: Path) -> None:

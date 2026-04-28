@@ -6,6 +6,25 @@ from pathlib import Path
 
 
 PathLike = str | Path
+LengthUnit = str
+
+UNIT_TO_INCHES = {
+    "in": 1.0,
+    "inch": 1.0,
+    "inches": 1.0,
+    "cm": 1.0 / 2.54,
+    "centimeter": 1.0 / 2.54,
+    "centimeters": 1.0 / 2.54,
+    "mm": 1.0 / 25.4,
+    "millimeter": 1.0 / 25.4,
+    "millimeters": 1.0 / 25.4,
+    "pt": 1.0 / 72.0,
+    "point": 1.0 / 72.0,
+    "points": 1.0 / 72.0,
+    "px": 1.0 / 96.0,
+    "pixel": 1.0 / 96.0,
+    "pixels": 1.0 / 96.0,
+}
 
 COUNTER_FORMATS = {
     "decimal",
@@ -43,6 +62,21 @@ def normalize_color(value: str | None) -> str | None:
     if len(normalized) != 6 or any(char not in "0123456789ABCDEF" for char in normalized):
         raise ValueError(f"Expected a 6-digit hex color, got: {value!r}")
     return normalized
+
+
+def normalize_length_unit(value: str) -> str:
+    """Validate and normalize a supported physical length unit."""
+
+    normalized = value.strip().lower()
+    if normalized not in UNIT_TO_INCHES:
+        raise ValueError(f"Unsupported length unit: {value!r}")
+    return normalized
+
+
+def length_to_inches(value: float, unit: str) -> float:
+    """Convert a numeric length to inches."""
+
+    return float(value) * UNIT_TO_INCHES[normalize_length_unit(unit)]
 
 
 def normalize_counter_format(value: str) -> str:

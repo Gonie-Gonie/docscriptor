@@ -90,6 +90,16 @@ class Document:
         self.settings.cover_page = value
 
     @property
+    def unit(self) -> str:
+        return self.settings.unit
+
+    @unit.setter
+    def unit(self, value: str) -> None:
+        from docscriptor.core import normalize_length_unit
+
+        self.settings.unit = normalize_length_unit(value)
+
+    @property
     def theme(self) -> Theme:
         return self.settings.theme
 

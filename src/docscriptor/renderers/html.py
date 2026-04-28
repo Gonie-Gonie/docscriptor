@@ -58,6 +58,7 @@ class HtmlRenderer:
         context = HtmlRenderContext(
             theme=document.theme,
             render_index=render_index,
+            unit=document.settings.unit,
         )
         front_children, main_children = document.split_top_level_children()
         has_front_matter = document.cover_page or bool(front_children)
@@ -279,10 +280,11 @@ class HtmlRenderer:
 
         layout = build_table_layout(block.header_rows, block.rows)
         colgroup = ""
-        if block.column_widths is not None:
+        column_widths = block.column_widths_in_inches(context.unit)
+        if column_widths is not None:
             columns = "".join(
                 f'<col style="width: {width:.2f}in;" />'
-                for width in block.column_widths
+                for width in column_widths
             )
             colgroup = f"<colgroup>{columns}</colgroup>"
 
@@ -336,8 +338,9 @@ class HtmlRenderer:
         """Render a figure block into HTML."""
 
         image_style = ""
-        if block.width_inches is not None:
-            image_style = f' style="max-width: {block.width_inches:.2f}in; width: 100%;"'
+        width_inches = block.width_in_inches(context.unit)
+        if width_inches is not None:
+            image_style = f' style="max-width: {width_inches:.2f}in; width: 100%;"'
         image_html = (
             f'<img class="docscriptor-figure-image" src="{self._figure_src(block)}" '
             f'alt="{escape(block.caption.plain_text() if block.caption is not None else "Figure")}"{image_style} />'
@@ -749,6 +752,7 @@ class HtmlRenderer:
                 HtmlRenderContext(
                     theme=context.theme,
                     render_index=context.render_index,
+                    unit=context.unit,
                 ),
             )
             + f"</{tag}>"

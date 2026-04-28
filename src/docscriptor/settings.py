@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 from docscriptor.components.inline import InlineInput, Text, coerce_inlines
+from docscriptor.core import normalize_length_unit
 from docscriptor.components.people import (
     Affiliation,
     Author,
@@ -36,6 +37,7 @@ class DocumentSettings:
     authors: tuple[Author, ...]
     author_layout: AuthorLayout
     cover_page: bool
+    unit: str
     theme: Theme
 
     def __init__(
@@ -47,6 +49,7 @@ class DocumentSettings:
         authors: Sequence[AuthorInput] | None = None,
         author_layout: AuthorLayout | None = None,
         cover_page: bool = False,
+        unit: str = "in",
         theme: Theme | None = None,
     ) -> None:
         self.author = author
@@ -55,6 +58,7 @@ class DocumentSettings:
         self.authors = coerce_authors(authors)
         self.author_layout = coerce_author_layout(author_layout)
         self.cover_page = cover_page
+        self.unit = normalize_length_unit(unit)
         self.theme = theme or Theme()
 
     def resolved_author(self) -> str | None:

@@ -15,6 +15,7 @@ class DocxRenderContext:
 
     theme: Theme
     render_index: RenderIndex
+    unit: str
     word_document: Any
 
 
@@ -24,6 +25,7 @@ class PdfRenderContext:
 
     theme: Theme
     render_index: RenderIndex
+    unit: str
     styles: Any
 
 
@@ -33,3 +35,4 @@ class HtmlRenderContext:
 
     theme: Theme
     render_index: RenderIndex
+    unit: str

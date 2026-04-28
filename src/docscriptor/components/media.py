@@ -8,7 +8,7 @@ from typing import Sequence, TYPE_CHECKING
 
 from docscriptor.components.base import Block
 from docscriptor.components.blocks import CellInput, Paragraph, coerce_cell
-from docscriptor.core import PathLike, normalize_color
+from docscriptor.core import PathLike, length_to_inches, normalize_color, normalize_length_unit
 from docscriptor.layout.theme import TableStyle
 
 if TYPE_CHECKING:
@@ -296,6 +296,7 @@ class Table(Block):
     rows: list[list[TableCell]]
     caption: Paragraph | None
     column_widths: list[float] | None
+    unit: str | None
     identifier: str | None
     style: TableStyle
     include_index: bool
@@ -307,6 +308,7 @@ class Table(Block):
         *,
         caption: CellInput | None = None,
         column_widths: Sequence[float] | None = None,
+        unit: str | None = None,
         identifier: str | None = None,
         style: TableStyle | None = None,
         include_index: bool = False,
@@ -331,6 +333,7 @@ class Table(Block):
 
         self.caption = coerce_cell(caption) if caption is not None else None
         self.column_widths = list(column_widths) if column_widths is not None else None
+        self.unit = normalize_length_unit(unit) if unit is not None else None
         self.identifier = identifier
         self.style = style or TableStyle()
         self.include_index = include_index
@@ -350,6 +353,14 @@ class Table(Block):
 
         return build_table_layout(self.header_rows, self.rows)
 
+    def column_widths_in_inches(self, default_unit: str) -> list[float] | None:
+        """Return column widths converted through the table or document unit."""
+
+        if self.column_widths is None:
+            return None
+        unit = self.unit or default_unit
+        return [length_to_inches(width, unit) for width in self.column_widths]
+
     @classmethod
     def from_dataframe(
         cls,
@@ -357,6 +368,7 @@ class Table(Block):
         *,
         caption: CellInput | None = None,
         column_widths: Sequence[float] | None = None,
+        unit: str | None = None,
         identifier: str | None = None,
         style: TableStyle | None = None,
         include_index: bool = False,
@@ -367,6 +379,7 @@ class Table(Block):
             dataframe,
             caption=caption,
             column_widths=column_widths,
+            unit=unit,
             identifier=identifier,
             style=style,
             include_index=include_index,
@@ -401,7 +414,8 @@ class Figure(Block):
 
     image_source: object
     caption: Paragraph | None
-    width_inches: float | None
+    width: float | None
+    unit: str | None
     identifier: str | None
     format: str
     dpi: int | None
@@ -410,22 +424,42 @@ class Figure(Block):
         self,
         image_source: PathLike | object,
         caption: CellInput | None = None,
+        width: float | None = None,
         width_inches: float | None = None,
         identifier: str | None = None,
         *,
+        unit: str | None = None,
         format: str = "png",
         dpi: int | None = 150,
     ) -> None:
+        if width is not None and width_inches is not None:
+            raise ValueError("Pass either width=... or width_inches=..., not both")
         self.image_source = (
             Path(image_source)
             if isinstance(image_source, (str, Path))
             else image_source
         )
         self.caption = coerce_cell(caption) if caption is not None else None
-        self.width_inches = width_inches
+        self.width = width_inches if width_inches is not None else width
+        self.unit = "in" if width_inches is not None else (normalize_length_unit(unit) if unit is not None else None)
         self.identifier = identifier
         self.format = format
         self.dpi = dpi
+
+    @property
+    def width_inches(self) -> float | None:
+        """Return the locally specified width in inches when possible."""
+
+        if self.width is None:
+            return None
+        return length_to_inches(self.width, self.unit or "in")
+
+    def width_in_inches(self, default_unit: str) -> float | None:
+        """Return figure width converted through the figure or document unit."""
+
+        if self.width is None:
+            return None
+        return length_to_inches(self.width, self.unit or default_unit)
 
     def render_to_docx(
         self,
