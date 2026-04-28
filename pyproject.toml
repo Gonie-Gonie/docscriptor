@@ -45,10 +45,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Gonie-Gonie/pydocs"
-Repository = "https://github.com/Gonie-Gonie/pydocs"
-Documentation = "https://github.com/Gonie-Gonie/pydocs#readme"
-Issues = "https://github.com/Gonie-Gonie/pydocs/issues"
+Homepage = "https://github.com/Gonie-Gonie/docscriptor"
+Repository = "https://github.com/Gonie-Gonie/docscriptor"
+Documentation = "https://github.com/Gonie-Gonie/docscriptor#readme"
+Issues = "https://github.com/Gonie-Gonie/docscriptor/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -11,20 +11,20 @@ Docscriptor is not published on PyPI yet, so `pip install docscriptor` will not 
 For normal use, install it directly from GitHub:
 
 ```powershell
-pip install "docscriptor @ git+https://github.com/Gonie-Gonie/pydocs.git"
+pip install "docscriptor @ git+https://github.com/Gonie-Gonie/docscriptor.git"
 ```
 
 To upgrade later:
 
 ```powershell
-pip install --upgrade "docscriptor @ git+https://github.com/Gonie-Gonie/pydocs.git"
+pip install --upgrade "docscriptor @ git+https://github.com/Gonie-Gonie/docscriptor.git"
 ```
 
 If you want to work from a repository checkout, run the bundled example scripts, or contribute locally:
 
 ```powershell
-git clone https://github.com/Gonie-Gonie/pydocs.git
-cd pydocs
+git clone https://github.com/Gonie-Gonie/docscriptor.git
+cd docscriptor
 pip install -e .
 ```
 

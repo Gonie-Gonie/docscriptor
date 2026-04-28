@@ -93,7 +93,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("A reading map for the guide." in text for text in paragraph_texts)
     assert any("Renderer-specific behavior for notes, review workflows, and cross-reference stability." in text for text in paragraph_texts)
     assert any("portable footnotes exactly where the text appears." in text for text in paragraph_texts)
-    assert any("github.com/Gonie-Gonie/pydocs" in text for text in paragraph_texts)
+    assert any("github.com/Gonie-Gonie/docscriptor" in text for text in paragraph_texts)
     assert any("The journal example at examples/journal_paper_example/main.py" in text for text in paragraph_texts)
     assert "Footnotes" not in [text for text in paragraph_texts if text == "Footnotes"]
     assert len(word_document.tables) == 7
@@ -120,7 +120,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "A reading map for the guide." in pdf_text
     assert "Renderer-specific behavior for notes, review workflows, and cross-reference stability." in pdf_text
     assert "Portable footnotes are authored inline" in pdf_text
-    assert "github.com/Gonie-Gonie/pydocs" in pdf_text
+    assert "github.com/Gonie-Gonie/docscriptor" in pdf_text
     assert "Footnotes" in pdf_text
     assert len(pdf_reader.pages) >= 14
     assert _pdf_image_draw_count(pdf_path) == 4
@@ -135,7 +135,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Theme(footnote_placement='document')" in normalized_html_text
     assert "CommentsPage() collects these review notes onto a dedicated generated page." in normalized_html_text
     assert "Portable footnotes are authored inline" in normalized_html_text
-    assert "github.com/Gonie-Gonie/pydocs" in normalized_html_text
+    assert "github.com/Gonie-Gonie/docscriptor" in normalized_html_text
     assert "Footnotes" in normalized_html_text
     assert html_text.count("data:image/png;base64,") == 4
     assert 'href="#table_1"' in html_text

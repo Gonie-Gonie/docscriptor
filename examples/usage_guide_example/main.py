@@ -72,7 +72,7 @@ RELATED_WORK = CitationLibrary(
             organization="Gonie-Gonie",
             publisher="GitHub repository",
             year="2026",
-            url="https://github.com/Gonie-Gonie/pydocs",
+            url="https://github.com/Gonie-Gonie/docscriptor",
         ),
     ]
 )
@@ -485,7 +485,7 @@ def build_usage_guide_document() -> Document:
             ),
             Paragraph(
                 bold("Repository. "),
-                link("https://github.com/Gonie-Gonie/pydocs", "github.com/Gonie-Gonie/pydocs"),
+                link("https://github.com/Gonie-Gonie/docscriptor", "github.com/Gonie-Gonie/docscriptor"),
                 ".",
             ),
             Paragraph(
