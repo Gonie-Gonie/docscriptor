@@ -18,7 +18,7 @@ from reportlab.platypus import Image as RLImage
 from reportlab.platypus import (
     Flowable,
     KeepTogether,
-    PageBreak,
+    PageBreak as RLPageBreak,
     Paragraph as RLParagraph,
     Preformatted,
     SimpleDocTemplate,
@@ -33,6 +33,7 @@ from docscriptor.components.blocks import (
     CodeBlock,
     Equation,
     NumberedList,
+    PageBreak as DocscriptorPageBreak,
     Paragraph,
     Section,
 )
@@ -188,13 +189,13 @@ class PdfRenderer:
 
         story.extend(self._render_title_matter(document, context))
         if document.cover_page and front_children:
-            story.append(PageBreak())
+            story.append(RLPageBreak())
 
         story.extend(self._render_top_level_children(front_children, context))
         if has_front_matter and main_children:
             story.append(PageNumberTransition("main"))
-            if story and not isinstance(story[-2] if len(story) > 1 else None, PageBreak):
-                story.append(PageBreak())
+            if story and not isinstance(story[-2] if len(story) > 1 else None, RLPageBreak):
+                story.append(RLPageBreak())
             story.extend(self._render_top_level_children(main_children, context))
         elif not has_front_matter:
             story.extend(self._render_top_level_children(main_children, context))
@@ -307,6 +308,15 @@ class PdfRenderer:
         """Render a block equation into PDF flowables."""
 
         return self._render_equation(block, context.theme, context.styles)
+
+    def render_page_break(
+        self,
+        block: DocscriptorPageBreak,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render an explicit page break into PDF flowables."""
+
+        return [RLPageBreak()]
 
     def render_box(
         self,
@@ -457,11 +467,11 @@ class PdfRenderer:
         story: list[object] = []
         for index, child in enumerate(children):
             if self._is_paginated_generated_page(child) and context.theme.generated_page_breaks:
-                if story and not isinstance(story[-1], PageBreak):
-                    story.append(PageBreak())
+                if story and not isinstance(story[-1], RLPageBreak):
+                    story.append(RLPageBreak())
                 story.extend(child.render_to_pdf(self, context))
                 if index < len(children) - 1:
-                    story.append(PageBreak())
+                    story.append(RLPageBreak())
                 continue
             story.extend(child.render_to_pdf(self, context))
         return story
@@ -1348,7 +1358,7 @@ class PdfRenderer:
             textColor=colors.black,
         )
         story: list[object] = [
-            PageBreak(),
+            RLPageBreak(),
             RLParagraph(
                 self._inline_markup(
                     title or [Text(theme.comments_title)],
@@ -1409,7 +1419,7 @@ class PdfRenderer:
             textColor=colors.black,
         )
         story: list[object] = [
-            PageBreak(),
+            RLPageBreak(),
             RLParagraph(
                 self._inline_markup(
                     title or [Text(theme.footnotes_title)],
@@ -1470,7 +1480,7 @@ class PdfRenderer:
             textColor=colors.black,
         )
         story: list[object] = [
-            PageBreak(),
+            RLPageBreak(),
             RLParagraph(
                 self._inline_markup(
                     title or [Text(theme.references_title)],

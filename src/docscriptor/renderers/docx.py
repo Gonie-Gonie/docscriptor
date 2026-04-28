@@ -9,6 +9,7 @@ from docx import Document as WordDocument
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_BREAK
 from docx.opc.constants import CONTENT_TYPE as CT
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.opc.packuri import PackURI
@@ -25,6 +26,7 @@ from docscriptor.components.blocks import (
     CodeBlock,
     Equation,
     NumberedList,
+    PageBreak,
     Paragraph,
     Section,
 )
@@ -238,6 +240,17 @@ class DocxRenderer:
         """Render a block equation into the current DOCX container."""
 
         self._render_equation(container, equation, context.theme)
+
+    def render_page_break(
+        self,
+        container: object,
+        block: PageBreak,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render an explicit page break into the current DOCX container."""
+
+        paragraph = self._add_paragraph(container)
+        paragraph.add_run().add_break(WD_BREAK.PAGE)
 
     def render_box(
         self,

@@ -14,6 +14,7 @@ from docscriptor.components.blocks import (
     CodeBlock,
     Equation,
     NumberedList,
+    PageBreak,
     Paragraph,
     Section,
 )
@@ -202,6 +203,15 @@ class HtmlRenderer:
             )
             + "</div>"
         )
+
+    def render_page_break(
+        self,
+        block: PageBreak,
+        context: HtmlRenderContext,
+    ) -> str:
+        """Render an explicit page break into HTML."""
+
+        return '<div class="docscriptor-page-break"></div>'
 
     def render_box(self, block: Box, context: HtmlRenderContext) -> str:
         """Render a box and its children into HTML."""
@@ -1199,6 +1209,12 @@ body {{
 }}
 .docscriptor-page-break-before {{
   {page_break_before}
+}}
+.docscriptor-page-break {{
+  break-after: page;
+  page-break-after: always;
+  height: 0;
+  margin: 0;
 }}
 .docscriptor-title {{
   margin: 0 0 12pt;

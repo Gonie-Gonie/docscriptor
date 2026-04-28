@@ -193,6 +193,36 @@ class Equation(Block):
         return renderer.render_equation(self, context)
 
 
+@dataclass(slots=True)
+class PageBreak(Block):
+    """An explicit page break in the document flow."""
+
+    def render_to_docx(
+        self,
+        renderer: object,
+        container: object,
+        context: DocxRenderContext,
+    ) -> None:
+        renderer.render_page_break(container, self, context)
+
+    def render_to_pdf(
+        self,
+        renderer: object,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        return renderer.render_page_break(self, context)
+
+    def render_to_html(
+        self,
+        renderer: object,
+        context: HtmlRenderContext,
+    ) -> str:
+        return renderer.render_page_break(self, context)
+
+
+PageBreaker = PageBreak
+
+
 @dataclass(slots=True, init=False)
 class Box(Block):
     """Bordered container for grouped block content."""
@@ -359,6 +389,8 @@ __all__ = [
     "CodeBlock",
     "Equation",
     "NumberedList",
+    "PageBreak",
+    "PageBreaker",
     "Paragraph",
     "Section",
     "Subsection",

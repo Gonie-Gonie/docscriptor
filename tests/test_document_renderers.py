@@ -41,6 +41,8 @@ from docscriptor import (
     ListStyle,
     Math,
     NumberedList,
+    PageBreak,
+    PageBreaker,
     Paragraph,
     ParagraphStyle,
     ReferencesPage,
@@ -427,6 +429,8 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Paragraph")
     assert hasattr(docscriptor, "BulletList")
     assert hasattr(docscriptor, "NumberedList")
+    assert hasattr(docscriptor, "PageBreak")
+    assert hasattr(docscriptor, "PageBreaker")
     assert hasattr(docscriptor, "TableList")
     assert hasattr(docscriptor, "FigureList")
     assert hasattr(docscriptor, "cite")
@@ -487,6 +491,28 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
         "figure",
     ):
         assert not hasattr(docscriptor, removed_name)
+
+
+def test_explicit_page_break_renders_to_all_outputs(tmp_path: Path) -> None:
+    document = Document(
+        "Break Test",
+        Paragraph("Before break."),
+        PageBreak(),
+        Paragraph("After break."),
+    )
+    assert PageBreaker is PageBreak
+
+    docx_path = tmp_path / "break.docx"
+    pdf_path = tmp_path / "break.pdf"
+    html_path = tmp_path / "break.html"
+
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    assert '<w:br w:type="page"/>' in _docx_document_xml(docx_path)
+    assert len(PdfReader(BytesIO(pdf_path.read_bytes())).pages) >= 2
+    assert 'class="docscriptor-page-break"' in html_path.read_text(encoding="utf-8")
 
 
 def test_bibtex_string_creates_citation_library() -> None:
