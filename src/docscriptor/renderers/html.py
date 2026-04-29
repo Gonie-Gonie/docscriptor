@@ -38,7 +38,8 @@ from docscriptor.components.inline import (
 )
 from docscriptor.components.media import Figure, Table, TablePlacement, build_table_layout
 from docscriptor.components.people import AuthorTitleLine
-from docscriptor.core import DocscriptorError, PathLike
+from docscriptor.components.sheets import Shape, Sheet, TextBox
+from docscriptor.core import DocscriptorError, PathLike, length_to_inches
 from docscriptor.document import Document
 from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
 from docscriptor.layout.indexing import RenderIndex, build_render_index
@@ -242,6 +243,26 @@ class HtmlRenderer:
             f'style="{self._box_css(block, context.theme)}">'
             + title_html
             + children_html
+            + "</section>"
+        )
+
+    def render_sheet(self, block: Sheet, context: HtmlRenderContext) -> str:
+        """Render a fixed-layout sheet into HTML."""
+
+        width = self._sheet_width(block, context)
+        height = self._sheet_height(block, context)
+        border = (
+            f"border: {block.border_width:.2f}pt solid #{block.border_color};"
+            if block.border_color is not None and block.border_width > 0
+            else "border: 0;"
+        )
+        items = "".join(self._sheet_item_html(item, block, context) for item in block.items)
+        page_break = " break-after: page; page-break-after: always;" if block.page_break_after else ""
+        return (
+            '<section class="docscriptor-sheet" '
+            f'style="position: relative; width: {width:.4f}in; height: {height:.4f}in; '
+            f'background: #{block.background_color}; {border} overflow: hidden; box-sizing: border-box;{page_break}">'
+            + items
             + "</section>"
         )
 
@@ -853,6 +874,82 @@ class HtmlRenderer:
             )
             for fragment in fragments
         ) or "&nbsp;"
+
+    def _sheet_width(self, sheet: Sheet, context: HtmlRenderContext) -> float:
+        if sheet.width is None:
+            return context.settings.page_width_in_inches()
+        return length_to_inches(sheet.width, sheet.unit or context.unit)
+
+    def _sheet_height(self, sheet: Sheet, context: HtmlRenderContext) -> float:
+        if sheet.height is None:
+            return context.settings.page_height_in_inches()
+        return length_to_inches(sheet.height, sheet.unit or context.unit)
+
+    def _sheet_length(self, value: float, sheet: Sheet, context: HtmlRenderContext) -> float:
+        return length_to_inches(value, sheet.unit or context.unit)
+
+    def _sheet_item_html(
+        self,
+        item: TextBox | Shape,
+        sheet: Sheet,
+        context: HtmlRenderContext,
+    ) -> str:
+        if isinstance(item, TextBox):
+            return self._sheet_text_box_html(item, sheet, context)
+        return self._sheet_shape_html(item, sheet, context)
+
+    def _sheet_text_box_html(
+        self,
+        item: TextBox,
+        sheet: Sheet,
+        context: HtmlRenderContext,
+    ) -> str:
+        x = self._sheet_length(item.x, sheet, context)
+        y = self._sheet_length(item.y, sheet, context)
+        width = self._sheet_length(item.width, sheet, context)
+        height = self._sheet_length(item.height, sheet, context)
+        align_items = {"top": "flex-start", "middle": "center", "bottom": "flex-end"}[item.valign]
+        font_size = item.font_size or context.theme.body_font_size
+        return (
+            '<div class="docscriptor-sheet-textbox" '
+            f'style="position: absolute; left: {x:.4f}in; top: {y:.4f}in; width: {width:.4f}in; height: {height:.4f}in; '
+            f'display: flex; align-items: {align_items}; justify-content: stretch; text-align: {item.align}; '
+            f'font-size: {font_size:.1f}pt; line-height: {font_size * 1.22:.1f}pt; box-sizing: border-box;">'
+            '<div style="width: 100%;">'
+            + self._inline_html(
+                item.content,
+                context.theme,
+                context.render_index,
+                base_size=font_size,
+            )
+            + "</div></div>"
+        )
+
+    def _sheet_shape_html(
+        self,
+        item: Shape,
+        sheet: Sheet,
+        context: HtmlRenderContext,
+    ) -> str:
+        x = self._sheet_length(item.x, sheet, context)
+        y = self._sheet_length(item.y, sheet, context)
+        width = self._sheet_length(item.width, sheet, context)
+        height = self._sheet_length(item.height, sheet, context)
+        stroke = f"#{item.stroke_color}" if item.stroke_color is not None else "transparent"
+        fill = f"#{item.fill_color}" if item.fill_color is not None else "transparent"
+        if item.kind == "line":
+            return (
+                '<svg class="docscriptor-sheet-shape" '
+                f'style="position: absolute; left: {x:.4f}in; top: {y:.4f}in; width: {abs(width):.4f}in; height: {abs(height):.4f}in; overflow: visible;">'
+                f'<line x1="0" y1="0" x2="{width:.4f}in" y2="{height:.4f}in" stroke="{stroke}" stroke-width="{item.stroke_width:.2f}pt" />'
+                "</svg>"
+            )
+        border_radius = "50%" if item.kind == "ellipse" else "0"
+        return (
+            '<div class="docscriptor-sheet-shape" '
+            f'style="position: absolute; left: {x:.4f}in; top: {y:.4f}in; width: {width:.4f}in; height: {height:.4f}in; '
+            f'border: {item.stroke_width:.2f}pt solid {stroke}; background: {fill}; border-radius: {border_radius}; box-sizing: border-box;"></div>'
+        )
 
     def _fragment_html(
         self,

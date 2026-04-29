@@ -57,9 +57,10 @@ from docscriptor.components.inline import (
 )
 from docscriptor.components.media import Figure, Table, build_table_layout
 from docscriptor.components.people import AuthorTitleLine
+from docscriptor.components.sheets import Shape, Sheet, TextBox
 from docscriptor.document import Document
 from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
-from docscriptor.core import DocscriptorError, PathLike
+from docscriptor.core import DocscriptorError, PathLike, length_to_inches
 from docscriptor.layout.indexing import RenderIndex, build_render_index
 from docscriptor.layout.theme import ParagraphStyle, Theme
 from docscriptor.renderers.context import PdfRenderContext
@@ -159,6 +160,100 @@ class FilteredTableOfContents(RLTableOfContents):
             if level + 1 > self.max_level:
                 return
         super().notify(kind, stuff)
+
+
+class SheetFlowable(Flowable):
+    """ReportLab flowable that draws a fixed-layout sheet."""
+
+    def __init__(
+        self,
+        sheet: Sheet,
+        renderer: "PdfRenderer",
+        context: PdfRenderContext,
+    ) -> None:
+        super().__init__()
+        self.sheet = sheet
+        self.renderer = renderer
+        self.context = context
+        self.width = renderer._sheet_width(sheet, context) * inch
+        self.height = renderer._sheet_height(sheet, context) * inch
+
+    def wrap(self, available_width: float, available_height: float) -> tuple[float, float]:
+        return (self.width, self.height)
+
+    def draw(self) -> None:
+        canvas = self.canv
+        sheet = self.sheet
+        canvas.saveState()
+        canvas.setFillColor(colors.HexColor(f"#{sheet.background_color}"))
+        canvas.rect(0, 0, self.width, self.height, fill=1, stroke=0)
+        if sheet.border_color is not None and sheet.border_width > 0:
+            canvas.setStrokeColor(colors.HexColor(f"#{sheet.border_color}"))
+            canvas.setLineWidth(sheet.border_width)
+            canvas.rect(0, 0, self.width, self.height, fill=0, stroke=1)
+        for item in sheet.items:
+            if isinstance(item, TextBox):
+                self._draw_text_box(item)
+            else:
+                self._draw_shape(item)
+        canvas.restoreState()
+
+    def _length(self, value: float) -> float:
+        return length_to_inches(value, self.sheet.unit or self.context.unit) * inch
+
+    def _draw_text_box(self, item: TextBox) -> None:
+        font_size = item.font_size or self.context.theme.body_font_size
+        style = RLParagraphStyle(
+            "SheetTextBox",
+            fontName=self.renderer._resolve_font(self.context.theme.body_font_name, False, False),
+            fontSize=font_size,
+            leading=font_size * 1.22,
+            alignment=ALIGNMENTS[item.align],
+            textColor=colors.black,
+        )
+        paragraph = RLParagraph(
+            self.renderer._inline_markup(
+                item.content,
+                self.context.theme,
+                self.context.render_index,
+                base_font_name=style.fontName,
+                base_size=font_size,
+            ),
+            style,
+        )
+        x = self._length(item.x)
+        y_top = self._length(item.y)
+        width = self._length(item.width)
+        height = self._length(item.height)
+        _, paragraph_height = paragraph.wrap(width, height)
+        if item.valign == "middle":
+            y = self.height - y_top - ((height + paragraph_height) / 2)
+        elif item.valign == "bottom":
+            y = self.height - y_top - height
+        else:
+            y = self.height - y_top - paragraph_height
+        paragraph.drawOn(self.canv, x, y)
+
+    def _draw_shape(self, item: Shape) -> None:
+        canvas = self.canv
+        x = self._length(item.x)
+        y_top = self._length(item.y)
+        width = self._length(item.width)
+        height = self._length(item.height)
+        y = self.height - y_top - height
+        if item.stroke_color is not None and item.stroke_width > 0:
+            canvas.setStrokeColor(colors.HexColor(f"#{item.stroke_color}"))
+            canvas.setLineWidth(item.stroke_width)
+        if item.fill_color is not None:
+            canvas.setFillColor(colors.HexColor(f"#{item.fill_color}"))
+        fill = 1 if item.fill_color is not None else 0
+        stroke = 1 if item.stroke_color is not None and item.stroke_width > 0 else 0
+        if item.kind == "rect":
+            canvas.rect(x, y, width, height, fill=fill, stroke=stroke)
+        elif item.kind == "ellipse":
+            canvas.ellipse(x, y, x + width, y + height, fill=fill, stroke=stroke)
+        else:
+            canvas.line(x, self.height - y_top, x + width, self.height - y_top - height)
 
 
 class DocscriptorPdfTemplate(SimpleDocTemplate):
@@ -375,6 +470,18 @@ class PdfRenderer:
             context.settings,
             context.unit,
         )
+
+    def render_sheet(
+        self,
+        block: Sheet,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render a fixed-layout sheet into PDF flowables."""
+
+        story: list[object] = [SheetFlowable(block, self, context)]
+        if block.page_break_after:
+            story.append(RLPageBreak())
+        return story
 
     def render_table(
         self,
@@ -633,6 +740,16 @@ class PdfRenderer:
 
     def _story_has_indexing_flowable(self, story: list[object]) -> bool:
         return any(getattr(flowable, "isIndexing", lambda: False)() for flowable in story)
+
+    def _sheet_width(self, sheet: Sheet, context: PdfRenderContext) -> float:
+        if sheet.width is None:
+            return context.settings.page_width_in_inches()
+        return length_to_inches(sheet.width, sheet.unit or context.unit)
+
+    def _sheet_height(self, sheet: Sheet, context: PdfRenderContext) -> float:
+        if sheet.height is None:
+            return context.settings.page_height_in_inches()
+        return length_to_inches(sheet.height, sheet.unit or context.unit)
 
     def _paragraph_style(self, style: ParagraphStyle, theme: Theme, base_style: RLParagraphStyle) -> RLParagraphStyle:
         return RLParagraphStyle(

@@ -22,6 +22,7 @@ from docscriptor.components.media import Figure, Table, TableCell
 from docscriptor.components.markup import md, markup
 from docscriptor.components.people import Affiliation, Author, AuthorLayout
 from docscriptor.components.references import CitationLibrary, CitationSource
+from docscriptor.components.sheets import Shape, Sheet, TextBox
 from docscriptor.document import Document
 from docscriptor.components.inline import (
     Comment,
@@ -103,6 +104,8 @@ __all__ = [
     "ParagraphStyle",
     "ReferencesPage",
     "Section",
+    "Shape",
+    "Sheet",
     "Subsection",
     "Subsubsection",
     "Table",
@@ -111,6 +114,7 @@ __all__ = [
     "TableOfContents",
     "TableList",
     "Text",
+    "TextBox",
     "TextStyle",
     "Theme",
     "TocLevelStyle",

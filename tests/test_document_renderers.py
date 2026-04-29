@@ -50,6 +50,8 @@ from docscriptor import (
     ParagraphStyle,
     ReferencesPage,
     Section,
+    Shape,
+    Sheet,
     Subsection,
     Subsubsection,
     Table,
@@ -58,6 +60,7 @@ from docscriptor import (
     TableOfContents,
     TableList,
     Text,
+    TextBox,
     Theme,
     TocLevelStyle,
     bold,
@@ -430,6 +433,8 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Chapter")
     assert hasattr(docscriptor, "AuthorLayout")
     assert hasattr(docscriptor, "Section")
+    assert hasattr(docscriptor, "Shape")
+    assert hasattr(docscriptor, "Sheet")
     assert hasattr(docscriptor, "Paragraph")
     assert hasattr(docscriptor, "BulletList")
     assert hasattr(docscriptor, "NumberedList")
@@ -456,6 +461,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Equation")
     assert hasattr(docscriptor, "Math")
     assert hasattr(docscriptor, "TextStyle")
+    assert hasattr(docscriptor, "TextBox")
     assert not hasattr(docscriptor, "Body")
     assert not hasattr(docscriptor, "Bold")
     assert not hasattr(docscriptor, "Hyperlink")
@@ -498,6 +504,86 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
         "figure",
     ):
         assert not hasattr(docscriptor, removed_name)
+
+
+def test_sheet_renders_fixed_layout_text_and_shapes(tmp_path: Path) -> None:
+    sheet = Sheet(
+        Shape.rect(
+            x=0.25,
+            y=0.25,
+            width=7.0,
+            height=4.5,
+            stroke_color="#476172",
+            stroke_width=1.4,
+        ),
+        Shape.ellipse(
+            x=3.25,
+            y=3.15,
+            width=1.0,
+            height=0.45,
+            stroke_color="#B2783D",
+            fill_color="#FFF1D8",
+        ),
+        TextBox(
+            "Docscriptor Contributor Certificate",
+            x=0.75,
+            y=0.85,
+            width=6.0,
+            height=0.45,
+            align="center",
+            font_size=18,
+        ),
+        TextBox(
+            "Awarded for keeping document structure readable across DOCX, PDF, and HTML.",
+            x=1.0,
+            y=1.75,
+            width=5.5,
+            height=0.75,
+            align="center",
+            valign="middle",
+            font_size=11,
+        ),
+        width=7.5,
+        height=5.0,
+        unit="in",
+        background_color="#FDFBF6",
+        border_color="#D4B56A",
+        border_width=1.0,
+    )
+    document = Document(
+        "Sheet Test",
+        sheet,
+        Paragraph("After sheet."),
+        settings=DocumentSettings(page_size=PageSize.letter()),
+    )
+
+    docx_path = tmp_path / "sheet.docx"
+    pdf_path = tmp_path / "sheet.pdf"
+    html_path = tmp_path / "sheet.html"
+
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_document = WordDocument(docx_path)
+    word_text = "\n".join(paragraph.text for paragraph in word_document.paragraphs)
+    table_text = "\n".join(
+        cell.text
+        for table in word_document.tables
+        for row in table.rows
+        for cell in row.cells
+    )
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert "Docscriptor Contributor Certificate" in table_text
+    assert "Awarded for keeping document structure readable" in table_text
+    assert "After sheet." in word_text
+    assert "Docscriptor Contributor Certificate" in pdf_text
+    assert "Awarded for keeping document structure readable" in pdf_text
+    assert 'class="docscriptor-sheet"' in html_text
+    assert "Docscriptor Contributor Certificate" in html_text
+    assert "background: #FDFBF6" in html_text
 
 
 def test_explicit_page_break_renders_to_all_outputs(tmp_path: Path) -> None:

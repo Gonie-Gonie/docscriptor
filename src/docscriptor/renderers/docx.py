@@ -50,6 +50,7 @@ from docscriptor.components.inline import (
 )
 from docscriptor.components.media import Figure, Table, build_table_layout
 from docscriptor.components.people import AuthorTitleLine
+from docscriptor.components.sheets import Sheet, TextBox
 from docscriptor.document import Document
 from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
 from docscriptor.core import DocscriptorError, PathLike
@@ -273,6 +274,26 @@ class DocxRenderer:
             context.unit,
             word_document=context.word_document,
         )
+
+    def render_sheet(
+        self,
+        container: object,
+        sheet: Sheet,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render a fixed-layout sheet into the current DOCX container."""
+
+        self._render_sheet(
+            container,
+            sheet,
+            context.theme,
+            context.render_index,
+            context.settings,
+            context.unit,
+            word_document=context.word_document,
+        )
+        if sheet.page_break_after:
+            self._ensure_page_break(context.word_document)
 
     def render_comments_page(
         self,
@@ -1077,6 +1098,47 @@ class DocxRenderer:
             self._render_block(cell, child, context)
 
         if not cell.paragraphs:
+            cell.add_paragraph()
+
+    def _render_sheet(
+        self,
+        container: object,
+        sheet: Sheet,
+        theme: Theme,
+        render_index: RenderIndex,
+        settings: object,
+        unit: str,
+        *,
+        word_document: WordDocument,
+    ) -> None:
+        outer_table = container.add_table(rows=1, cols=1)
+        outer_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        cell = outer_table.rows[0].cells[0]
+        cell._tc.clear_content()
+        self._initialized_cells.discard(id(cell))
+        self._set_cell_shading(cell, sheet.background_color)
+        if sheet.border_color is not None and sheet.border_width > 0:
+            self._set_cell_borders(cell, sheet.border_color, sheet.border_width)
+        self._set_cell_padding(cell, 8)
+
+        text_boxes = sorted(
+            (item for item in sheet.items if isinstance(item, TextBox)),
+            key=lambda item: (item.y, item.x),
+        )
+        for text_box in text_boxes:
+            paragraph = self._add_paragraph(cell)
+            paragraph.alignment = ALIGNMENTS[text_box.align]
+            paragraph.paragraph_format.space_after = Pt(2)
+            self._append_runs(
+                paragraph,
+                text_box.content,
+                default_size=text_box.font_size or theme.body_font_size,
+                theme=theme,
+                render_index=render_index,
+                word_document=word_document,
+            )
+
+        if not text_boxes:
             cell.add_paragraph()
 
     def _render_table(

@@ -64,6 +64,12 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
 
     word_document = WordDocument(docx_path)
     paragraph_texts = [paragraph.text for paragraph in word_document.paragraphs]
+    table_text = "\n".join(
+        cell.text
+        for table in word_document.tables
+        for row in table.rows
+        for cell in row.cells
+    )
     pdf_reader = PdfReader(BytesIO(pdf_path.read_bytes()))
     pdf_text = "\n".join(page.extract_text() or "" for page in pdf_reader.pages)
     html_text = html_path.read_text(encoding="utf-8")
@@ -105,8 +111,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("portable footnotes exactly where the text appears." in text for text in paragraph_texts)
     assert any("github.com/Gonie-Gonie/docscriptor" in text for text in paragraph_texts)
     assert any("The journal example at examples/journal_paper_example/main.py" in text for text in paragraph_texts)
+    assert "Docscriptor Contributor Certificate" in table_text
     assert "Footnotes" not in [text for text in paragraph_texts if text == "Footnotes"]
-    assert len(word_document.tables) == 10
+    assert len(word_document.tables) == 11
     assert len(word_document.inline_shapes) == 4
     assert len(word_document.comments) == 2
     assert next(paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text == "Comments") == "Heading 2"
@@ -138,6 +145,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "6.3.1 Subsection entries" in pdf_text
     assert "6.3.1.1 Subsubsection entries" in pdf_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in pdf_text
+    assert "Docscriptor Contributor Certificate" in pdf_text
     assert "Renderer-specific behavior for notes, review workflows, and cross-reference stability." in pdf_text
     assert "Portable footnotes are authored inline" in pdf_text
     assert "github.com/Gonie-Gonie/docscriptor" in pdf_text
@@ -164,6 +172,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "6.3.1 Subsection entries" in normalized_html_text
     assert "6.3.1.1 Subsubsection entries" in normalized_html_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in normalized_html_text
+    assert "Docscriptor Contributor Certificate" in normalized_html_text
     assert "Portable footnotes are authored inline" in normalized_html_text
     assert "github.com/Gonie-Gonie/docscriptor" in normalized_html_text
     assert "Footnotes" in normalized_html_text

@@ -41,12 +41,15 @@ from docscriptor import (
     Paragraph,
     ReferencesPage,
     Section,
+    Shape,
+    Sheet,
     Subsection,
     Subsubsection,
     Table,
     TableList,
     TableOfContents,
     Text,
+    TextBox,
     Theme,
     TocLevelStyle,
     bold,
@@ -144,6 +147,19 @@ figure = Figure(
     "assets/system-diagram.png",
     width=settings.get_text_width(0.75),
     height=8.0,
+)
+"""
+
+SHEET_SNIPPET = """from docscriptor import Shape, Sheet, TextBox
+
+certificate = Sheet(
+    Shape.rect(x=0.4, y=0.4, width=20.2, height=13.2, stroke_color="#D4B56A", stroke_width=1.4),
+    TextBox("Docscriptor Contributor Certificate", x=1.2, y=2.4, width=18.6, height=1.2, align="center", font_size=20),
+    TextBox("Awarded for keeping document structure readable across DOCX, PDF, and HTML.", x=2.0, y=6.2, width=17.0, height=1.0, align="center", valign="middle"),
+    width=21.0,
+    height=14.0,
+    unit="cm",
+    background_color="#FDFBF6",
 )
 """
 
@@ -542,6 +558,75 @@ def build_usage_guide_document() -> Document:
             title_background_color="#DCE8F4",
         ),
     )
+    contributor_certificate = Sheet(
+        Shape.rect(
+            x=0.4,
+            y=0.4,
+            width=20.2,
+            height=13.2,
+            stroke_color="#D4B56A",
+            stroke_width=1.4,
+        ),
+        Shape.rect(
+            x=0.8,
+            y=0.8,
+            width=19.4,
+            height=12.4,
+            stroke_color="#6E8497",
+            stroke_width=0.8,
+        ),
+        Shape.ellipse(
+            x=9.0,
+            y=10.8,
+            width=3.0,
+            height=1.2,
+            stroke_color="#B2783D",
+            fill_color="#FFF1D8",
+        ),
+        TextBox(
+            "Docscriptor Contributor Certificate",
+            x=1.2,
+            y=2.4,
+            width=18.6,
+            height=1.2,
+            align="center",
+            font_size=20,
+        ),
+        TextBox(
+            "Awarded for keeping document structure readable across DOCX, PDF, and HTML.",
+            x=2.0,
+            y=6.2,
+            width=17.0,
+            height=1.0,
+            align="center",
+            valign="middle",
+            font_size=11,
+        ),
+        TextBox(
+            "Generated from the same Python document tree as this guide.",
+            x=3.0,
+            y=8.2,
+            width=15.0,
+            height=0.8,
+            align="center",
+            font_size=10,
+        ),
+        TextBox(
+            "docscriptor",
+            x=8.0,
+            y=11.1,
+            width=5.0,
+            height=0.6,
+            align="center",
+            font_size=12,
+        ),
+        width=21.0,
+        height=14.0,
+        unit="cm",
+        background_color="#FDFBF6",
+        border_color="#D4B56A",
+        border_width=0.8,
+    )
 
     return Document(
         "Docscriptor User Guide",
@@ -805,6 +890,16 @@ def build_usage_guide_document() -> Document:
                 ),
                 figure_sizing_table,
                 CodeBlock(FIGURE_SIZING_SNIPPET, language="python"),
+            ),
+            Section(
+                "Fixed sheets for short forms",
+                Paragraph(
+                    "Most docscriptor pages should remain flowing document structure. When a project needs a one-page form such as a certificate, badge, or cover insert, use ",
+                    code("Sheet"),
+                    " as a normal block inside the same document tree. Its coordinates are measured from the top-left corner, which keeps small form layouts readable without turning the whole document into a slide deck."
+                ),
+                contributor_certificate,
+                CodeBlock(SHEET_SNIPPET, language="python"),
             ),
             Section(
                 "What changed in the default document feel",
