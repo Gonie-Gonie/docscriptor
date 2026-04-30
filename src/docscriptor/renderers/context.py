@@ -19,6 +19,7 @@ class DocxRenderContext:
     settings: DocumentSettings
     unit: str
     word_document: Any
+    in_box: bool = False
 
 
 @dataclass(slots=True)
@@ -30,6 +31,7 @@ class PdfRenderContext:
     settings: DocumentSettings
     unit: str
     styles: Any
+    in_box: bool = False
 
 
 @dataclass(slots=True)
@@ -40,3 +42,4 @@ class HtmlRenderContext:
     render_index: RenderIndex
     settings: DocumentSettings
     unit: str
+    in_box: bool = False

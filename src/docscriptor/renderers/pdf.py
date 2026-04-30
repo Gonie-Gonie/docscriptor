@@ -625,6 +625,7 @@ class PdfRenderer:
             context.styles,
             context.render_index,
             context.unit,
+            in_box=context.in_box,
         )
 
     def render_figure(
@@ -640,6 +641,7 @@ class PdfRenderer:
             context.styles,
             context.render_index,
             context.unit,
+            in_box=context.in_box,
         )
 
     def render_table_list(
@@ -921,7 +923,16 @@ class PdfRenderer:
                 f"{type(child).__name__} cannot be rendered inside a Box"
             )
 
-    def _render_table(self, block: Table, theme: Theme, styles: object, render_index: RenderIndex, unit: str) -> list[object]:
+    def _render_table(
+        self,
+        block: Table,
+        theme: Theme,
+        styles: object,
+        render_index: RenderIndex,
+        unit: str,
+        *,
+        in_box: bool = False,
+    ) -> list[object]:
         body_style = self._paragraph_style(ParagraphStyle(space_after=0), theme, styles["BodyText"])
         header_style = RLParagraphStyle(
             "TableHeader",
@@ -1054,7 +1065,7 @@ class PdfRenderer:
                     caption_style,
                 )
             )
-        else:
+        elif not in_box:
             story.append(Spacer(1, 12))
         if layout.row_count <= 12:
             return [KeepTogether(story)]
@@ -1111,6 +1122,7 @@ class PdfRenderer:
                 parent=body_style,
                 fontName=self._resolve_font(theme.body_font_name, True, False),
                 spaceAfter=6,
+                textColor=colors.HexColor(f"#{block.style.title_text_color or '000000'}"),
             )
             rows.append(
                 [
@@ -1145,6 +1157,7 @@ class PdfRenderer:
                 settings=settings,
                 unit=unit,
                 styles=styles,
+                in_box=True,
             )
             for flowable in self._render_block(child, context):
                 if isinstance(flowable, KeepTogether):
@@ -1154,18 +1167,23 @@ class PdfRenderer:
         if not rows:
             rows.append([Spacer(1, 1)])
 
+        column_widths = None
+        if block.style.width is not None:
+            column_widths = [length_to_inches(block.style.width, block.style.unit or unit) * inch]
         table = RLTable(
             rows,
-            hAlign=FLOWABLE_ALIGNMENTS[theme.box_alignment],
+            colWidths=column_widths,
+            hAlign=FLOWABLE_ALIGNMENTS[block.style.alignment or theme.box_alignment],
             repeatRows=0,
         )
+        top_padding, right_padding, bottom_padding, left_padding = block.style.resolved_padding()
         style_commands: list[tuple[str, tuple[int, int], tuple[int, int], object]] = [
             ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(f"#{block.style.background_color}")),
             ("BOX", (0, 0), (-1, -1), block.style.border_width, colors.HexColor(f"#{block.style.border_color}")),
-            ("LEFTPADDING", (0, 0), (-1, -1), block.style.padding),
-            ("RIGHTPADDING", (0, 0), (-1, -1), block.style.padding),
-            ("TOPPADDING", (0, 0), (-1, -1), block.style.padding),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), block.style.padding),
+            ("LEFTPADDING", (0, 0), (-1, -1), left_padding),
+            ("RIGHTPADDING", (0, 0), (-1, -1), right_padding),
+            ("TOPPADDING", (0, 0), (-1, -1), top_padding),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), bottom_padding),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ]
         style_commands.extend(row_styles)
@@ -1227,7 +1245,16 @@ class PdfRenderer:
             )
         ]
 
-    def _render_figure(self, block: Figure, theme: Theme, styles: object, render_index: RenderIndex, unit: str) -> list[object]:
+    def _render_figure(
+        self,
+        block: Figure,
+        theme: Theme,
+        styles: object,
+        render_index: RenderIndex,
+        unit: str,
+        *,
+        in_box: bool = False,
+    ) -> list[object]:
         image = RLImage(self._figure_image_source(block))
         image.hAlign = FLOWABLE_ALIGNMENTS[theme.figure_alignment]
         resolved_width = block.width_in_inches(unit)
@@ -1255,7 +1282,7 @@ class PdfRenderer:
                 fontSize=theme.caption_size(),
                 alignment=ALIGNMENTS[theme.caption_alignment],
                 spaceBefore=0,
-                spaceAfter=6,
+                spaceAfter=2 if in_box else 6,
             )
             elements = [
                 RLParagraph(
@@ -1276,8 +1303,8 @@ class PdfRenderer:
                 parent=body_style,
                 fontSize=theme.caption_size(),
                 alignment=ALIGNMENTS[theme.caption_alignment],
-                spaceBefore=6,
-                spaceAfter=12,
+                spaceBefore=2 if in_box else 6,
+                spaceAfter=0 if in_box else 12,
             )
             elements.append(
                 RLParagraph(
@@ -1292,7 +1319,7 @@ class PdfRenderer:
                     caption_style,
                 )
             )
-        else:
+        elif not in_box:
             elements.append(Spacer(1, 12))
         return [KeepTogether(elements)]
 

@@ -40,6 +40,7 @@ from docscriptor import (
     PageMargins,
     PageSize,
     Paragraph,
+    ParagraphStyle,
     ReferencesPage,
     Section,
     Shape,
@@ -47,6 +48,7 @@ from docscriptor import (
     Subsection,
     Subsubsection,
     Table,
+    TableStyle,
     TableList,
     TableOfContents,
     Text,
@@ -151,18 +153,30 @@ figure = Figure(
 )
 """
 
-SHEET_SNIPPET = """from docscriptor import ImageBox, Shape, Sheet, TextBox
+REPORT_PANEL_SNIPPET = """from docscriptor import Box, BoxStyle, Paragraph, Table
 
-certificate = Sheet(
-    Shape.rect(x=0.4, y=0.4, width=20.2, height=13.2, stroke_color="#D4B56A", stroke_width=1.4),
-    ImageBox("assets/docscriptor-logo.png", x=8.7, y=4.0, width=3.6, height=1.6),
-    TextBox("Docscriptor Contributor Certificate", x=1.2, y=2.4, width=18.6, height=1.2, align="center", font_size=20),
-    TextBox("Awarded for keeping document structure readable across DOCX, PDF, and HTML.", x=2.0, y=6.2, width=17.0, height=1.0, align="center", valign="middle"),
-    width=21.0,
-    height=14.0,
-    unit="cm",
-    background_color="#FDFBF6",
-    background_gradient=("#FDFBF6", "#EEF6FF"),
+panel = Box(
+    Paragraph("Editable report content can stay grouped with its evidence."),
+    Table(
+        headers=["Surface", "Word behavior", "Portable behavior"],
+        rows=[
+            ["Box", "Editable panel", "tcolorbox-like grouping"],
+            ["Table", "Editable cells", "Shared structured layout"],
+        ],
+    ),
+    title="Report panel",
+    style=BoxStyle(
+        background_color="#FDFBF6",
+        title_background_color="#1058A3",
+        title_text_color="#FFFFFF",
+        padding_top=8,
+        padding_right=12,
+        padding_bottom=8,
+        padding_left=12,
+        width=18.0,
+        unit="cm",
+        alignment="center",
+    ),
 )
 """
 
@@ -561,87 +575,45 @@ def build_usage_guide_document() -> Document:
             title_background_color="#DCE8F4",
         ),
     )
-    contributor_certificate = Sheet(
-        Shape.rect(
-            x=0.4,
-            y=0.4,
-            width=20.2,
-            height=13.2,
-            stroke_color="#D4B56A",
-            stroke_width=1.4,
-        ),
-        Shape.rect(
-            x=0.8,
-            y=0.8,
-            width=19.4,
-            height=12.4,
-            stroke_color="#6E8497",
-            stroke_width=0.8,
-        ),
-        Shape.ellipse(
-            x=9.0,
-            y=10.8,
-            width=3.0,
-            height=1.2,
-            stroke_color="#B2783D",
-            fill_color="#FFF1D8",
-        ),
-        ImageBox(
-            LOGO_PATH,
-            x=8.7,
-            y=4.0,
-            width=3.6,
-            height=1.6,
-            z_index=1,
-        ),
-        TextBox(
-            "Docscriptor Contributor Certificate",
-            x=1.2,
-            y=2.4,
-            width=18.6,
-            height=1.2,
-            align="center",
-            font_size=20,
-            z_index=2,
-        ),
-        TextBox(
+    contributor_certificate = Box(
+        Paragraph(
             "Awarded for keeping document structure readable across DOCX, PDF, and HTML.",
-            x=2.0,
-            y=6.2,
-            width=17.0,
-            height=1.0,
-            align="center",
-            valign="middle",
-            font_size=11,
-            z_index=2,
+            style=ParagraphStyle(alignment="center", space_after=8),
         ),
-        TextBox(
+        Table(
+            headers=["Authoring surface", "Word behavior", "Portable behavior"],
+            rows=[
+                ["Box", "Editable table-backed panel", "Stable tcolorbox-like grouping"],
+                ["Table", "Editable cells", "Shared data-backed layout"],
+                ["Figure", "Reviewable inserted media", "Same asset in every output"],
+            ],
+            column_widths=[3.6, 5.2, 6.2],
+            style=TableStyle(
+                header_background_color="#E7EEF7",
+                border_color="#B8C6D6",
+                cell_padding=4,
+            ),
+        ),
+        Figure(LOGO_PATH, width=3.2, unit="cm"),
+        Paragraph(
             "Generated from the same Python document tree as this guide.",
-            x=3.0,
-            y=8.2,
-            width=15.0,
-            height=0.8,
-            align="center",
-            font_size=10,
-            z_index=2,
+            style=ParagraphStyle(alignment="center", space_after=0),
         ),
-        TextBox(
-            "docscriptor",
-            x=8.0,
-            y=11.1,
-            width=5.0,
-            height=0.6,
-            align="center",
-            font_size=12,
-            z_index=2,
+        title="Docscriptor Contributor Certificate",
+        style=BoxStyle(
+            border_color="#D4B56A",
+            background_color="#FDFBF6",
+            title_background_color="#1058A3",
+            title_text_color="#FFFFFF",
+            border_width=1.0,
+            padding_top=8,
+            padding_right=12,
+            padding_bottom=8,
+            padding_left=12,
+            width=18.0,
+            unit="cm",
+            alignment="center",
         ),
-        width=21.0,
-        height=14.0,
-        unit="cm",
-        background_color="#FDFBF6",
-        background_gradient=("#FDFBF6", "#EEF6FF"),
-        border_color="#D4B56A",
-        border_width=0.8,
     )
 
     return Document(
@@ -908,14 +880,14 @@ def build_usage_guide_document() -> Document:
                 CodeBlock(FIGURE_SIZING_SNIPPET, language="python"),
             ),
             Section(
-                "Fixed sheets for short forms",
+                "Report panels for structured forms",
                 Paragraph(
-                    "Most docscriptor pages should remain flowing document structure. When a project needs a one-page form such as a certificate, badge, or cover insert, use ",
-                    code("Sheet"),
-                    " as a normal block inside the same document tree. Its coordinates are measured from the top-left corner, which keeps small form layouts readable without turning the whole document into a slide deck."
+                    "Most report layouts should remain editable document structure. For tcolorbox-like panels, callouts, and form sections, use ",
+                    code("Box"),
+                    " with explicit width, padding, colors, and alignment before reaching for fixed-position page graphics. That keeps Word output reviewable while PDF and HTML keep the same grouping intent."
                 ),
                 contributor_certificate,
-                CodeBlock(SHEET_SNIPPET, language="python"),
+                CodeBlock(REPORT_PANEL_SNIPPET, language="python"),
             ),
             Section(
                 "What changed in the default document feel",

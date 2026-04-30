@@ -235,12 +235,21 @@ class HtmlRenderer:
                 + "</div>"
             )
         children_html = "".join(
-            child.render_to_html(self, context)
+            child.render_to_html(
+                self,
+                HtmlRenderContext(
+                    theme=context.theme,
+                    render_index=context.render_index,
+                    settings=context.settings,
+                    unit=context.unit,
+                    in_box=True,
+                ),
+            )
             for child in block.children
         )
         return (
             '<section class="docscriptor-box" '
-            f'style="{self._box_css(block, context.theme)}">'
+            f'style="{self._box_css(block, context.theme, context.unit)}">'
             + title_html
             + children_html
             + "</section>"
@@ -349,7 +358,7 @@ class HtmlRenderer:
         )
         table_html = (
             '<div class="docscriptor-table-wrapper" '
-            f'style="{self._table_wrapper_css(context.theme)}">'
+            f'style="{self._table_wrapper_css(context.theme, in_box=context.in_box)}">'
             + (
                 caption_html
                 if block.caption is not None and context.theme.table_caption_position == "above"
@@ -412,7 +421,7 @@ class HtmlRenderer:
             content_parts.append(caption_html)
         return (
             '<figure class="docscriptor-figure" '
-            f'style="{self._figure_css(context.theme)}">'
+            f'style="{self._figure_css(context.theme, in_box=context.in_box)}">'
             + "".join(content_parts)
             + "</figure>"
         )
@@ -1315,31 +1324,43 @@ class HtmlRenderer:
             f" line-height: {line_height:.1f}pt;"
         )
 
-    def _box_css(self, block: Box, theme: Theme) -> str:
+    def _box_css(self, block: Box, theme: Theme, unit: str) -> str:
+        top_padding, right_padding, bottom_padding, left_padding = block.style.resolved_padding()
+        width = (
+            f" width: {length_to_inches(block.style.width, block.style.unit or unit):.4f}in;"
+            if block.style.width is not None
+            else ""
+        )
         return (
             f"border: {block.style.border_width:.2f}pt solid #{block.style.border_color};"
             f" background: #{block.style.background_color};"
-            f" padding: {block.style.padding:.1f}pt;"
+            f" padding: {top_padding:.1f}pt {right_padding:.1f}pt {bottom_padding:.1f}pt {left_padding:.1f}pt;"
             f" margin: 0 0 {block.style.space_after:.1f}pt;"
-            f" {self._block_alignment_css(theme.box_alignment)}"
+            f"{width}"
+            f" {self._block_alignment_css(block.style.alignment or theme.box_alignment)}"
         )
 
-    def _table_wrapper_css(self, theme: Theme) -> str:
+    def _table_wrapper_css(self, theme: Theme, *, in_box: bool = False) -> str:
+        padding = "0" if in_box else "14px 16px"
+        margin = "4pt 0" if in_box else "0 0 12pt"
         return (
             "width: fit-content;"
             " max-width: 100%;"
             " overflow-x: auto;"
-            " padding: 14px 16px;"
-            " margin: 0 0 12pt;"
+            f" padding: {padding};"
+            f" margin: {margin};"
             f" {self._block_alignment_css(theme.table_alignment)}"
         )
 
-    def _figure_css(self, theme: Theme) -> str:
+    def _figure_css(self, theme: Theme, *, in_box: bool = False) -> str:
+        padding = "0" if in_box else "16px"
+        margin = "4pt 0" if in_box else "0 0 12pt"
         return (
-            "padding: 16px;"
+            f"padding: {padding};"
             f" text-align: {theme.figure_alignment};"
-            " margin: 0 0 12pt;"
-            f" {self._block_alignment_css(theme.figure_alignment)}"
+            f" margin: {margin};"
+            + (" background: transparent; box-shadow: none;" if in_box else "")
+            + f" {self._block_alignment_css(theme.figure_alignment)}"
         )
 
     def _block_alignment_css(self, alignment: str) -> str:
@@ -1357,6 +1378,8 @@ class HtmlRenderer:
         if block.style.title_background_color is not None:
             parts.append(f"background: #{block.style.title_background_color}")
             parts.append("padding: 4pt 6pt")
+        if block.style.title_text_color is not None:
+            parts.append(f"color: #{block.style.title_text_color}")
         parts.append(f"font-size: {theme.body_font_size:.1f}pt")
         return "; ".join(parts)
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
+from xml.sax.saxutils import escape as xml_escape
 
 from docx import Document as WordDocument
 from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_TABLE_ALIGNMENT
@@ -50,7 +51,7 @@ from docscriptor.components.inline import (
 )
 from docscriptor.components.media import Figure, Table, build_table_layout
 from docscriptor.components.people import AuthorTitleLine
-from docscriptor.components.sheets import ImageBox, Sheet, TextBox
+from docscriptor.components.sheets import ImageBox, Shape, Sheet, TextBox
 from docscriptor.document import Document
 from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
 from docscriptor.core import DocscriptorError, PathLike, length_to_inches
@@ -127,6 +128,7 @@ class DocxRenderer:
         self._bookmark_id = 1
         self._native_footnotes_part: FootnotesPart | None = None
         self._rendered_native_footnotes: set[int] = set()
+        self._sheet_section_indexes: set[int] = set()
         render_index = build_render_index(document)
         self._configure_document(word_document, document)
         context = DocxRenderContext(
@@ -167,6 +169,7 @@ class DocxRenderer:
                 has_front_matter=has_front_matter,
                 has_main_matter=bool(main_children) or not has_front_matter,
             )
+            self._suppress_sheet_page_numbers(word_document, document.theme)
 
         word_document.save(path)
         return path
@@ -290,6 +293,7 @@ class DocxRenderer:
             else:
                 section = context.word_document.sections[-1]
             self._configure_sheet_section_page_box(section, sheet, context)
+            self._sheet_section_indexes.add(len(context.word_document.sections) - 1)
             restore_section = sheet.page_break_after
 
         self._render_sheet(
@@ -426,6 +430,7 @@ class DocxRenderer:
             context.render_index,
             context.unit,
             word_document=context.word_document,
+            in_box=context.in_box,
         )
 
     def _configure_document(self, word_document: WordDocument, document: Document) -> None:
@@ -500,6 +505,8 @@ class DocxRenderer:
         section.right_margin = Inches(0)
         section.bottom_margin = Inches(0)
         section.left_margin = Inches(0)
+        section.header_distance = Inches(0)
+        section.footer_distance = Inches(0)
 
     def _render_top_level_children(
         self,
@@ -772,18 +779,20 @@ class DocxRenderer:
         fragments: list[Text],
         default_size: float | None = None,
         *,
+        default_style: TextStyle | None = None,
         theme: Theme | None = None,
         render_index: RenderIndex | None = None,
         word_document: WordDocument | None = None,
     ) -> None:
         for fragment in fragments:
+            fragment_style = default_style.merged(fragment.style) if default_style is not None else fragment.style
             if isinstance(fragment, Hyperlink):
                 self._append_hyperlink_runs(
                     paragraph,
                     fragment.target,
                     fragment.label,
                     internal=fragment.internal,
-                    style=fragment.style,
+                    style=fragment_style,
                     default_size=default_size,
                 )
                 continue
@@ -792,9 +801,9 @@ class DocxRenderer:
                 self._append_hyperlink_runs(
                     paragraph,
                     anchor,
-                    [Text(self._resolve_block_reference(fragment.target, theme, render_index), style=fragment.style)],
+                    [Text(self._resolve_block_reference(fragment.target, theme, render_index), style=fragment_style)],
                     internal=True,
-                    style=fragment.style,
+                    style=fragment_style,
                     default_size=default_size,
                 )
                 continue
@@ -802,9 +811,9 @@ class DocxRenderer:
                 self._append_hyperlink_runs(
                     paragraph,
                     render_index.citation_anchor(fragment.target),
-                    [Text(f"[{render_index.citation_number(fragment.target)}]", style=fragment.style)],
+                    [Text(f"[{render_index.citation_number(fragment.target)}]", style=fragment_style)],
                     internal=True,
-                    style=fragment.style,
+                    style=fragment_style,
                     default_size=default_size,
                 )
                 continue
@@ -832,7 +841,7 @@ class DocxRenderer:
                 self._append_math_runs(paragraph, fragment, default_size=default_size)
                 continue
             run = paragraph.add_run(self._resolve_fragment_text(fragment, theme, render_index))
-            self._apply_run_style(run, fragment.style, default_size=default_size)
+            self._apply_run_style(run, fragment_style, default_size=default_size)
 
     def _append_hyperlink_runs(
         self,
@@ -1091,24 +1100,34 @@ class DocxRenderer:
         *,
         word_document: WordDocument,
     ) -> None:
+        alignment = box.style.alignment or theme.box_alignment
         outer_table = container.add_table(rows=1, cols=1)
-        outer_table.alignment = TABLE_ALIGNMENTS[theme.box_alignment]
+        outer_table.alignment = TABLE_ALIGNMENTS[alignment]
+        if box.style.width is not None:
+            width = length_to_inches(box.style.width, box.style.unit or unit)
+            outer_table.autofit = False
+            self._set_table_width(outer_table, width)
+            outer_table.columns[0].width = Inches(width)
         cell = outer_table.rows[0].cells[0]
         cell._tc.clear_content()
         self._initialized_cells.discard(id(cell))
+        if box.style.width is not None:
+            self._set_cell_width(cell, length_to_inches(box.style.width, box.style.unit or unit))
         self._set_cell_shading(cell, box.style.background_color)
         self._set_cell_borders(cell, box.style.border_color, box.style.border_width)
-        self._set_cell_padding(cell, box.style.padding)
+        self._set_cell_margins(cell, *box.style.resolved_padding())
 
         if box.title is not None:
             title_paragraph = self._add_paragraph(cell)
             title_paragraph.paragraph_format.space_after = Pt(6)
             if box.style.title_background_color is not None:
                 self._set_paragraph_shading(title_paragraph, box.style.title_background_color)
+            title_style = TextStyle(color=box.style.title_text_color, bold=True)
             self._append_runs(
                 title_paragraph,
                 box.title,
                 default_size=theme.body_font_size,
+                default_style=title_style,
                 theme=theme,
                 render_index=render_index,
                 word_document=word_document,
@@ -1120,6 +1139,7 @@ class DocxRenderer:
             settings=settings,
             unit=unit,
             word_document=word_document,
+            in_box=True,
         )
         for child in box.children:
             self._assert_box_child_supported(child)
@@ -1144,6 +1164,7 @@ class DocxRenderer:
         outer_table = container.add_table(rows=1, cols=1)
         outer_table.alignment = WD_TABLE_ALIGNMENT.CENTER
         outer_table.autofit = False
+        self._set_table_width(outer_table, width)
         outer_table.columns[0].width = Inches(width)
         outer_table.rows[0].height = Inches(height)
         outer_table.rows[0].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
@@ -1160,12 +1181,19 @@ class DocxRenderer:
             (
                 (index, item)
                 for index, item in enumerate(sheet.items)
-                if isinstance(item, (ImageBox, TextBox))
+                if isinstance(item, (ImageBox, Shape, TextBox))
             ),
             key=lambda indexed: (indexed[1].z_index, indexed[0]),
         )
         for _, item in visible_items:
-            if isinstance(item, ImageBox):
+            if isinstance(item, Shape):
+                paragraph = self._add_paragraph(cell)
+                paragraph.paragraph_format.space_before = Pt(0)
+                paragraph.paragraph_format.space_after = Pt(0)
+                paragraph.add_run()._r.append(
+                    self._sheet_shape_pict(item, sheet.unit or unit)
+                )
+            elif isinstance(item, ImageBox):
                 paragraph = self._add_paragraph(cell)
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
                 paragraph.paragraph_format.left_indent = Inches(
@@ -1220,6 +1248,59 @@ class DocxRenderer:
         if sheet.background_gradient is None:
             return sheet.background_color
         return sheet.background_gradient[0]
+
+    def _sheet_shape_pict(self, shape: Shape, unit: str) -> object:
+        x = length_to_inches(shape.x, unit) * 72
+        y = length_to_inches(shape.y, unit) * 72
+        width = length_to_inches(shape.width, unit) * 72
+        height = length_to_inches(shape.height, unit) * 72
+        shape_id = f"docscriptor_shape_{self._bookmark_id}"
+        self._bookmark_id += 1
+        stroke = self._vml_stroke_xml(shape)
+        fill = self._vml_fill_xml(shape)
+
+        if shape.kind == "line":
+            return parse_xml(
+                f'<w:pict xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+                f'xmlns:v="urn:schemas-microsoft-com:vml">'
+                f'<v:line id="{shape_id}" '
+                f'style="position:absolute;z-index:{shape.z_index};mso-wrap-style:none" '
+                f'from="{x:.2f}pt,{y:.2f}pt" to="{x + width:.2f}pt,{y + height:.2f}pt">'
+                f'{stroke}'
+                f'</v:line>'
+                f'</w:pict>'
+            )
+
+        tag = "v:oval" if shape.kind == "ellipse" else "v:rect"
+        style = (
+            f"position:absolute;margin-left:{x:.2f}pt;margin-top:{y:.2f}pt;"
+            f"width:{width:.2f}pt;height:{height:.2f}pt;z-index:{shape.z_index};"
+            "mso-position-horizontal-relative:text;"
+            "mso-position-vertical-relative:text;"
+            "mso-wrap-style:none"
+        )
+        return parse_xml(
+            f'<w:pict xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            f'xmlns:v="urn:schemas-microsoft-com:vml">'
+            f'<{tag} id="{shape_id}" style="{xml_escape(style)}">'
+            f'{fill}'
+            f'{stroke}'
+            f'</{tag}>'
+            f'</w:pict>'
+        )
+
+    def _vml_stroke_xml(self, shape: Shape) -> str:
+        if shape.stroke_color is None or shape.stroke_width <= 0:
+            return '<v:stroke on="false"/>'
+        return (
+            f'<v:stroke color="#{shape.stroke_color}" '
+            f'weight="{shape.stroke_width:.2f}pt"/>'
+        )
+
+    def _vml_fill_xml(self, shape: Shape) -> str:
+        if shape.fill_color is None:
+            return '<v:fill on="false"/>'
+        return f'<v:fill color="#{shape.fill_color}"/>'
 
     def _render_table(
         self,
@@ -1314,12 +1395,14 @@ class DocxRenderer:
         unit: str,
         *,
         word_document: WordDocument,
+        in_box: bool = False,
     ) -> None:
         def render_caption() -> None:
             if figure.caption is None:
                 return
             caption = self._add_paragraph(container)
             caption.alignment = ALIGNMENTS[theme.caption_alignment]
+            caption.paragraph_format.space_after = Pt(0 if in_box else 12)
             self._keep_lines_together(caption)
             self._append_runs(
                 caption,
@@ -1344,6 +1427,8 @@ class DocxRenderer:
 
         paragraph = self._add_paragraph(container)
         paragraph.alignment = ALIGNMENTS[theme.figure_alignment]
+        paragraph.paragraph_format.space_before = Pt(0)
+        paragraph.paragraph_format.space_after = Pt(0 if in_box else 12)
         if figure.caption is not None and theme.figure_caption_position == "below":
             self._keep_with_next(paragraph)
         run = paragraph.add_run()
@@ -1383,10 +1468,21 @@ class DocxRenderer:
 
     def _set_cell_width(self, cell: object, width: float) -> None:
         properties = cell._tc.get_or_add_tcPr()
+        for existing in list(properties.findall(qn("w:tcW"))):
+            properties.remove(existing)
         width_element = OxmlElement("w:tcW")
         width_element.set(qn("w:w"), str(max(int(round(width * 1440)), 0)))
         width_element.set(qn("w:type"), "dxa")
         properties.append(width_element)
+
+    def _set_table_width(self, table: object, width: float) -> None:
+        properties = table._tbl.tblPr
+        for existing in list(properties.findall(qn("w:tblW"))):
+            properties.remove(existing)
+        width_element = OxmlElement("w:tblW")
+        width_element.set(qn("w:w"), str(max(int(round(width * 1440)), 0)))
+        width_element.set(qn("w:type"), "dxa")
+        properties.insert(0, width_element)
 
     def _set_cell_borders(self, cell: object, color: str, width: float) -> None:
         properties = cell._tc.get_or_add_tcPr()
@@ -1402,12 +1498,21 @@ class DocxRenderer:
         properties.append(borders)
 
     def _set_cell_padding(self, cell: object, padding: float) -> None:
+        self._set_cell_margins(cell, padding, padding, padding, padding)
+
+    def _set_cell_margins(self, cell: object, top: float, right: float, bottom: float, left: float) -> None:
         properties = cell._tc.get_or_add_tcPr()
+        for existing in list(properties.findall(qn("w:tcMar"))):
+            properties.remove(existing)
         margins = OxmlElement("w:tcMar")
-        margin_value = str(max(int(round(padding * 20)), 0))
-        for side in ("top", "left", "bottom", "right"):
+        for side, padding in (
+            ("top", top),
+            ("left", left),
+            ("bottom", bottom),
+            ("right", right),
+        ):
             element = OxmlElement(f"w:{side}")
-            element.set(qn("w:w"), margin_value)
+            element.set(qn("w:w"), str(max(int(round(padding * 20)), 0)))
             element.set(qn("w:type"), "dxa")
             margins.append(element)
         properties.append(margins)
@@ -1691,6 +1796,28 @@ class DocxRenderer:
             theme,
             front_matter=False,
         )
+
+    def _suppress_sheet_page_numbers(self, word_document: WordDocument, theme: Theme) -> None:
+        if not self._sheet_section_indexes:
+            return
+        sections = list(word_document.sections)
+        for index, section in enumerate(sections):
+            if index in self._sheet_section_indexes:
+                section.footer.is_linked_to_previous = False
+                self._clear_story_part(section.footer)
+                continue
+            if index > 0 and (index - 1) in self._sheet_section_indexes:
+                section.footer.is_linked_to_previous = False
+                self._add_page_number_footer(
+                    section,
+                    theme,
+                    front_matter=False,
+                )
+
+    def _clear_story_part(self, story_part: object) -> None:
+        element = story_part._element
+        for child in list(element):
+            element.remove(child)
 
     def _add_page_number_footer(
         self,

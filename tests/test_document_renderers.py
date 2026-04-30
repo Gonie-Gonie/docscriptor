@@ -568,7 +568,10 @@ def test_sheet_renders_fixed_layout_text_and_shapes(tmp_path: Path) -> None:
         "Sheet Test",
         sheet,
         Paragraph("After sheet."),
-        settings=DocumentSettings(page_size=PageSize.letter()),
+        settings=DocumentSettings(
+            page_size=PageSize.letter(),
+            theme=Theme(show_page_numbers=True),
+        ),
     )
 
     docx_path = tmp_path / "sheet.docx"
@@ -595,6 +598,19 @@ def test_sheet_renders_fixed_layout_text_and_shapes(tmp_path: Path) -> None:
     assert "Awarded for keeping document structure readable" in table_text
     assert "After sheet." in word_text
     assert len(word_document.sections) >= 3
+    document_xml = _docx_document_xml(docx_path)
+    sheet_table_xml = re.search(
+        r"<w:tbl>.*?Docscriptor Contributor Certificate.*?</w:tbl>",
+        document_xml,
+    )
+    assert sheet_table_xml is not None
+    assert "<v:rect" in sheet_table_xml.group(0)
+    assert "<v:oval" in sheet_table_xml.group(0)
+    assert '<w:tblW w:w="10800" w:type="dxa"/>' in sheet_table_xml.group(0)
+    assert sheet_table_xml.group(0).count("<w:tcW") == 1
+    assert '<w:tcW w:w="10800" w:type="dxa"/>' in sheet_table_xml.group(0)
+    assert '<w:footerReference w:type="default"' in word_document.sections[1]._sectPr.xml
+    assert "PAGE" not in word_document.sections[1].footer._element.xml
     assert "Docscriptor Contributor Certificate" in pdf_text
     assert "Awarded for keeping document structure readable" in pdf_text
     assert len(pdf_reader.pages) >= 3
@@ -665,6 +681,64 @@ def test_nested_sheet_owns_docx_section_and_html_page_wrapper(tmp_path: Path) ->
     assert "width: 8.5000in" in html_text
     assert "Before sheet." in html_text
     assert "After sheet." in html_text
+
+
+def test_box_style_supports_tcolorbox_like_layout_controls(tmp_path: Path) -> None:
+    image_path = tmp_path / "panel-logo.png"
+    _write_sample_image(image_path)
+    document = Document(
+        "Box Layout Test",
+        Box(
+            Paragraph("Editable content inside a styled report panel."),
+            Table(
+                headers=["Surface", "Behavior"],
+                rows=[["Box", "compact nested table"]],
+                column_widths=[1.2, 2.0],
+            ),
+            Figure(image_path, width=0.7),
+            title="Panel",
+            style=BoxStyle(
+                border_color="#1058A3",
+                background_color="#FFFFFF",
+                title_background_color="#1058A3",
+                title_text_color="#FFFFFF",
+                border_width=0.5,
+                padding_top=2,
+                padding_right=5,
+                padding_bottom=3,
+                padding_left=7,
+                width=10,
+                unit="cm",
+                alignment="left",
+            ),
+        ),
+    )
+
+    docx_path = tmp_path / "box-layout.docx"
+    pdf_path = tmp_path / "box-layout.pdf"
+    html_path = tmp_path / "box-layout.html"
+
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    html_text = html_path.read_text(encoding="utf-8")
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+
+    assert "Editable content inside a styled report panel." in docx_xml
+    assert 'w:fill="1058A3"' in docx_xml
+    assert 'w:color="FFFFFF"' in docx_xml
+    assert '<w:tblW w:w="5669" w:type="dxa"/>' in docx_xml
+    assert '<w:top w:w="40" w:type="dxa"/>' in docx_xml
+    assert '<w:left w:w="140" w:type="dxa"/>' in docx_xml
+    assert "width: 3.9370in" in html_text
+    assert "padding: 2.0pt 5.0pt 3.0pt 7.0pt" in html_text
+    assert "padding: 0;" in html_text
+    assert "box-shadow: none" in html_text
+    assert "color: #FFFFFF" in html_text
+    assert "Editable content inside a styled report panel." in pdf_text
+    assert "compact nested table" in pdf_text
 
 
 def test_explicit_page_break_renders_to_all_outputs(tmp_path: Path) -> None:

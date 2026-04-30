@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Sequence
 
-from docscriptor.core import format_counter_value, normalize_color, normalize_counter_format
+from docscriptor.core import format_counter_value, normalize_color, normalize_counter_format, normalize_length_unit
 
 
 @dataclass(slots=True)
@@ -136,21 +136,48 @@ class BoxStyle:
     border_color: str = "B7C2D0"
     background_color: str = "F7FAFC"
     title_background_color: str | None = None
+    title_text_color: str | None = None
     border_width: float = 0.75
     padding: float = 6.0
+    padding_top: float | None = None
+    padding_right: float | None = None
+    padding_bottom: float | None = None
+    padding_left: float | None = None
     space_after: float = 12.0
+    width: float | None = None
+    unit: str | None = None
+    alignment: str | None = None
 
     def __post_init__(self) -> None:
         self.border_color = normalize_color(self.border_color) or "B7C2D0"
         self.background_color = normalize_color(self.background_color) or "F7FAFC"
         self.title_background_color = normalize_color(self.title_background_color)
+        self.title_text_color = normalize_color(self.title_text_color)
+        self.unit = normalize_length_unit(self.unit) if self.unit is not None else None
         if self.border_width < 0:
             raise ValueError("BoxStyle.border_width must be >= 0")
         if self.padding < 0:
             raise ValueError("BoxStyle.padding must be >= 0")
+        for field_name in ("padding_top", "padding_right", "padding_bottom", "padding_left"):
+            value = getattr(self, field_name)
+            if value is not None and value < 0:
+                raise ValueError(f"BoxStyle.{field_name} must be >= 0")
         if self.space_after < 0:
             raise ValueError("BoxStyle.space_after must be >= 0")
+        if self.width is not None and self.width <= 0:
+            raise ValueError("BoxStyle.width must be > 0")
+        if self.alignment is not None and self.alignment not in {"left", "center", "right"}:
+            raise ValueError(f"Unsupported BoxStyle alignment: {self.alignment!r}")
 
+    def resolved_padding(self) -> tuple[float, float, float, float]:
+        """Return top, right, bottom, and left padding in points."""
+
+        return (
+            self.padding if self.padding_top is None else self.padding_top,
+            self.padding if self.padding_right is None else self.padding_right,
+            self.padding if self.padding_bottom is None else self.padding_bottom,
+            self.padding if self.padding_left is None else self.padding_left,
+        )
 
 @dataclass(slots=True)
 class TableStyle:

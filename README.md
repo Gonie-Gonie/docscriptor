@@ -96,12 +96,13 @@ The default behavior is intentionally conventional:
 
 - DOCX, PDF, and HTML rendering from the same document tree
 - block objects for paragraphs, lists, code blocks, equations, boxes, tables, figures, and generated pages
+- editable report panels with `Box(...)` / `BoxStyle(...)` controls for width, alignment, title color, and per-side padding
 - portable comments and footnotes that stay stable across DOCX, PDF, and HTML
 - footnotes target page-bottom placement by default when the renderer supports it; `Theme(footnote_placement="document")` keeps the collected-notes pattern
 - captioned tables and figures with automatic numbering and in-text references
 - table support for `TableCell(...)`, `rowspan`, `colspan`, banded rows, and dataframe-like inputs
 - figure support for both stored image files and `savefig()`-compatible Python objects
-- fixed-layout `Sheet(...)` pages with positioned `TextBox(...)`, `ImageBox(...)`, basic `Shape(...)` objects, layer ordering, gradient-capable backgrounds, and standalone-page behavior for short forms such as certificates
+- fixed-layout `Sheet(...)` pages for short form inserts, with DOCX/PDF/HTML support for the shared `Shape.rect(...)`, `Shape.ellipse(...)`, and `Shape.line(...)` subset; prefer `Box(...)`, `Table(...)`, and normal flow blocks when Word editability matters
 - bibliography support through `CitationSource`, `CitationLibrary`, direct citation objects, and BibTeX import
 - optional title matter such as subtitle, structured `Author(...)` metadata, `AuthorLayout(...)`, affiliations, and a cover page
 - inline hyperlinks and heading/caption anchors for cross-references
