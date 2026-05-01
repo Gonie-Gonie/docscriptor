@@ -105,6 +105,9 @@ report = Document(
 report.save("artifacts/hello.docx")
 report.save("artifacts/hello.pdf")
 report.save("artifacts/hello.html")
+
+# Or create the normal DOCX/PDF/HTML bundle in one call:
+report.save_all("artifacts", stem="hello")
 """
 
 AUTHOR_LAYOUT_SNIPPET = """from docscriptor import Affiliation, Author, AuthorLayout, DocumentSettings
@@ -701,6 +704,13 @@ def build_usage_guide_document() -> Document:
                     " rather than older method-style emphasis so the current preferred inline API stays visible."
                 ),
                 CodeBlock(QUICK_START_SNIPPET, language="python"),
+                Paragraph(
+                    "For the common case where you want all three outputs together, call ",
+                    code("document.save_all('artifacts')"),
+                    ". It uses a filename-safe version of the document title by default, or you can pass ",
+                    code("stem='my-report'"),
+                    " to choose the base filename."
+                ),
                 NumberedList(
                     "Author the structure with Document, Chapter, and Section objects.",
                     "Write prose with Paragraph plus explicit inline helpers such as bold(...), code(...), and links.",

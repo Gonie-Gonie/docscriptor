@@ -76,6 +76,13 @@ report.save("artifacts/hello.html")
 
 `Document.save(...)` chooses the renderer from the file extension. The explicit `save_docx(...)`, `save_pdf(...)`, and `save_html(...)` methods are still available when you want the output format to be obvious in code. Document metadata and renderer defaults live under `DocumentSettings(...)`, so title matter and theme changes stay in one place.
 
+When you want the normal review bundle in one call:
+
+```python
+paths = report.save_all("artifacts")
+print(paths["docx"], paths["pdf"], paths["html"])
+```
+
 ## Why Not Just LaTeX?
 
 Docscriptor is not trying to replace every LaTeX workflow. It is meant for documents where Python already owns the data, plots, citations, or release process and where collaborators may still need DOCX.
@@ -119,6 +126,7 @@ The default behavior is intentionally conventional:
 - Use `Box(...)` for callouts, evidence panels, and tcolorbox-like report sections that should stay editable in Word.
 - Use `Sheet(...)` only when you need a fixed-position insert such as a certificate or custom form page.
 - Use `DocumentSettings(...)` for document-wide choices: authors, subtitle, page size, margins, units, and theme defaults.
+- Use `document.save_all("artifacts")` when a workflow normally needs DOCX, PDF, and HTML together.
 
 ## Features
 

@@ -172,3 +172,51 @@ class Document:
         raise ValueError(
             "Unsupported document output extension. Use one of: .docx, .pdf, .html"
         )
+
+    def save_all(
+        self,
+        output_dir: PathLike,
+        *,
+        stem: str | None = None,
+        formats: Sequence[str] = ("docx", "pdf", "html"),
+    ) -> dict[str, Path]:
+        """Render the document to multiple output formats.
+
+        Args:
+            output_dir: Directory where rendered files should be written.
+            stem: Base filename without extension. Defaults to a filename-safe
+                version of the document title.
+            formats: Iterable of output formats. Supported values are
+                ``"docx"``, ``"pdf"``, and ``"html"`` with or without a
+                leading dot.
+
+        Returns:
+            A mapping from normalized format name to the written path.
+        """
+
+        directory = Path(output_dir)
+        output_stem = stem or self._default_output_stem()
+        outputs: dict[str, Path] = {}
+        for raw_format in formats:
+            output_format = raw_format.lower().strip().removeprefix(".")
+            if output_format == "htm":
+                output_format = "html"
+            if output_format not in {"docx", "pdf", "html"}:
+                raise ValueError(
+                    "Unsupported document output format. Use one of: docx, pdf, html"
+                )
+            outputs[output_format] = self.save(directory / f"{output_stem}.{output_format}")
+        return outputs
+
+    def _default_output_stem(self) -> str:
+        pieces: list[str] = []
+        previous_was_separator = False
+        for character in self.title.strip().lower():
+            if character.isalnum():
+                pieces.append(character)
+                previous_was_separator = False
+            elif not previous_was_separator:
+                pieces.append("-")
+                previous_was_separator = True
+        stem = "".join(pieces).strip("-")
+        return stem or "document"

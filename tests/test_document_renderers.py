@@ -384,6 +384,38 @@ def test_document_save_infers_renderer_from_extension(tmp_path: Path) -> None:
         raise AssertionError("Expected unsupported save extension to fail")
 
 
+def test_document_save_all_renders_multiple_formats(tmp_path: Path) -> None:
+    document = Document("Quarterly Review Draft", Paragraph("Saved as a bundle."))
+
+    outputs = document.save_all(tmp_path)
+
+    assert sorted(outputs) == ["docx", "html", "pdf"]
+    assert outputs["docx"] == tmp_path / "quarterly-review-draft.docx"
+    assert outputs["pdf"] == tmp_path / "quarterly-review-draft.pdf"
+    assert outputs["html"] == tmp_path / "quarterly-review-draft.html"
+    assert all(path.exists() for path in outputs.values())
+
+    selected_outputs = document.save_all(
+        tmp_path / "selected",
+        stem="review-pack",
+        formats=(".docx", "htm"),
+    )
+
+    assert sorted(selected_outputs) == ["docx", "html"]
+    assert selected_outputs["docx"] == tmp_path / "selected" / "review-pack.docx"
+    assert selected_outputs["html"] == tmp_path / "selected" / "review-pack.html"
+    assert all(path.exists() for path in selected_outputs.values())
+
+    try:
+        document.save_all(tmp_path, formats=("txt",))
+    except ValueError as exc:
+        assert "docx" in str(exc)
+        assert "pdf" in str(exc)
+        assert "html" in str(exc)
+    else:
+        raise AssertionError("Expected unsupported save_all format to fail")
+
+
 def test_numbering_and_list_styles_are_customizable() -> None:
     heading_numbering = HeadingNumbering(formats=("upper-roman", "lower-alpha"), prefix="[", suffix="]")
     ordered_style = ListStyle(marker_format="upper-roman", prefix="(", suffix=")")
