@@ -48,6 +48,8 @@ On Windows, the repository also includes a helper that creates `.venv` and insta
 
 ## Quick Start
 
+The smallest useful document is just a `Document`, one visible heading, one paragraph, and one save call. Start here before splitting code into helper functions:
+
 ```python
 from docscriptor import Chapter, Document, DocumentSettings, Paragraph, Section, bold
 
@@ -74,6 +76,22 @@ report.save_html("artifacts/hello.html")
 
 Document metadata and renderer defaults live under `DocumentSettings(...)`, so title matter and theme changes stay in one place.
 
+## Why Not Just LaTeX?
+
+Docscriptor is not trying to replace every LaTeX workflow. It is meant for documents where Python already owns the data, plots, citations, or release process and where collaborators may still need DOCX.
+
+Common translations:
+
+- LaTeX `\section` / `\subsection` -> `Chapter(...)`, `Section(...)`, `Subsection(...)`
+- LaTeX `\textbf{...}` / `\emph{...}` / `\texttt{...}` -> `bold(...)`, `italic(...)`, `code(...)`
+- LaTeX `\includegraphics` -> `Figure(path_or_matplotlib_figure, caption=...)`
+- LaTeX `tabular` or copied tables -> `Table(...)` or `Table.from_dataframe(...)`
+- LaTeX `\label` / `\ref` -> insert the captioned `Table` or `Figure` object directly inside `Paragraph(...)`
+- LaTeX `tcolorbox`-style report panels -> editable `Box(..., style=BoxStyle(...))`
+- BibTeX-style references -> `CitationLibrary`, `CitationSource.cite(...)`, and `ReferencesPage()`
+
+The main payoff is fewer manual handoffs: a benchmark CSV can become a table, a matplotlib object can become a figure, and the same authored structure can render to DOCX for review, PDF for release, and HTML for lightweight sharing.
+
 ## Authoring Model
 
 Docscriptor tries to keep the source readable:
@@ -91,6 +109,16 @@ The default behavior is intentionally conventional:
 - ordered and bullet lists can be customized with `ListStyle(...)`
 - heading numbering can be customized with `HeadingNumbering(...)`
 - article-style front matter can be left unnumbered with `Section(..., numbered=False)`
+
+## What To Use When
+
+- Use `Paragraph(...)` for prose. Pass strings and inline helpers directly; you do not need to pre-build `Text(...)` objects for normal writing.
+- Use `Chapter(...)`, `Section(...)`, `Subsection(...)`, and `Subsubsection(...)` for the visible outline. Their nesting in Python should match how you expect the final document to read.
+- Use `Table(...)` for small authored tables and `Table.from_dataframe(...)` when the data already lives in pandas.
+- Use `Figure(...)` for image files or `savefig()`-compatible Python figure objects.
+- Use `Box(...)` for callouts, evidence panels, and tcolorbox-like report sections that should stay editable in Word.
+- Use `Sheet(...)` only when you need a fixed-position insert such as a certificate or custom form page.
+- Use `DocumentSettings(...)` for document-wide choices: authors, subtitle, page size, margins, units, and theme defaults.
 
 ## Features
 

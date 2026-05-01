@@ -208,6 +208,23 @@ PROJECT_LAYOUT_SNIPPET = """my-report/
     report.html
 """
 
+LATEX_COMPARISON_SNIPPET = """from docscriptor import Box, BoxStyle, Figure, Paragraph, Table, bold, code
+
+summary = Box(
+    Paragraph(bold("Takeaway. "), "The result table and figure are normal document blocks."),
+    Table(
+        headers=["Method", "Score"],
+        rows=[["Baseline", "0.81"], ["Docscriptor workflow", "0.88"]],
+        caption="Benchmark summary generated from Python data.",
+    ),
+    Figure("assets/system-diagram.png", caption="Pipeline diagram.", width=12, unit="cm"),
+    title="Report-ready evidence",
+    style=BoxStyle(width=16, unit="cm", alignment="center"),
+)
+
+Paragraph("See ", summary, " for the editable evidence package.")
+"""
+
 
 def _wrapped_lines(lines: list[str], *, width: int) -> list[str]:
     wrapped: list[str] = []
@@ -461,6 +478,7 @@ def build_usage_guide_document() -> Document:
         headers=["Need", "Recommended chapter", "What you will find there"],
         rows=[
             ["First successful export", "1. Overview", "The minimal document shape, the save methods, and the default rendering model."],
+            ["Switching from LaTeX", "1. Overview", "A concrete mapping from familiar LaTeX concepts to docscriptor objects."],
             ["Author metadata and covers", "2. Metadata and Title Matter", "Structured authors, journal-style defaults, stacked profiles, and cover conventions."],
             ["Tables, figures, and references", "4. Tables, Figures, and Cross-References", "Caption numbering, block references, and data-backed media objects."],
             ["Notes and citations", "5. Notes, Comments, and References", "Footnotes, generated comments pages, citation libraries, and bibliography output."],
@@ -468,6 +486,20 @@ def build_usage_guide_document() -> Document:
         ],
         caption="A reading map for the guide.",
         column_widths=[2.0, 2.0, 2.6],
+    )
+    latex_transition_table = Table(
+        headers=["If you reach for this in LaTeX", "Use this in docscriptor", "Why it is easier here"],
+        rows=[
+            ["\\section, \\subsection", "Chapter, Section, Subsection", "The Python object tree is also the document outline, so headings, contents, and anchors stay synchronized."],
+            ["\\textbf, \\emph, \\texttt", "bold(...), italic(...), code(...)", "Inline styling stays attached to the words being styled and works in DOCX, PDF, and HTML."],
+            ["\\includegraphics", "Figure(path_or_matplotlib_figure, caption=...)", "Static images and Python-generated figures use the same captioning and referencing model."],
+            ["tabular or booktabs", "Table(...), Table.from_dataframe(...)", "Tables can be created directly from Python data instead of being copied into markup."],
+            ["\\label and \\ref", "Put the captioned Table or Figure object inside Paragraph(...)", "References follow the indexed document order without hand-maintained labels."],
+            ["tcolorbox", "Box(..., style=BoxStyle(...))", "Report panels remain editable in Word while keeping a similar grouped visual shape in PDF and HTML."],
+            ["BibTeX plus \\cite", "CitationLibrary and CitationSource.cite(...)", "Citations are authored inline, and only cited sources appear on ReferencesPage()."],
+        ],
+        caption="LaTeX habits translated into docscriptor's Python-first authoring model.",
+        column_widths=[1.9, 2.1, 2.8],
     )
     author_options_table = Table(
         headers=["Approach", "When it fits best", "Configuration pattern"],
@@ -674,6 +706,17 @@ def build_usage_guide_document() -> Document:
                     "Write prose with Paragraph plus explicit inline helpers such as bold(...), code(...), and links.",
                     "Render to DOCX when collaboration requires editing, PDF when layout stability matters, and HTML when lightweight sharing is enough.",
                 ),
+            ),
+            Section(
+                "For authors coming from LaTeX",
+                Paragraph(
+                    "If you already know LaTeX, the important shift is that docscriptor treats document structure as Python objects rather than commands in a markup stream. You still get numbered headings, captions, cross-references, equations, citations, and tcolorbox-like panels, but the same source can also produce an editable DOCX review copy."
+                ),
+                latex_transition_table,
+                Paragraph(
+                    "The practical advantage is strongest when the document depends on Python outputs. A table can come from a dataframe, a figure can come from matplotlib, and the caption reference can be written directly in prose without copying values between tools."
+                ),
+                CodeBlock(LATEX_COMPARISON_SNIPPET, language="python"),
             ),
         ),
         Chapter(

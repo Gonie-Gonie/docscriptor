@@ -104,6 +104,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("TableOfContents" in text for text in paragraph_texts)
     assert any("TocLevelStyle" in text for text in paragraph_texts)
     assert any("A reading map for the guide." in text for text in paragraph_texts)
+    assert any("LaTeX habits translated into docscriptor's Python-first authoring model." in text for text in paragraph_texts)
+    assert any("For authors coming from LaTeX" in text for text in paragraph_texts)
     assert any("Page layout controls shared across renderers." in text for text in paragraph_texts)
     assert any("Table-of-contents defaults and customization options." in text for text in paragraph_texts)
     assert any("Figure sizing patterns for width, height, and document-relative sizing." in text for text in paragraph_texts)
@@ -113,7 +115,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("The journal example at examples/journal_paper_example/main.py" in text for text in paragraph_texts)
     assert "Docscriptor Contributor Certificate" in table_text
     assert "Footnotes" not in [text for text in paragraph_texts if text == "Footnotes"]
-    assert len(word_document.tables) == 11
+    assert len(word_document.tables) == 12
     assert len(word_document.inline_shapes) == 5
     assert len(word_document.comments) == 2
     assert next(paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text == "Comments") == "Heading 2"
@@ -140,6 +142,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "TableOfContents" in pdf_text
     assert "TocLevelStyle" in pdf_text
     assert "A reading map for the guide." in pdf_text
+    assert "LaTeX habits translated into docscriptor's Python-first authoring model." in pdf_text
+    assert "For authors coming from LaTeX" in pdf_text
     assert "Page layout controls shared across renderers." in pdf_text
     assert "Table-of-contents defaults and customization options." in pdf_text
     assert "6.3.1 Subsection entries" in pdf_text
@@ -167,6 +171,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "TableOfContents" in normalized_html_text
     assert "TocLevelStyle" in normalized_html_text
     assert "CommentsPage() collects these review notes onto a dedicated generated page." in normalized_html_text
+    assert "LaTeX habits translated into docscriptor's Python-first authoring model." in normalized_html_text
+    assert "For authors coming from LaTeX" in normalized_html_text
     assert "Page layout controls shared across renderers." in normalized_html_text
     assert "Table-of-contents defaults and customization options." in normalized_html_text
     assert "6.3.1 Subsection entries" in normalized_html_text

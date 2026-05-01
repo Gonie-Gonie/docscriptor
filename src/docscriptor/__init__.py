@@ -61,11 +61,11 @@ def _resolve_version() -> str:
         try:
             from setuptools_scm import get_version
         except ImportError:
-            return "0.3.1"
+            return "0.6.0"
         return get_version(
             root="../..",
             relative_to=__file__,
-            fallback_version="0.3.1",
+            fallback_version="0.6.0",
             tag_regex=r"^v(?P<version>\d+\.\d+\.\d+)$",
         )
 
