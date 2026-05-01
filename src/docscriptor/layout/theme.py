@@ -5,7 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Sequence
 
-from docscriptor.core import format_counter_value, normalize_color, normalize_counter_format, normalize_length_unit
+from docscriptor.core import (
+    format_counter_value,
+    normalize_color,
+    normalize_counter_format,
+    normalize_length_unit,
+)
 
 
 @dataclass(slots=True)
@@ -178,6 +183,7 @@ class BoxStyle:
             self.padding if self.padding_bottom is None else self.padding_bottom,
             self.padding if self.padding_left is None else self.padding_left,
         )
+
 
 @dataclass(slots=True)
 class TableStyle:

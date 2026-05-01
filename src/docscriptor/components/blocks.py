@@ -381,6 +381,7 @@ def coerce_cell(value: CellInput) -> Paragraph:
         return value
     return Paragraph(value)
 
+
 __all__ = [
     "Box",
     "BulletList",

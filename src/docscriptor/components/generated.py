@@ -239,6 +239,7 @@ class TableOfContents(Block):
     ) -> str:
         return renderer.render_table_of_contents(self, context)
 
+
 __all__ = [
     "CommentsPage",
     "FigureList",
