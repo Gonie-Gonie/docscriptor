@@ -72,10 +72,40 @@ class ParagraphStyle:
     alignment: str = "justify"
     space_after: float | None = 12.0
     leading: float | None = None
+    left_indent: float | None = None
+    right_indent: float | None = None
+    first_line_indent: float | None = None
 
     def __post_init__(self) -> None:
         if self.alignment not in {"left", "center", "right", "justify"}:
             raise ValueError(f"Unsupported alignment: {self.alignment!r}")
+        if self.left_indent is not None and self.left_indent < 0:
+            raise ValueError("ParagraphStyle.left_indent must be >= 0")
+        if self.right_indent is not None and self.right_indent < 0:
+            raise ValueError("ParagraphStyle.right_indent must be >= 0")
+
+    @classmethod
+    def hanging(
+        cls,
+        left: float = 0.5,
+        *,
+        by: float | None = None,
+        alignment: str = "justify",
+        space_after: float | None = 12.0,
+        leading: float | None = None,
+    ) -> ParagraphStyle:
+        """Create a hanging-indent paragraph style using inch values."""
+
+        hanging_by = left if by is None else by
+        if hanging_by < 0:
+            raise ValueError("ParagraphStyle.hanging by must be >= 0")
+        return cls(
+            alignment=alignment,
+            space_after=space_after,
+            leading=leading,
+            left_indent=left,
+            first_line_indent=-hanging_by,
+        )
 
 
 @dataclass(slots=True)

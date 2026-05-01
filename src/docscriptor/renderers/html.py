@@ -1325,9 +1325,27 @@ class HtmlRenderer:
         if space_after is None:
             space_after = default_space_after if default_space_after is not None else 0
         line_height = style.leading or theme.body_font_size * 1.35
+        left_indent = (
+            f" margin-left: {style.left_indent:.2f}in;"
+            if style.left_indent is not None
+            else ""
+        )
+        right_indent = (
+            f" margin-right: {style.right_indent:.2f}in;"
+            if style.right_indent is not None
+            else ""
+        )
+        first_line_indent = (
+            f" text-indent: {style.first_line_indent:.2f}in;"
+            if style.first_line_indent is not None
+            else ""
+        )
         return (
             f"text-align: {style.alignment};"
             f" margin: 0 0 {space_after:.1f}pt;"
+            f"{left_indent}"
+            f"{right_indent}"
+            f"{first_line_indent}"
             f" line-height: {line_height:.1f}pt;"
         )
 

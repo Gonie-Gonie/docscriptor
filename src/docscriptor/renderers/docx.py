@@ -773,6 +773,12 @@ class DocxRenderer:
             paragraph.paragraph_format.space_after = Pt(style.space_after)
         if style.leading is not None:
             paragraph.paragraph_format.line_spacing = Pt(style.leading)
+        if style.left_indent is not None:
+            paragraph.paragraph_format.left_indent = Inches(style.left_indent)
+        if style.right_indent is not None:
+            paragraph.paragraph_format.right_indent = Inches(style.right_indent)
+        if style.first_line_indent is not None:
+            paragraph.paragraph_format.first_line_indent = Inches(style.first_line_indent)
 
     def _append_runs(
         self,

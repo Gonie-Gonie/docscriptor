@@ -243,6 +243,19 @@ Paragraph(
 )
 """
 
+PARAGRAPH_INDENT_SNIPPET = """from docscriptor import Paragraph, ParagraphStyle
+
+Paragraph(
+    "First-line indents work like a normal word processor paragraph.",
+    style=ParagraphStyle(left_indent=0.4, first_line_indent=0.25),
+)
+
+Paragraph(
+    "Hanging indents are useful for references, definitions, and glossary-like entries.",
+    style=ParagraphStyle.hanging(left=0.5, by=0.25),
+)
+"""
+
 
 def _wrapped_lines(lines: list[str], *, width: int) -> list[str]:
     wrapped: list[str] = []
@@ -820,6 +833,12 @@ def build_usage_guide_document() -> Document:
                     " for a Shift+Enter-style break inside the same paragraph."
                 ),
                 CodeBlock(INLINE_WORD_FEATURES_SNIPPET, language="python"),
+                Paragraph(
+                    "Paragraph-level Word features are also part of the authored source. ",
+                    code("ParagraphStyle"),
+                    " supports left and right indents, first-line indents, and hanging indents for reference-like blocks that should not be simulated with spaces."
+                ),
+                CodeBlock(PARAGRAPH_INDENT_SNIPPET, language="python"),
                 Paragraph(
                     "That local authorship pattern is also why the guide can stay detailed without becoming confusing. The content reads like a normal reference document, but the source remains inspectable because the formatting instructions are still attached to the words they affect."
                 ),

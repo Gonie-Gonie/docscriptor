@@ -342,6 +342,35 @@ def test_paragraph_style_defaults_to_justify_alignment() -> None:
     assert paragraph.style.alignment == "justify"
 
 
+def test_paragraph_style_supports_word_like_indents() -> None:
+    style = ParagraphStyle(
+        left_indent=0.5,
+        right_indent=0.2,
+        first_line_indent=0.25,
+    )
+    hanging = ParagraphStyle.hanging(left=0.6, by=0.25)
+
+    assert style.left_indent == 0.5
+    assert style.right_indent == 0.2
+    assert style.first_line_indent == 0.25
+    assert hanging.left_indent == 0.6
+    assert hanging.first_line_indent == -0.25
+
+    try:
+        ParagraphStyle(left_indent=-0.1)
+    except ValueError as exc:
+        assert "left_indent" in str(exc)
+    else:
+        raise AssertionError("Expected negative left_indent validation to fail")
+
+    try:
+        ParagraphStyle.hanging(by=-0.1)
+    except ValueError as exc:
+        assert "hanging by" in str(exc)
+    else:
+        raise AssertionError("Expected negative hanging indent validation to fail")
+
+
 def test_theme_defaults_center_media_objects_and_captions() -> None:
     theme = Theme()
 
@@ -866,6 +895,46 @@ def test_inline_highlight_strike_and_line_break_render_to_all_outputs(tmp_path: 
     assert "background-color: #FFF2CC" in html_text
     assert "line-through" in html_text
     assert "<br/>" in html_text
+
+
+def test_paragraph_indents_render_to_all_outputs(tmp_path: Path) -> None:
+    document = Document(
+        "Indent Test",
+        Paragraph(
+            "Indented paragraph.",
+            style=ParagraphStyle(
+                left_indent=0.5,
+                right_indent=0.2,
+                first_line_indent=0.25,
+            ),
+        ),
+        Paragraph(
+            "Hanging indent paragraph.",
+            style=ParagraphStyle.hanging(left=0.6, by=0.25),
+        ),
+    )
+
+    docx_path = tmp_path / "indent.docx"
+    pdf_path = tmp_path / "indent.pdf"
+    html_path = tmp_path / "indent.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert 'w:left="720"' in docx_xml
+    assert 'w:right="288"' in docx_xml
+    assert 'w:firstLine="360"' in docx_xml
+    assert 'w:hanging="360"' in docx_xml
+    assert "Indented paragraph." in pdf_text
+    assert "Hanging indent paragraph." in pdf_text
+    assert "margin-left: 0.50in" in html_text
+    assert "margin-right: 0.20in" in html_text
+    assert "text-indent: 0.25in" in html_text
+    assert "text-indent: -0.25in" in html_text
 
 
 def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Path) -> None:

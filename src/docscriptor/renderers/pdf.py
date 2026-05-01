@@ -897,13 +897,19 @@ class PdfRenderer:
 
     def _paragraph_style(self, style: ParagraphStyle, theme: Theme, base_style: RLParagraphStyle) -> RLParagraphStyle:
         return RLParagraphStyle(
-            f"Paragraph{style.alignment}{style.space_after}{style.leading}",
+            (
+                f"Paragraph{style.alignment}{style.space_after}{style.leading}"
+                f"{style.left_indent}{style.right_indent}{style.first_line_indent}"
+            ),
             parent=base_style,
             fontName=self._resolve_font(theme.body_font_name, False, False),
             fontSize=theme.body_font_size,
             leading=style.leading or theme.body_font_size * 1.35,
             spaceAfter=style.space_after or 0,
             alignment=ALIGNMENTS[style.alignment],
+            leftIndent=(style.left_indent or 0) * inch,
+            rightIndent=(style.right_indent or 0) * inch,
+            firstLineIndent=(style.first_line_indent or 0) * inch,
             textColor=colors.black,
         )
 
