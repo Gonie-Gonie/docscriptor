@@ -68,6 +68,27 @@ class Text:
         )
 
     @classmethod
+    def highlight(
+        cls,
+        value: str,
+        color: str = "FFFF00",
+        style: TextStyle | None = None,
+    ) -> Highlight:
+        """Create a highlighted text fragment."""
+
+        return Highlight(value, color=color, style=style)
+
+    @classmethod
+    def strikethrough(
+        cls,
+        value: str,
+        style: TextStyle | None = None,
+    ) -> Strikethrough:
+        """Create a strikethrough text fragment."""
+
+        return Strikethrough(value, style=style)
+
+    @classmethod
     def from_markup(
         cls,
         source: str,
@@ -108,6 +129,44 @@ class Monospace(Text):
 Strong = Bold
 Emphasis = Italic
 Code = Monospace
+
+
+class Highlight(Text):
+    """Highlighted inline text."""
+
+    def __init__(
+        self,
+        value: str,
+        *,
+        color: str = "FFFF00",
+        style: TextStyle | None = None,
+    ) -> None:
+        super().__init__(
+            value=value,
+            style=TextStyle(highlight_color=color).merged(style),
+        )
+
+
+class Strikethrough(Text):
+    """Strikethrough inline text."""
+
+    def __init__(self, value: str, style: TextStyle | None = None) -> None:
+        super().__init__(
+            value=value,
+            style=TextStyle(strikethrough=True).merged(style),
+        )
+
+
+class LineBreak(Text):
+    """Manual line break inside a paragraph."""
+
+    def __init__(self) -> None:
+        super().__init__(value="\n")
+
+    def plain_text(self) -> str:
+        """Return the line break as a newline in plain text."""
+
+        return "\n"
 
 
 class BlockReference(Text):
@@ -367,6 +426,35 @@ def color(
     return Text.color(value, color, style=style)
 
 
+def highlight(
+    value: str,
+    color: str = "FFFF00",
+    *,
+    style: TextStyle | None = None,
+) -> Highlight:
+    """Compatibility helper for highlighted inline text."""
+
+    return Text.highlight(value, color=color, style=style)
+
+
+def strike(value: str, *, style: TextStyle | None = None) -> Strikethrough:
+    """Compatibility helper for strikethrough inline text."""
+
+    return Text.strikethrough(value, style=style)
+
+
+def strikethrough(value: str, *, style: TextStyle | None = None) -> Strikethrough:
+    """Compatibility helper for strikethrough inline text."""
+
+    return Text.strikethrough(value, style=style)
+
+
+def line_break() -> LineBreak:
+    """Create a manual line break inside a paragraph."""
+
+    return LineBreak()
+
+
 def link(
     target: str,
     *label: InlineInput,
@@ -416,11 +504,14 @@ __all__ = [
     "Comment",
     "Emphasis",
     "Footnote",
+    "Highlight",
     "Hyperlink",
     "Italic",
+    "LineBreak",
     "Math",
     "Monospace",
     "Strong",
+    "Strikethrough",
     "Text",
     "_BlockReference",
     "bold",
@@ -430,8 +521,12 @@ __all__ = [
     "cite",
     "comment",
     "footnote",
+    "highlight",
     "italic",
     "link",
+    "line_break",
     "math",
+    "strike",
+    "strikethrough",
     "styled",
 ]

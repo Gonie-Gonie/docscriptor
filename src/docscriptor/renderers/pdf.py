@@ -1501,9 +1501,13 @@ class PdfRenderer:
             font_attrs.append(f'size="{size}"')
         if fragment.style.color is not None:
             font_attrs.append(f'color="#{fragment.style.color}"')
+        if fragment.style.highlight_color is not None:
+            font_attrs.append(f'backColor="#{fragment.style.highlight_color}"')
         wrapped = text if not font_attrs else f"<font {' '.join(font_attrs)}>{text}</font>"
         if fragment.style.underline:
             wrapped = f"<u>{wrapped}</u>"
+        if fragment.style.strikethrough:
+            wrapped = f"<strike>{wrapped}</strike>"
         return wrapped
 
     def _math_markup(

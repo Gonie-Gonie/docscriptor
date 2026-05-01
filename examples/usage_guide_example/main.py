@@ -58,7 +58,10 @@ from docscriptor import (
     bold,
     code,
     color,
+    highlight,
     link,
+    line_break,
+    strike,
 )
 
 
@@ -226,6 +229,18 @@ summary = Box(
 )
 
 Paragraph("See ", summary, " for the editable evidence package.")
+"""
+
+INLINE_WORD_FEATURES_SNIPPET = """from docscriptor import Paragraph, highlight, line_break, strike
+
+Paragraph(
+    "Keep ",
+    highlight("review focus", "#FFF2CC"),
+    ", remove ",
+    strike("old value"),
+    line_break(),
+    "Continue in the same paragraph without adding paragraph spacing.",
+)
 """
 
 
@@ -795,6 +810,16 @@ def build_usage_guide_document() -> Document:
                     ),
                     " exactly where the text appears."
                 ),
+                Paragraph(
+                    "Word-style direct formatting is available without leaving the document tree. Use ",
+                    code("highlight(...)"),
+                    " for reviewer focus, ",
+                    code("strike(...)"),
+                    " for deleted or superseded language, and ",
+                    code("line_break()"),
+                    " for a Shift+Enter-style break inside the same paragraph."
+                ),
+                CodeBlock(INLINE_WORD_FEATURES_SNIPPET, language="python"),
                 Paragraph(
                     "That local authorship pattern is also why the guide can stay detailed without becoming confusing. The content reads like a normal reference document, but the source remains inspectable because the formatting instructions are still attached to the words they affect."
                 ),

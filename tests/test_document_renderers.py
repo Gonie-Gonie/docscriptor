@@ -70,10 +70,14 @@ from docscriptor import (
     cite,
     comment,
     footnote,
+    highlight,
     italic,
     link,
+    line_break,
     math,
     markup,
+    strike,
+    strikethrough,
     styled,
 )
 from docscriptor.settings import TextStyle
@@ -293,6 +297,8 @@ def test_method_style_inline_actions_create_renderable_fragments() -> None:
     assert Text.italic("note").style.italic is True
     assert Text.code("x = 1").style.font_name == "Courier New"
     assert Text.color("accent", "#0066AA").style.color == "0066AA"
+    assert Text.highlight("marked", "#FFF2CC").style.highlight_color == "FFF2CC"
+    assert Text.strikethrough("old").style.strikethrough is True
     assert [fragment.value for fragment in Text.from_markup("plain **bold**")] == [
         "plain ",
         "bold",
@@ -301,6 +307,10 @@ def test_method_style_inline_actions_create_renderable_fragments() -> None:
     assert italic("note").style.italic is True
     assert code("x = 1").style.font_name == "Courier New"
     assert color("accent", "#0066AA").style.color == "0066AA"
+    assert highlight("marked", "#FFF2CC").style.highlight_color == "FFF2CC"
+    assert strike("old").style.strikethrough is True
+    assert strikethrough("old").style.strikethrough is True
+    assert line_break().plain_text() == "\n"
     external_link = link("https://example.com", "Example")
     assert isinstance(external_link, inline_components.Hyperlink)
     assert external_link.target == "https://example.com"
@@ -519,6 +529,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Math")
     assert hasattr(docscriptor, "TextStyle")
     assert hasattr(docscriptor, "TextBox")
+    assert hasattr(docscriptor, "LineBreak")
     assert not hasattr(docscriptor, "Body")
     assert not hasattr(docscriptor, "Bold")
     assert not hasattr(docscriptor, "Hyperlink")
@@ -544,7 +555,11 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "italic")
     assert hasattr(docscriptor, "code")
     assert hasattr(docscriptor, "color")
+    assert hasattr(docscriptor, "highlight")
     assert hasattr(docscriptor, "link")
+    assert hasattr(docscriptor, "line_break")
+    assert hasattr(docscriptor, "strike")
+    assert hasattr(docscriptor, "strikethrough")
 
     for removed_name in (
         "document",
@@ -816,6 +831,41 @@ def test_explicit_page_break_renders_to_all_outputs(tmp_path: Path) -> None:
     assert '<w:br w:type="page"/>' in _docx_document_xml(docx_path)
     assert len(PdfReader(BytesIO(pdf_path.read_bytes())).pages) >= 2
     assert 'class="docscriptor-page-break"' in html_path.read_text(encoding="utf-8")
+
+
+def test_inline_highlight_strike_and_line_break_render_to_all_outputs(tmp_path: Path) -> None:
+    document = Document(
+        "Inline Word Features",
+        Paragraph(
+            "Keep ",
+            highlight("review focus", "#FFF2CC"),
+            ", remove ",
+            strike("old value"),
+            line_break(),
+            "Continue same paragraph.",
+        ),
+    )
+
+    docx_path = tmp_path / "inline-word-features.docx"
+    pdf_path = tmp_path / "inline-word-features.pdf"
+    html_path = tmp_path / "inline-word-features.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert 'w:fill="FFF2CC"' in docx_xml
+    assert "<w:strike" in docx_xml
+    assert "<w:br" in docx_xml
+    assert "review focus" in pdf_text
+    assert "old value" in pdf_text
+    assert "Continue same paragraph." in pdf_text
+    assert "background-color: #FFF2CC" in html_text
+    assert "line-through" in html_text
+    assert "<br/>" in html_text
 
 
 def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Path) -> None:

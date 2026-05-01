@@ -23,12 +23,15 @@ class TextStyle:
     font_name: str | None = None
     font_size: float | None = None
     color: str | None = None
+    highlight_color: str | None = None
     bold: bool | None = None
     italic: bool | None = None
     underline: bool | None = None
+    strikethrough: bool | None = None
 
     def __post_init__(self) -> None:
         self.color = normalize_color(self.color)
+        self.highlight_color = normalize_color(self.highlight_color)
 
     def merged(self, *others: TextStyle | None) -> TextStyle:
         """Return a new style with later values overriding earlier ones."""
@@ -37,9 +40,11 @@ class TextStyle:
             font_name=self.font_name,
             font_size=self.font_size,
             color=self.color,
+            highlight_color=self.highlight_color,
             bold=self.bold,
             italic=self.italic,
             underline=self.underline,
+            strikethrough=self.strikethrough,
         )
         for other in others:
             if other is None:
@@ -48,9 +53,11 @@ class TextStyle:
                 "font_name",
                 "font_size",
                 "color",
+                "highlight_color",
                 "bold",
                 "italic",
                 "underline",
+                "strikethrough",
             ):
                 value = getattr(other, field_name)
                 if value is not None:

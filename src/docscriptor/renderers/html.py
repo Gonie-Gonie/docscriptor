@@ -1144,10 +1144,17 @@ class HtmlRenderer:
             styles.append(f"font-weight: {'700' if effective_bold else '400'}")
         if effective_italic != base_italic:
             styles.append(f"font-style: {'italic' if effective_italic else 'normal'}")
+        decorations: list[str] = []
         if fragment.style.underline:
-            styles.append("text-decoration: underline")
+            decorations.append("underline")
+        if fragment.style.strikethrough:
+            decorations.append("line-through")
+        if decorations:
+            styles.append(f"text-decoration: {' '.join(decorations)}")
         if fragment.style.color is not None:
             styles.append(f"color: #{fragment.style.color}")
+        if fragment.style.highlight_color is not None:
+            styles.append(f"background-color: #{fragment.style.highlight_color}")
         if not styles:
             return text
         return f'<span style="{"; ".join(styles)}">{text}</span>'

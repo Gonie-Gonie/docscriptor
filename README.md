@@ -91,6 +91,7 @@ Common translations:
 
 - LaTeX `\section` / `\subsection` -> `Chapter(...)`, `Section(...)`, `Subsection(...)`
 - LaTeX `\textbf{...}` / `\emph{...}` / `\texttt{...}` -> `bold(...)`, `italic(...)`, `code(...)`
+- Word highlight / strikethrough / manual line break -> `highlight(...)`, `strike(...)`, `line_break()`
 - LaTeX `\includegraphics` -> `Figure(path_or_matplotlib_figure, caption=...)`
 - LaTeX `tabular` or copied tables -> `Table(...)` or `Table.from_dataframe(...)`
 - LaTeX `\label` / `\ref` -> insert the captioned `Table` or `Figure` object directly inside `Paragraph(...)`
@@ -120,6 +121,7 @@ The default behavior is intentionally conventional:
 ## What To Use When
 
 - Use `Paragraph(...)` for prose. Pass strings and inline helpers directly; you do not need to pre-build `Text(...)` objects for normal writing.
+- Use `highlight(...)`, `strike(...)`, and `line_break()` for Word-style emphasis and manual line breaks inside one paragraph.
 - Use `Chapter(...)`, `Section(...)`, `Subsection(...)`, and `Subsubsection(...)` for the visible outline. Their nesting in Python should match how you expect the final document to read.
 - Use `Table(...)` for small authored tables and `Table.from_dataframe(...)` when the data already lives in pandas.
 - Use `Figure(...)` for image files or `savefig()`-compatible Python figure objects.

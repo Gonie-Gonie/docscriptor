@@ -46,6 +46,7 @@ from docscriptor.components.inline import (
     Comment,
     Footnote,
     Hyperlink,
+    LineBreak,
     Math,
     Text,
 )
@@ -786,6 +787,9 @@ class DocxRenderer:
     ) -> None:
         for fragment in fragments:
             fragment_style = default_style.merged(fragment.style) if default_style is not None else fragment.style
+            if isinstance(fragment, LineBreak):
+                paragraph.add_run().add_break()
+                continue
             if isinstance(fragment, Hyperlink):
                 self._append_hyperlink_runs(
                     paragraph,
@@ -903,6 +907,15 @@ class DocxRenderer:
             underline = OxmlElement("w:u")
             underline.set(qn("w:val"), "single")
             run_properties.append(underline)
+        if style.strikethrough:
+            strike = OxmlElement("w:strike")
+            run_properties.append(strike)
+        if style.highlight_color is not None:
+            shading = OxmlElement("w:shd")
+            shading.set(qn("w:val"), "clear")
+            shading.set(qn("w:color"), "auto")
+            shading.set(qn("w:fill"), style.highlight_color)
+            run_properties.append(shading)
         run.append(run_properties)
         text = OxmlElement("w:t")
         text.text = label_text
@@ -950,6 +963,21 @@ class DocxRenderer:
             font.underline = style.underline
         if style.color is not None:
             font.color.rgb = RGBColor.from_string(style.color)
+        if style.strikethrough is not None:
+            font.strike = style.strikethrough
+        if style.highlight_color is not None:
+            self._set_run_shading(run, style.highlight_color)
+
+    def _set_run_shading(self, run: object, fill: str) -> None:
+        run_properties = run._r.get_or_add_rPr()
+        existing = run_properties.find(qn("w:shd"))
+        if existing is not None:
+            run_properties.remove(existing)
+        shading = OxmlElement("w:shd")
+        shading.set(qn("w:val"), "clear")
+        shading.set(qn("w:color"), "auto")
+        shading.set(qn("w:fill"), fill)
+        run_properties.append(shading)
 
     def _append_comment_runs(
         self,
