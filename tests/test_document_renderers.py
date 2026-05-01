@@ -496,6 +496,41 @@ def test_table_accepts_dataframe_like_inputs_and_spans() -> None:
     assert merged_header.layout().row_count == 3
 
 
+def test_table_cell_alignment_options_are_validated() -> None:
+    cell = TableCell(
+        "42",
+        horizontal_alignment="right",
+        vertical_alignment="center",
+    )
+    style = TableStyle(
+        cell_horizontal_alignment="center",
+        cell_vertical_alignment="bottom",
+        header_horizontal_alignment="right",
+        header_vertical_alignment="middle",
+    )
+
+    assert cell.horizontal_alignment == "right"
+    assert cell.vertical_alignment == "middle"
+    assert style.cell_horizontal_alignment == "center"
+    assert style.cell_vertical_alignment == "bottom"
+    assert style.header_horizontal_alignment == "right"
+    assert style.header_vertical_alignment == "middle"
+
+    try:
+        TableCell("bad", horizontal_alignment="diagonal")
+    except ValueError as exc:
+        assert "alignment" in str(exc)
+    else:
+        raise AssertionError("Expected invalid horizontal alignment to fail")
+
+    try:
+        TableStyle(cell_vertical_alignment="baseline")
+    except ValueError as exc:
+        assert "vertical" in str(exc)
+    else:
+        raise AssertionError("Expected invalid vertical alignment to fail")
+
+
 def test_heading_hierarchy_uses_latex_like_levels() -> None:
     chapter = Chapter(
         "Part I",
@@ -939,6 +974,62 @@ def test_paragraph_indents_render_to_all_outputs(tmp_path: Path) -> None:
     assert "margin-right: 0.20in" in html_text
     assert "text-indent: 0.25in" in html_text
     assert "text-indent: -0.25in" in html_text
+
+
+def test_table_cell_alignment_renders_to_all_outputs(tmp_path: Path) -> None:
+    document = Document(
+        "Table Alignment Test",
+        Table(
+            headers=[
+                [
+                    TableCell(
+                        "Metric",
+                        horizontal_alignment="center",
+                        vertical_alignment="middle",
+                    ),
+                    "Value",
+                ]
+            ],
+            rows=[
+                [
+                    "Latency",
+                    TableCell(
+                        "14 ms",
+                        horizontal_alignment="right",
+                        vertical_alignment="bottom",
+                    ),
+                ],
+            ],
+            style=TableStyle(
+                header_horizontal_alignment="center",
+                header_vertical_alignment="middle",
+                cell_horizontal_alignment="left",
+                cell_vertical_alignment="top",
+            ),
+        ),
+    )
+
+    docx_path = tmp_path / "table-alignment.docx"
+    pdf_path = tmp_path / "table-alignment.pdf"
+    html_path = tmp_path / "table-alignment.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert '<w:jc w:val="center"' in docx_xml
+    assert '<w:jc w:val="right"' in docx_xml
+    assert '<w:vAlign w:val="center"' in docx_xml
+    assert '<w:vAlign w:val="bottom"' in docx_xml
+    assert "Metric" in pdf_text
+    assert "14 ms" in pdf_text
+    assert "text-align: center" in html_text
+    assert "text-align: right" in html_text
+    assert "vertical-align: middle" in html_text
+    assert "vertical-align: bottom" in html_text
 
 
 def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Path) -> None:

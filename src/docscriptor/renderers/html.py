@@ -809,9 +809,16 @@ class HtmlRenderer:
     ) -> str:
         style_parts = [
             f"border: 1px solid #{block.style.border_color}",
-            "vertical-align: top",
             f"padding: {block.style.cell_padding:.1f}pt",
         ]
+        horizontal_alignment = self._table_cell_horizontal_alignment(placement, block)
+        vertical_alignment = self._table_cell_vertical_alignment(placement, block)
+        style_parts.append(
+            f"text-align: {horizontal_alignment}" if horizontal_alignment is not None else "text-align: inherit"
+        )
+        style_parts.append(
+            f"vertical-align: {vertical_alignment}" if vertical_alignment is not None else "vertical-align: top"
+        )
         if placement.header:
             style_parts.append(f"background: #{block.style.header_background_color}")
             style_parts.append(f"color: #{block.style.header_text_color}")
@@ -834,18 +841,42 @@ class HtmlRenderer:
             attrs.append(f' colspan="{placement.cell.colspan}"')
         if placement.cell.rowspan > 1:
             attrs.append(f' rowspan="{placement.cell.rowspan}"')
+        paragraph_html = (
+            '<p class="docscriptor-paragraph" '
+            f'style="{self._paragraph_style_css(placement.cell.content.style, context.theme, default_unit=context.unit, alignment=horizontal_alignment)}">'
+            + self._inline_html(
+                placement.cell.content.content,
+                context.theme,
+                context.render_index,
+            )
+            + "</p>"
+        )
         return (
             f"<{tag}{''.join(attrs)} style=\"{'; '.join(style_parts)}\">"
-            + self.render_paragraph(
-                placement.cell.content,
-                HtmlRenderContext(
-                    theme=context.theme,
-                    render_index=context.render_index,
-                    settings=context.settings,
-                    unit=context.unit,
-                ),
-            )
+            + paragraph_html
             + f"</{tag}>"
+        )
+
+    def _table_cell_horizontal_alignment(
+        self,
+        placement: TablePlacement,
+        block: Table,
+    ) -> str | None:
+        return placement.cell.horizontal_alignment or (
+            block.style.header_horizontal_alignment
+            if placement.header
+            else block.style.cell_horizontal_alignment
+        )
+
+    def _table_cell_vertical_alignment(
+        self,
+        placement: TablePlacement,
+        block: Table,
+    ) -> str | None:
+        return placement.cell.vertical_alignment or (
+            block.style.header_vertical_alignment
+            if placement.header
+            else block.style.cell_vertical_alignment
         )
 
     def _caption_html(
@@ -1321,6 +1352,7 @@ class HtmlRenderer:
         *,
         default_space_after: float | None = None,
         default_unit: str = "in",
+        alignment: str | None = None,
     ) -> str:
         space_after = style.space_after
         if space_after is None:
@@ -1345,7 +1377,7 @@ class HtmlRenderer:
             else ""
         )
         return (
-            f"text-align: {style.alignment};"
+            f"text-align: {alignment or style.alignment};"
             f" margin: 0 0 {space_after:.1f}pt;"
             f"{left_indent}"
             f"{right_indent}"

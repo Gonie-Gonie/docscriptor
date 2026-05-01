@@ -11,6 +11,8 @@ from docscriptor.core import (
     normalize_color,
     normalize_counter_format,
     normalize_length_unit,
+    normalize_text_alignment,
+    normalize_vertical_alignment,
 )
 
 
@@ -79,8 +81,7 @@ class ParagraphStyle:
     unit: str | None = None
 
     def __post_init__(self) -> None:
-        if self.alignment not in {"left", "center", "right", "justify"}:
-            raise ValueError(f"Unsupported alignment: {self.alignment!r}")
+        self.alignment = normalize_text_alignment(self.alignment)
         self.unit = normalize_length_unit(self.unit) if self.unit is not None else None
         if self.left_indent is not None and self.left_indent < 0:
             raise ValueError("ParagraphStyle.left_indent must be >= 0")
@@ -250,6 +251,10 @@ class TableStyle:
     border_color: str = "B7C2D0"
     body_background_color: str | None = None
     alternate_row_background_color: str | None = None
+    cell_horizontal_alignment: str | None = None
+    cell_vertical_alignment: str | None = None
+    header_horizontal_alignment: str | None = None
+    header_vertical_alignment: str | None = None
     cell_padding: float = 5.0
 
     def __post_init__(self) -> None:
@@ -258,6 +263,26 @@ class TableStyle:
         self.border_color = normalize_color(self.border_color) or "B7C2D0"
         self.body_background_color = normalize_color(self.body_background_color)
         self.alternate_row_background_color = normalize_color(self.alternate_row_background_color)
+        self.cell_horizontal_alignment = (
+            normalize_text_alignment(self.cell_horizontal_alignment)
+            if self.cell_horizontal_alignment is not None
+            else None
+        )
+        self.cell_vertical_alignment = (
+            normalize_vertical_alignment(self.cell_vertical_alignment)
+            if self.cell_vertical_alignment is not None
+            else None
+        )
+        self.header_horizontal_alignment = (
+            normalize_text_alignment(self.header_horizontal_alignment)
+            if self.header_horizontal_alignment is not None
+            else None
+        )
+        self.header_vertical_alignment = (
+            normalize_vertical_alignment(self.header_vertical_alignment)
+            if self.header_vertical_alignment is not None
+            else None
+        )
         if self.cell_padding < 0:
             raise ValueError("TableStyle.cell_padding must be >= 0")
 

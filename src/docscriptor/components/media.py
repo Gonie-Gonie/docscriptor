@@ -8,7 +8,14 @@ from typing import Sequence, TYPE_CHECKING
 
 from docscriptor.components.base import Block
 from docscriptor.components.blocks import CellInput, Paragraph, coerce_cell
-from docscriptor.core import PathLike, length_to_inches, normalize_color, normalize_length_unit
+from docscriptor.core import (
+    PathLike,
+    length_to_inches,
+    normalize_color,
+    normalize_length_unit,
+    normalize_text_alignment,
+    normalize_vertical_alignment,
+)
 from docscriptor.layout.theme import TableStyle
 
 if TYPE_CHECKING:
@@ -23,6 +30,8 @@ class TableCell:
     colspan: int
     rowspan: int
     background_color: str | None
+    horizontal_alignment: str | None
+    vertical_alignment: str | None
 
     def __init__(
         self,
@@ -31,6 +40,8 @@ class TableCell:
         colspan: int = 1,
         rowspan: int = 1,
         background_color: str | None = None,
+        horizontal_alignment: str | None = None,
+        vertical_alignment: str | None = None,
     ) -> None:
         if colspan < 1:
             raise ValueError("TableCell.colspan must be >= 1")
@@ -40,6 +51,16 @@ class TableCell:
         self.colspan = colspan
         self.rowspan = rowspan
         self.background_color = normalize_color(background_color)
+        self.horizontal_alignment = (
+            normalize_text_alignment(horizontal_alignment)
+            if horizontal_alignment is not None
+            else None
+        )
+        self.vertical_alignment = (
+            normalize_vertical_alignment(vertical_alignment)
+            if vertical_alignment is not None
+            else None
+        )
 
 
 TableCellInput = TableCell | CellInput

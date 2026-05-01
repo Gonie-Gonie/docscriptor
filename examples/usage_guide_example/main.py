@@ -256,6 +256,23 @@ Paragraph(
 )
 """
 
+TABLE_ALIGNMENT_SNIPPET = """from docscriptor import Table, TableCell, TableStyle
+
+Table(
+    headers=[["Metric", "Value"]],
+    rows=[
+        [
+            "Latency",
+            TableCell("14 ms", horizontal_alignment="right", vertical_alignment="middle"),
+        ],
+    ],
+    style=TableStyle(
+        header_horizontal_alignment="center",
+        cell_vertical_alignment="middle",
+    ),
+)
+"""
+
 
 def _wrapped_lines(lines: list[str], *, width: int) -> list[str]:
     wrapped: list[str] = []
@@ -839,6 +856,14 @@ def build_usage_guide_document() -> Document:
                     " supports left and right indents, first-line indents, and hanging indents for reference-like blocks that should not be simulated with spaces. Indent values can use the document unit or an explicit per-style unit."
                 ),
                 CodeBlock(PARAGRAPH_INDENT_SNIPPET, language="python"),
+                Paragraph(
+                    "Table cells can use the same sort of explicit alignment that authors expect from Word. Put one-off alignment on ",
+                    code("TableCell"),
+                    ", or use ",
+                    code("TableStyle"),
+                    " to set table-wide body and header defaults."
+                ),
+                CodeBlock(TABLE_ALIGNMENT_SNIPPET, language="python"),
                 Paragraph(
                     "That local authorship pattern is also why the guide can stay detailed without becoming confusing. The content reads like a normal reference document, but the source remains inspectable because the formatting instructions are still attached to the words they affect."
                 ),

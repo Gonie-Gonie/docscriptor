@@ -41,6 +41,9 @@ COUNTER_FORMATS = {
     "none",
 }
 
+TEXT_ALIGNMENTS = {"left", "center", "right", "justify"}
+VERTICAL_ALIGNMENTS = {"top", "middle", "center", "bottom"}
+
 
 class DocscriptorError(Exception):
     """Raised when the document model cannot be rendered safely."""
@@ -97,6 +100,24 @@ def normalize_counter_format(value: str) -> str:
     if normalized not in COUNTER_FORMATS:
         raise ValueError(f"Unsupported counter format: {value!r}")
     return normalized
+
+
+def normalize_text_alignment(value: str) -> str:
+    """Validate and normalize a supported horizontal text alignment."""
+
+    normalized = value.strip().lower()
+    if normalized not in TEXT_ALIGNMENTS:
+        raise ValueError(f"Unsupported text alignment: {value!r}")
+    return normalized
+
+
+def normalize_vertical_alignment(value: str) -> str:
+    """Validate and normalize a supported vertical alignment."""
+
+    normalized = value.strip().lower()
+    if normalized not in VERTICAL_ALIGNMENTS:
+        raise ValueError(f"Unsupported vertical alignment: {value!r}")
+    return "middle" if normalized == "center" else normalized
 
 
 def _alpha_counter(value: int) -> str:

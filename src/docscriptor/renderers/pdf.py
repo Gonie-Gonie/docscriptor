@@ -78,6 +78,19 @@ ALIGNMENTS = {
     "justify": TA_JUSTIFY,
 }
 
+TABLE_CELL_ALIGNMENTS = {
+    "left": "LEFT",
+    "center": "CENTER",
+    "right": "RIGHT",
+    "justify": "LEFT",
+}
+
+TABLE_CELL_VERTICAL_ALIGNMENTS = {
+    "top": "TOP",
+    "middle": "MIDDLE",
+    "bottom": "BOTTOM",
+}
+
 FLOWABLE_ALIGNMENTS = {
     "left": "LEFT",
     "center": "CENTER",
@@ -970,6 +983,16 @@ class PdfRenderer:
         ]
         for placement in layout.placements:
             paragraph_style = header_style if placement.header else body_style
+            cell_horizontal_alignment = self._table_cell_horizontal_alignment(
+                placement,
+                block,
+            )
+            if cell_horizontal_alignment is not None:
+                paragraph_style = RLParagraphStyle(
+                    f"{paragraph_style.name}Cell{cell_horizontal_alignment}",
+                    parent=paragraph_style,
+                    alignment=ALIGNMENTS[cell_horizontal_alignment],
+                )
             table_rows[placement.row][placement.column] = RLParagraph(
                 self._inline_markup(
                     placement.cell.content.content,
@@ -991,6 +1014,31 @@ class PdfRenderer:
                             placement.column + placement.cell.colspan - 1,
                             placement.row + placement.cell.rowspan - 1,
                         ),
+                    )
+                )
+            cell_vertical_alignment = self._table_cell_vertical_alignment(placement, block)
+            if cell_vertical_alignment is not None:
+                style_commands.append(
+                    (
+                        "VALIGN",
+                        (placement.column, placement.row),
+                        (
+                            placement.column + placement.cell.colspan - 1,
+                            placement.row + placement.cell.rowspan - 1,
+                        ),
+                        TABLE_CELL_VERTICAL_ALIGNMENTS[cell_vertical_alignment],
+                    )
+                )
+            if cell_horizontal_alignment is not None:
+                style_commands.append(
+                    (
+                        "ALIGN",
+                        (placement.column, placement.row),
+                        (
+                            placement.column + placement.cell.colspan - 1,
+                            placement.row + placement.cell.rowspan - 1,
+                        ),
+                        TABLE_CELL_ALIGNMENTS[cell_horizontal_alignment],
                     )
                 )
             if placement.header:
@@ -1088,6 +1136,28 @@ class PdfRenderer:
         if layout.row_count <= 12:
             return [KeepTogether(story)]
         return story
+
+    def _table_cell_horizontal_alignment(
+        self,
+        placement: object,
+        block: Table,
+    ) -> str | None:
+        return placement.cell.horizontal_alignment or (
+            block.style.header_horizontal_alignment
+            if placement.header
+            else block.style.cell_horizontal_alignment
+        )
+
+    def _table_cell_vertical_alignment(
+        self,
+        placement: object,
+        block: Table,
+    ) -> str | None:
+        return placement.cell.vertical_alignment or (
+            block.style.header_vertical_alignment
+            if placement.header
+            else block.style.cell_vertical_alignment
+        )
 
     def _render_list(
         self,

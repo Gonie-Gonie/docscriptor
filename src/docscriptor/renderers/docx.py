@@ -7,7 +7,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
 from docx import Document as WordDocument
-from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_TABLE_ALIGNMENT
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_ROW_HEIGHT_RULE, WD_TABLE_ALIGNMENT
 from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT, WD_TAB_LEADER
 from docx.enum.text import WD_BREAK
@@ -72,6 +72,12 @@ TABLE_ALIGNMENTS = {
     "left": WD_TABLE_ALIGNMENT.LEFT,
     "center": WD_TABLE_ALIGNMENT.CENTER,
     "right": WD_TABLE_ALIGNMENT.RIGHT,
+}
+
+CELL_VERTICAL_ALIGNMENTS = {
+    "top": WD_CELL_VERTICAL_ALIGNMENT.TOP,
+    "middle": WD_CELL_VERTICAL_ALIGNMENT.CENTER,
+    "bottom": WD_CELL_VERTICAL_ALIGNMENT.BOTTOM,
 }
 
 DEFAULT_FOOTNOTES_XML = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1416,6 +1422,18 @@ class DocxRenderer:
                 target_cell = start_cell.merge(end_cell)
 
             paragraph = target_cell.paragraphs[0]
+            cell_horizontal_alignment = self._table_cell_horizontal_alignment(
+                placement,
+                table_block,
+            )
+            if cell_horizontal_alignment is not None:
+                paragraph.alignment = ALIGNMENTS[cell_horizontal_alignment]
+            cell_vertical_alignment = self._table_cell_vertical_alignment(
+                placement,
+                table_block,
+            )
+            if cell_vertical_alignment is not None:
+                target_cell.vertical_alignment = CELL_VERTICAL_ALIGNMENTS[cell_vertical_alignment]
             self._append_runs(
                 paragraph,
                 placement.cell.content.content or [Text("")],
@@ -1441,6 +1459,28 @@ class DocxRenderer:
 
         if table_block.caption is not None and theme.table_caption_position == "below":
             render_caption()
+
+    def _table_cell_horizontal_alignment(
+        self,
+        placement: object,
+        table_block: Table,
+    ) -> str | None:
+        return placement.cell.horizontal_alignment or (
+            table_block.style.header_horizontal_alignment
+            if placement.header
+            else table_block.style.cell_horizontal_alignment
+        )
+
+    def _table_cell_vertical_alignment(
+        self,
+        placement: object,
+        table_block: Table,
+    ) -> str | None:
+        return placement.cell.vertical_alignment or (
+            table_block.style.header_vertical_alignment
+            if placement.header
+            else table_block.style.cell_vertical_alignment
+        )
 
     def _render_figure(
         self,
