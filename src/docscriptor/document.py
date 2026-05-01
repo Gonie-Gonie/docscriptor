@@ -153,3 +153,22 @@ class Document:
         from docscriptor.renderers.html import HtmlRenderer
 
         return HtmlRenderer().render(self, path)
+
+    def save(self, path: PathLike) -> Path:
+        """Render the document using the output path extension.
+
+        Supported extensions are ``.docx``, ``.pdf``, and ``.html``. The
+        format-specific methods remain available when code wants to be explicit,
+        but this helper keeps first scripts small and readable.
+        """
+
+        suffix = Path(path).suffix.lower()
+        if suffix == ".docx":
+            return self.save_docx(path)
+        if suffix == ".pdf":
+            return self.save_pdf(path)
+        if suffix in {".html", ".htm"}:
+            return self.save_html(path)
+        raise ValueError(
+            "Unsupported document output extension. Use one of: .docx, .pdf, .html"
+        )

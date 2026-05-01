@@ -361,6 +361,29 @@ def test_page_background_color_renders_to_all_outputs(tmp_path: Path) -> None:
     assert "background: #F4F8FC;" in html_path.read_text(encoding="utf-8")
 
 
+def test_document_save_infers_renderer_from_extension(tmp_path: Path) -> None:
+    document = Document("Save Test", Paragraph("Saved by extension."))
+
+    docx_path = document.save(tmp_path / "extension.docx")
+    pdf_path = document.save(tmp_path / "extension.pdf")
+    html_path = document.save(tmp_path / "extension.html")
+    htm_path = document.save(tmp_path / "extension.htm")
+
+    assert docx_path.exists()
+    assert pdf_path.exists()
+    assert html_path.exists()
+    assert htm_path.exists()
+
+    try:
+        document.save(tmp_path / "extension.txt")
+    except ValueError as exc:
+        assert ".docx" in str(exc)
+        assert ".pdf" in str(exc)
+        assert ".html" in str(exc)
+    else:
+        raise AssertionError("Expected unsupported save extension to fail")
+
+
 def test_numbering_and_list_styles_are_customizable() -> None:
     heading_numbering = HeadingNumbering(formats=("upper-roman", "lower-alpha"), prefix="[", suffix="]")
     ordered_style = ListStyle(marker_format="upper-roman", prefix="(", suffix=")")

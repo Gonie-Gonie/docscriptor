@@ -102,9 +102,9 @@ report = Document(
     settings=DocumentSettings(author="Docscriptor"),
 )
 
-report.save_docx("artifacts/hello.docx")
-report.save_pdf("artifacts/hello.pdf")
-report.save_html("artifacts/hello.html")
+report.save("artifacts/hello.docx")
+report.save("artifacts/hello.pdf")
+report.save("artifacts/hello.html")
 """
 
 AUTHOR_LAYOUT_SNIPPET = """from docscriptor import Affiliation, Author, AuthorLayout, DocumentSettings
@@ -704,7 +704,7 @@ def build_usage_guide_document() -> Document:
                 NumberedList(
                     "Author the structure with Document, Chapter, and Section objects.",
                     "Write prose with Paragraph plus explicit inline helpers such as bold(...), code(...), and links.",
-                    "Render to DOCX when collaboration requires editing, PDF when layout stability matters, and HTML when lightweight sharing is enough.",
+                    "Call document.save(...) with a .docx, .pdf, or .html path; use the explicit save_docx(...), save_pdf(...), and save_html(...) methods when that reads better.",
                 ),
             ),
             Section(
