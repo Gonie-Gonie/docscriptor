@@ -524,6 +524,7 @@ class PdfRenderer:
             block.style,
             context.theme,
             context.styles["BodyText"],
+            default_unit=context.unit,
         )
         return [
             RLParagraph(
@@ -550,6 +551,7 @@ class PdfRenderer:
             context.theme,
             context.styles,
             context.render_index,
+            context.unit,
         )
 
     def render_code_block(
@@ -895,11 +897,21 @@ class PdfRenderer:
         )
         return template_id
 
-    def _paragraph_style(self, style: ParagraphStyle, theme: Theme, base_style: RLParagraphStyle) -> RLParagraphStyle:
+    def _paragraph_style(
+        self,
+        style: ParagraphStyle,
+        theme: Theme,
+        base_style: RLParagraphStyle,
+        *,
+        default_unit: str = "in",
+    ) -> RLParagraphStyle:
+        left_indent = style.left_indent_in_inches(default_unit) or 0
+        right_indent = style.right_indent_in_inches(default_unit) or 0
+        first_line_indent = style.first_line_indent_in_inches(default_unit) or 0
         return RLParagraphStyle(
             (
                 f"Paragraph{style.alignment}{style.space_after}{style.leading}"
-                f"{style.left_indent}{style.right_indent}{style.first_line_indent}"
+                f"{left_indent}{right_indent}{first_line_indent}"
             ),
             parent=base_style,
             fontName=self._resolve_font(theme.body_font_name, False, False),
@@ -907,9 +919,9 @@ class PdfRenderer:
             leading=style.leading or theme.body_font_size * 1.35,
             spaceAfter=style.space_after or 0,
             alignment=ALIGNMENTS[style.alignment],
-            leftIndent=(style.left_indent or 0) * inch,
-            rightIndent=(style.right_indent or 0) * inch,
-            firstLineIndent=(style.first_line_indent or 0) * inch,
+            leftIndent=left_indent * inch,
+            rightIndent=right_indent * inch,
+            firstLineIndent=first_line_indent * inch,
             textColor=colors.black,
         )
 
@@ -1077,8 +1089,20 @@ class PdfRenderer:
             return [KeepTogether(story)]
         return story
 
-    def _render_list(self, block: BulletList | NumberedList, theme: Theme, styles: object, render_index: RenderIndex) -> list[object]:
-        item_style = self._paragraph_style(ParagraphStyle(space_after=3), theme, styles["BodyText"])
+    def _render_list(
+        self,
+        block: BulletList | NumberedList,
+        theme: Theme,
+        styles: object,
+        render_index: RenderIndex,
+        unit: str,
+    ) -> list[object]:
+        item_style = self._paragraph_style(
+            ParagraphStyle(space_after=3),
+            theme,
+            styles["BodyText"],
+            default_unit=unit,
+        )
         marker_style = RLParagraphStyle(
             "ListMarker",
             parent=item_style,

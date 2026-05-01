@@ -126,7 +126,7 @@ class HtmlRenderer:
         """Render a paragraph block into HTML."""
 
         return (
-            f'<p class="docscriptor-paragraph" style="{self._paragraph_style_css(block.style, context.theme)}">'
+            f'<p class="docscriptor-paragraph" style="{self._paragraph_style_css(block.style, context.theme, default_unit=context.unit)}">'
             + self._inline_html(
                 block.content,
                 context.theme,
@@ -154,7 +154,7 @@ class HtmlRenderer:
                     f'style="column-gap: {list_style.marker_gap:.2f}in; padding-left: {list_style.indent:.2f}in;">'
                     f'<div class="docscriptor-list-marker">{marker}</div>'
                     '<div class="docscriptor-list-content">'
-                    f'<p class="docscriptor-paragraph" style="{self._paragraph_style_css(item.style, context.theme, default_space_after=3.0)}">'
+                    f'<p class="docscriptor-paragraph" style="{self._paragraph_style_css(item.style, context.theme, default_space_after=3.0, default_unit=context.unit)}">'
                     + self._inline_html(
                         item.content,
                         context.theme,
@@ -1320,24 +1320,28 @@ class HtmlRenderer:
         theme: Theme,
         *,
         default_space_after: float | None = None,
+        default_unit: str = "in",
     ) -> str:
         space_after = style.space_after
         if space_after is None:
             space_after = default_space_after if default_space_after is not None else 0
         line_height = style.leading or theme.body_font_size * 1.35
+        left_indent_value = style.left_indent_in_inches(default_unit)
+        right_indent_value = style.right_indent_in_inches(default_unit)
+        first_line_indent_value = style.first_line_indent_in_inches(default_unit)
         left_indent = (
-            f" margin-left: {style.left_indent:.2f}in;"
-            if style.left_indent is not None
+            f" margin-left: {left_indent_value:.2f}in;"
+            if left_indent_value is not None
             else ""
         )
         right_indent = (
-            f" margin-right: {style.right_indent:.2f}in;"
-            if style.right_indent is not None
+            f" margin-right: {right_indent_value:.2f}in;"
+            if right_indent_value is not None
             else ""
         )
         first_line_indent = (
-            f" text-indent: {style.first_line_indent:.2f}in;"
-            if style.first_line_indent is not None
+            f" text-indent: {first_line_indent_value:.2f}in;"
+            if first_line_indent_value is not None
             else ""
         )
         return (

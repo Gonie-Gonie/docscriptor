@@ -205,7 +205,7 @@ class DocxRenderer:
         """Render a paragraph block into the current DOCX container."""
 
         paragraph = self._add_paragraph(container)
-        self._apply_paragraph_style(paragraph, paragraph_block.style)
+        self._apply_paragraph_style(paragraph, paragraph_block.style, context.unit)
         self._append_runs(
             paragraph,
             paragraph_block.content,
@@ -227,6 +227,7 @@ class DocxRenderer:
             list_block,
             context.theme,
             context.render_index,
+            context.unit,
             word_document=context.word_document,
         )
 
@@ -238,7 +239,7 @@ class DocxRenderer:
     ) -> None:
         """Render a code block into the current DOCX container."""
 
-        self._render_code_block(container, code_block, context.theme)
+        self._render_code_block(container, code_block, context.theme, context.unit)
 
     def render_equation(
         self,
@@ -248,7 +249,7 @@ class DocxRenderer:
     ) -> None:
         """Render a block equation into the current DOCX container."""
 
-        self._render_equation(container, equation, context.theme)
+        self._render_equation(container, equation, context.theme, context.unit)
 
     def render_page_break(
         self,
@@ -767,18 +768,26 @@ class DocxRenderer:
             return title
         return [Text(f"{number_label} ")] + title
 
-    def _apply_paragraph_style(self, paragraph: object, style: ParagraphStyle) -> None:
+    def _apply_paragraph_style(
+        self,
+        paragraph: object,
+        style: ParagraphStyle,
+        default_unit: str,
+    ) -> None:
         paragraph.alignment = ALIGNMENTS[style.alignment]
         if style.space_after is not None:
             paragraph.paragraph_format.space_after = Pt(style.space_after)
         if style.leading is not None:
             paragraph.paragraph_format.line_spacing = Pt(style.leading)
-        if style.left_indent is not None:
-            paragraph.paragraph_format.left_indent = Inches(style.left_indent)
-        if style.right_indent is not None:
-            paragraph.paragraph_format.right_indent = Inches(style.right_indent)
-        if style.first_line_indent is not None:
-            paragraph.paragraph_format.first_line_indent = Inches(style.first_line_indent)
+        left_indent = style.left_indent_in_inches(default_unit)
+        right_indent = style.right_indent_in_inches(default_unit)
+        first_line_indent = style.first_line_indent_in_inches(default_unit)
+        if left_indent is not None:
+            paragraph.paragraph_format.left_indent = Inches(left_indent)
+        if right_indent is not None:
+            paragraph.paragraph_format.right_indent = Inches(right_indent)
+        if first_line_indent is not None:
+            paragraph.paragraph_format.first_line_indent = Inches(first_line_indent)
 
     def _append_runs(
         self,
@@ -1070,13 +1079,14 @@ class DocxRenderer:
         list_block: BulletList | NumberedList,
         theme: Theme,
         render_index: RenderIndex,
+        unit: str,
         *,
         word_document: WordDocument,
     ) -> None:
         list_style = list_block.style or theme.list_style(ordered=isinstance(list_block, NumberedList))
         for index, item in enumerate(list_block.items):
             paragraph = self._add_paragraph(container)
-            self._apply_paragraph_style(paragraph, item.style)
+            self._apply_paragraph_style(paragraph, item.style, unit)
             paragraph.paragraph_format.left_indent = Inches(list_style.indent)
             paragraph.paragraph_format.first_line_indent = Inches(-list_style.indent)
             marker = list_style.marker_for(index)
@@ -1085,7 +1095,13 @@ class DocxRenderer:
                 self._apply_run_style(marker_run, Text("").style, default_size=theme.body_font_size)
             self._append_runs(paragraph, item.content, theme=theme, render_index=render_index, word_document=word_document)
 
-    def _render_code_block(self, container: object, code_block: CodeBlock, theme: Theme) -> None:
+    def _render_code_block(
+        self,
+        container: object,
+        code_block: CodeBlock,
+        theme: Theme,
+        unit: str,
+    ) -> None:
         if code_block.language:
             label = self._add_paragraph(container)
             label.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1096,7 +1112,7 @@ class DocxRenderer:
             run.font.bold = True
 
         paragraph = self._add_paragraph(container)
-        self._apply_paragraph_style(paragraph, code_block.style)
+        self._apply_paragraph_style(paragraph, code_block.style, unit)
         paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
         paragraph.paragraph_format.left_indent = Inches(0.25)
         paragraph.paragraph_format.right_indent = Inches(0.1)
@@ -1112,9 +1128,15 @@ class DocxRenderer:
                 run.add_break()
             run.add_text(line)
 
-    def _render_equation(self, container: object, equation: Equation, theme: Theme) -> None:
+    def _render_equation(
+        self,
+        container: object,
+        equation: Equation,
+        theme: Theme,
+        unit: str,
+    ) -> None:
         paragraph = self._add_paragraph(container)
-        self._apply_paragraph_style(paragraph, equation.style)
+        self._apply_paragraph_style(paragraph, equation.style, unit)
         if paragraph.alignment is None:
             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         self._append_math_runs(

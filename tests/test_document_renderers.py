@@ -344,17 +344,20 @@ def test_paragraph_style_defaults_to_justify_alignment() -> None:
 
 def test_paragraph_style_supports_word_like_indents() -> None:
     style = ParagraphStyle(
-        left_indent=0.5,
-        right_indent=0.2,
-        first_line_indent=0.25,
+        left_indent=1.27,
+        right_indent=0.508,
+        first_line_indent=0.635,
+        unit="cm",
     )
-    hanging = ParagraphStyle.hanging(left=0.6, by=0.25)
+    hanging = ParagraphStyle.hanging(left=1.524, by=0.635, unit="cm")
 
-    assert style.left_indent == 0.5
-    assert style.right_indent == 0.2
-    assert style.first_line_indent == 0.25
-    assert hanging.left_indent == 0.6
-    assert hanging.first_line_indent == -0.25
+    assert style.unit == "cm"
+    assert round(style.left_indent_in_inches("in"), 2) == 0.5
+    assert round(style.right_indent_in_inches("in"), 2) == 0.2
+    assert round(style.first_line_indent_in_inches("in"), 2) == 0.25
+    assert hanging.unit == "cm"
+    assert round(hanging.left_indent_in_inches("in"), 2) == 0.6
+    assert round(hanging.first_line_indent_in_inches("in"), 2) == -0.25
 
     try:
         ParagraphStyle(left_indent=-0.1)
@@ -903,15 +906,16 @@ def test_paragraph_indents_render_to_all_outputs(tmp_path: Path) -> None:
         Paragraph(
             "Indented paragraph.",
             style=ParagraphStyle(
-                left_indent=0.5,
-                right_indent=0.2,
-                first_line_indent=0.25,
+                left_indent=1.27,
+                right_indent=0.508,
+                first_line_indent=0.635,
             ),
         ),
         Paragraph(
             "Hanging indent paragraph.",
-            style=ParagraphStyle.hanging(left=0.6, by=0.25),
+            style=ParagraphStyle.hanging(left=1.524, by=0.635),
         ),
+        settings=DocumentSettings(unit="cm"),
     )
 
     docx_path = tmp_path / "indent.docx"

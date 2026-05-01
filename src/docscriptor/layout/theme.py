@@ -7,6 +7,7 @@ from typing import Sequence
 
 from docscriptor.core import (
     format_counter_value,
+    length_to_inches,
     normalize_color,
     normalize_counter_format,
     normalize_length_unit,
@@ -75,10 +76,12 @@ class ParagraphStyle:
     left_indent: float | None = None
     right_indent: float | None = None
     first_line_indent: float | None = None
+    unit: str | None = None
 
     def __post_init__(self) -> None:
         if self.alignment not in {"left", "center", "right", "justify"}:
             raise ValueError(f"Unsupported alignment: {self.alignment!r}")
+        self.unit = normalize_length_unit(self.unit) if self.unit is not None else None
         if self.left_indent is not None and self.left_indent < 0:
             raise ValueError("ParagraphStyle.left_indent must be >= 0")
         if self.right_indent is not None and self.right_indent < 0:
@@ -93,8 +96,9 @@ class ParagraphStyle:
         alignment: str = "justify",
         space_after: float | None = 12.0,
         leading: float | None = None,
+        unit: str | None = None,
     ) -> ParagraphStyle:
-        """Create a hanging-indent paragraph style using inch values."""
+        """Create a hanging-indent paragraph style."""
 
         hanging_by = left if by is None else by
         if hanging_by < 0:
@@ -105,7 +109,22 @@ class ParagraphStyle:
             leading=leading,
             left_indent=left,
             first_line_indent=-hanging_by,
+            unit=unit,
         )
+
+    def left_indent_in_inches(self, default_unit: str) -> float | None:
+        return self._indent_in_inches(self.left_indent, default_unit)
+
+    def right_indent_in_inches(self, default_unit: str) -> float | None:
+        return self._indent_in_inches(self.right_indent, default_unit)
+
+    def first_line_indent_in_inches(self, default_unit: str) -> float | None:
+        return self._indent_in_inches(self.first_line_indent, default_unit)
+
+    def _indent_in_inches(self, value: float | None, default_unit: str) -> float | None:
+        if value is None:
+            return None
+        return length_to_inches(value, self.unit or default_unit)
 
 
 @dataclass(slots=True)

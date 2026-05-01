@@ -247,12 +247,12 @@ PARAGRAPH_INDENT_SNIPPET = """from docscriptor import Paragraph, ParagraphStyle
 
 Paragraph(
     "First-line indents work like a normal word processor paragraph.",
-    style=ParagraphStyle(left_indent=0.4, first_line_indent=0.25),
+    style=ParagraphStyle(left_indent=1.0, first_line_indent=0.6, unit="cm"),
 )
 
 Paragraph(
     "Hanging indents are useful for references, definitions, and glossary-like entries.",
-    style=ParagraphStyle.hanging(left=0.5, by=0.25),
+    style=ParagraphStyle.hanging(left=1.2, by=0.6, unit="cm"),
 )
 """
 
@@ -836,7 +836,7 @@ def build_usage_guide_document() -> Document:
                 Paragraph(
                     "Paragraph-level Word features are also part of the authored source. ",
                     code("ParagraphStyle"),
-                    " supports left and right indents, first-line indents, and hanging indents for reference-like blocks that should not be simulated with spaces."
+                    " supports left and right indents, first-line indents, and hanging indents for reference-like blocks that should not be simulated with spaces. Indent values can use the document unit or an explicit per-style unit."
                 ),
                 CodeBlock(PARAGRAPH_INDENT_SNIPPET, language="python"),
                 Paragraph(
