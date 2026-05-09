@@ -311,6 +311,10 @@ class Theme:
     figure_caption_position: str = "below"
     table_label: str = "Table"
     figure_label: str = "Figure"
+    table_caption_label: str | None = None
+    figure_caption_label: str | None = None
+    table_reference_label: str | None = None
+    figure_reference_label: str | None = None
     list_of_tables_title: str = "List of Tables"
     list_of_figures_title: str = "List of Figures"
     comments_title: str = "Comments"
@@ -415,6 +419,26 @@ class Theme:
         """Return a paragraph style's alignment or the document-wide default."""
 
         return style.alignment or self.paragraph_alignment
+
+    def table_caption_label_text(self) -> str:
+        """Return the label used in table captions and generated table lists."""
+
+        return self.table_caption_label or self.table_label
+
+    def figure_caption_label_text(self) -> str:
+        """Return the label used in figure captions and generated figure lists."""
+
+        return self.figure_caption_label or self.figure_label
+
+    def table_reference_label_text(self) -> str:
+        """Return the label used for inline table references."""
+
+        return self.table_reference_label or self.table_label
+
+    def figure_reference_label_text(self) -> str:
+        """Return the label used for inline figure and subfigure references."""
+
+        return self.figure_reference_label or self.figure_label
 
     def caption_size(self) -> float:
         """Return the effective caption font size."""

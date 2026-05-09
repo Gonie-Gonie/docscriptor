@@ -342,7 +342,7 @@ class HtmlRenderer:
         caption_html = (
             self._caption_html(
                 block.caption,
-                label=context.theme.table_label,
+                label=context.theme.table_caption_label_text(),
                 number=context.render_index.table_number(block),
                 anchor=context.render_index.table_anchor(block),
                 context=context,
@@ -402,7 +402,7 @@ class HtmlRenderer:
         caption_html = (
             self._caption_html(
                 block.caption,
-                label=context.theme.figure_label,
+                label=context.theme.figure_caption_label_text(),
                 number=context.render_index.figure_number(block),
                 anchor=context.render_index.figure_anchor(block),
                 context=context,
@@ -431,7 +431,7 @@ class HtmlRenderer:
         caption_html = (
             self._caption_html(
                 block.caption,
-                label=context.theme.figure_label,
+                label=context.theme.figure_caption_label_text(),
                 number=context.render_index.figure_number(block),
                 anchor=context.render_index.figure_anchor(block),
                 context=context,
@@ -520,7 +520,7 @@ class HtmlRenderer:
             title=block.title,
             entries=context.render_index.tables,
             default_title=context.theme.list_of_tables_title,
-            label=context.theme.table_label,
+            label=context.theme.table_caption_label_text(),
             context=context,
             section_class="docscriptor-generated-page docscriptor-table-list",
         )
@@ -536,7 +536,7 @@ class HtmlRenderer:
             title=block.title,
             entries=context.render_index.figures,
             default_title=context.theme.list_of_figures_title,
-            label=context.theme.figure_label,
+            label=context.theme.figure_caption_label_text(),
             context=context,
             section_class="docscriptor-generated-page docscriptor-figure-list",
         )
@@ -1335,7 +1335,7 @@ class HtmlRenderer:
                 raise DocscriptorError(
                     "Table references require the target table to have a caption and be included in the document"
                 )
-            return f"{theme.table_label} {number}"
+            return f"{theme.table_reference_label_text()} {number}"
 
         number = render_index.figure_number(target)
         if number is None:
@@ -1348,8 +1348,8 @@ class HtmlRenderer:
                 raise DocscriptorError(
                     "Subfigure references require the target subfigure to belong to a captioned SubFigureGroup"
                 )
-            return f"{theme.figure_label} {number}({label})"
-        return f"{theme.figure_label} {number}"
+            return f"{theme.figure_reference_label_text()} {number}({label})"
+        return f"{theme.figure_reference_label_text()} {number}"
 
     def _block_reference_anchor(
         self,

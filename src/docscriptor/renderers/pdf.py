@@ -588,7 +588,7 @@ class PdfRenderer:
             context.styles,
             context.render_index,
             context.theme.list_of_tables_title,
-            context.theme.table_label,
+            context.theme.table_caption_label_text(),
         )
 
     def render_figure_list(
@@ -605,7 +605,7 @@ class PdfRenderer:
             context.styles,
             context.render_index,
             context.theme.list_of_figures_title,
-            context.theme.figure_label,
+            context.theme.figure_caption_label_text(),
         )
 
     def render_comments_page(
@@ -1123,7 +1123,7 @@ class PdfRenderer:
                 RLParagraph(
                     self._anchor_markup(render_index.table_anchor(block))
                     + self._inline_markup(
-                        self._caption_fragments(theme.table_label, render_index.table_number(block), block.caption),
+                        self._caption_fragments(theme.table_caption_label_text(), render_index.table_number(block), block.caption),
                         theme,
                         render_index,
                         base_font_name=caption_style.fontName,
@@ -1147,7 +1147,7 @@ class PdfRenderer:
                     self._anchor_markup(render_index.table_anchor(block))
                     + self._inline_markup(
                         self._caption_fragments(
-                            theme.table_label,
+                            theme.table_caption_label_text(),
                             render_index.table_number(block),
                             block.caption,
                         ),
@@ -1408,7 +1408,7 @@ class PdfRenderer:
                 RLParagraph(
                     self._anchor_markup(render_index.figure_anchor(block))
                     + self._inline_markup(
-                        self._caption_fragments(theme.figure_label, render_index.figure_number(block), block.caption),
+                        self._caption_fragments(theme.figure_caption_label_text(), render_index.figure_number(block), block.caption),
                         theme,
                         render_index,
                         base_font_name=caption_style.fontName,
@@ -1430,7 +1430,7 @@ class PdfRenderer:
                 RLParagraph(
                     self._anchor_markup(render_index.figure_anchor(block))
                     + self._inline_markup(
-                        self._caption_fragments(theme.figure_label, render_index.figure_number(block), block.caption),
+                        self._caption_fragments(theme.figure_caption_label_text(), render_index.figure_number(block), block.caption),
                         theme,
                         render_index,
                         base_font_name=caption_style.fontName,
@@ -1530,7 +1530,7 @@ class PdfRenderer:
                 RLParagraph(
                     self._anchor_markup(render_index.figure_anchor(block))
                     + self._inline_markup(
-                        self._caption_fragments(theme.figure_label, render_index.figure_number(block), block.caption),
+                        self._caption_fragments(theme.figure_caption_label_text(), render_index.figure_number(block), block.caption),
                         theme,
                         render_index,
                         base_font_name=caption_style.fontName,
@@ -1551,7 +1551,7 @@ class PdfRenderer:
                 RLParagraph(
                     self._anchor_markup(render_index.figure_anchor(block))
                     + self._inline_markup(
-                        self._caption_fragments(theme.figure_label, render_index.figure_number(block), block.caption),
+                        self._caption_fragments(theme.figure_caption_label_text(), render_index.figure_number(block), block.caption),
                         theme,
                         render_index,
                         base_font_name=below_caption_style.fontName,
@@ -1914,7 +1914,7 @@ class PdfRenderer:
             number = render_index.table_number(target)
             if number is None:
                 raise DocscriptorError("Table references require the target table to have a caption and be included in the document")
-            return f"{theme.table_label} {number}"
+            return f"{theme.table_reference_label_text()} {number}"
 
         number = render_index.figure_number(target)
         if number is None:
@@ -1923,8 +1923,8 @@ class PdfRenderer:
             label = render_index.subfigure_label(target)
             if label is None:
                 raise DocscriptorError("Subfigure references require the target subfigure to belong to a captioned SubFigureGroup")
-            return f"{theme.figure_label} {number}({label})"
-        return f"{theme.figure_label} {number}"
+            return f"{theme.figure_reference_label_text()} {number}({label})"
+        return f"{theme.figure_reference_label_text()} {number}"
 
     def _caption_fragments(self, label: str, number: int | None, caption: Paragraph) -> list[Text]:
         if number is None:

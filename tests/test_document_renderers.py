@@ -1249,6 +1249,55 @@ def test_subfigure_group_renders_labels_and_references(tmp_path: Path) -> None:
     assert html_text.count("data:image/png;base64,") == 2
 
 
+def test_caption_and_reference_labels_can_differ_by_theme(tmp_path: Path) -> None:
+    image_path = tmp_path / "labels.png"
+    _write_sample_image(image_path)
+    table = Table(
+        headers=["Metric", "Value"],
+        rows=[["Latency", "14 ms"]],
+        caption="Localized table caption.",
+    )
+    figure = Figure(image_path, caption="Localized figure caption.", width=1.0)
+    document = Document(
+        "Caption Labels Test",
+        Paragraph("See ", table, " and ", figure, "."),
+        table,
+        figure,
+        TableList(),
+        FigureList(),
+        settings=DocumentSettings(
+            theme=Theme(
+                table_caption_label="Table",
+                table_reference_label="Tbl.",
+                figure_caption_label="Figure",
+                figure_reference_label="Fig.",
+            )
+        ),
+    )
+
+    docx_path = tmp_path / "caption-labels.docx"
+    pdf_path = tmp_path / "caption-labels.pdf"
+    html_path = tmp_path / "caption-labels.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_text = "\n".join(paragraph.text for paragraph in WordDocument(docx_path).paragraphs)
+    assert "See Tbl. 1 and Fig. 1." in word_text
+    assert "Table 1. Localized table caption." in word_text
+    assert "Figure 1. Localized figure caption." in word_text
+
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    assert "See Tbl. 1 and Fig. 1." in pdf_text
+    assert "Table 1. Localized table caption." in pdf_text
+    assert "Figure 1. Localized figure caption." in pdf_text
+
+    normalized_html_text = _normalized_html_text(html_path)
+    assert "See Tbl. 1 and Fig. 1" in normalized_html_text
+    assert "Table 1. Localized table caption." in normalized_html_text
+    assert "Figure 1. Localized figure caption." in normalized_html_text
+
+
 def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Path) -> None:
     document = Document(
         "TOC Test",

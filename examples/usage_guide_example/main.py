@@ -146,6 +146,8 @@ settings = DocumentSettings(
         generated_page_breaks=True,
         table_caption_position="above",
         figure_caption_position="below",
+        table_reference_label="Tbl.",
+        figure_reference_label="Fig.",
     ),
 )
 """
@@ -994,6 +996,15 @@ def build_usage_guide_document() -> Document:
                     "That block-reference behavior is especially helpful in late revisions. When the order of figures or tables changes, the text stays synchronized because references resolve against the indexed caption numbers rather than a hard-coded label."
                 ),
                 Paragraph(
+                    "Document-wide labels are configurable separately for captions and prose references. For example, a document can caption blocks as ",
+                    code("Figure"),
+                    " while referring to them as ",
+                    code("Fig."),
+                    ", or use localized labels such as ",
+                    code("그림"),
+                    "."
+                ),
+                Paragraph(
                     "When several related images should share one figure number, use ",
                     code("SubFigure"),
                     " children inside a ",
@@ -1080,7 +1091,7 @@ def build_usage_guide_document() -> Document:
             Section(
                 "What the theme controls",
                 Paragraph(
-                    "Theme is where renderer-neutral layout defaults live: heading numbering, list markers, page numbers, caption positions, author alignment, and footnote placement strategy. The goal is to keep document-wide choices together so a document does not accumulate hidden style decisions."
+                    "Theme is where renderer-neutral layout defaults live: heading numbering, list markers, page numbers, caption positions, caption/reference labels, author alignment, and footnote placement strategy. The goal is to keep document-wide choices together so a document does not accumulate hidden style decisions."
                 ),
                 renderer_rules_table,
             ),
