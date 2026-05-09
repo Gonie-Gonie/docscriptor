@@ -103,6 +103,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("settings.get_text_width(0.75)" in text for text in paragraph_texts)
     assert any("placement='inline'" in text for text in paragraph_texts)
     assert any("Inline image example:" in text for text in paragraph_texts)
+    assert any("Table(split=False)" in text for text in paragraph_texts)
+    assert any("Table(split=True)" in text for text in paragraph_texts)
+    assert any("'tbp'" in text or 'placement="tbp"' in text for text in paragraph_texts)
     assert any("TableOfContents" in text for text in paragraph_texts)
     assert any("TocLevelStyle" in text for text in paragraph_texts)
     assert any("A reading map for the guide." in text for text in paragraph_texts)
@@ -112,13 +115,14 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("Table-of-contents defaults and customization options." in text for text in paragraph_texts)
     assert any("Figure sizing patterns for width, height, and document-relative sizing." in text for text in paragraph_texts)
     assert any("Coordinate-based drawings can be page overlays or inline flow objects." in text for text in paragraph_texts)
+    assert any("Advanced table and figure placement controls." in text for text in paragraph_texts)
     assert any("Renderer-specific behavior for notes, review workflows, and cross-reference stability." in text for text in paragraph_texts)
     assert any("portable footnotes exactly where the text appears." in text for text in paragraph_texts)
     assert any("github.com/Gonie-Gonie/docscriptor" in text for text in paragraph_texts)
     assert any("The journal example at examples/journal_paper_example/main.py" in text for text in paragraph_texts)
     assert "Docscriptor Contributor Certificate" in table_text
     assert "Footnotes" not in [text for text in paragraph_texts if text == "Footnotes"]
-    assert len(word_document.tables) == 13
+    assert len(word_document.tables) == 14
     assert len(word_document.inline_shapes) == 6
     assert len(word_document.comments) == 2
     assert next(paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text == "Comments") == "Heading 2"
@@ -144,6 +148,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "settings.get_text_width(0.75)" in pdf_text
     assert "placement='inline'" in pdf_text
     assert "Inline image example:" in pdf_text
+    assert "Table(split=False)" in pdf_text
+    assert "Table(split=True)" in pdf_text
+    assert ("'tbp'" in pdf_text) or ('placement="tbp"' in pdf_text)
     assert "TableOfContents" in pdf_text
     assert "TocLevelStyle" in pdf_text
     assert "A reading map for the guide." in pdf_text
@@ -155,6 +162,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "6.3.1.1 Subsubsection entries" in pdf_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in pdf_text
     assert "Coordinate-based drawings can be page overlays or inline flow objects." in pdf_text
+    assert "Advanced table and figure placement controls." in pdf_text
     assert "Docscriptor Contributor Certificate" in pdf_text
     assert "Renderer-specific behavior for notes, review workflows, and cross-reference stability." in pdf_text
     assert "Portable footnotes are authored inline" in pdf_text
@@ -176,6 +184,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "settings.get_text_width(0.75)" in normalized_html_text
     assert "placement='inline'" in normalized_html_text
     assert "Inline image example:" in normalized_html_text
+    assert "Table(split=False)" in normalized_html_text
+    assert "Table(split=True)" in normalized_html_text
+    assert ("'tbp'" in normalized_html_text) or ('placement="tbp"' in normalized_html_text)
     assert "TableOfContents" in normalized_html_text
     assert "TocLevelStyle" in normalized_html_text
     assert "CommentsPage() collects these review notes onto a dedicated generated page." in normalized_html_text
@@ -187,6 +198,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "6.3.1.1 Subsubsection entries" in normalized_html_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in normalized_html_text
     assert "Coordinate-based drawings can be page overlays or inline flow objects." in normalized_html_text
+    assert "Advanced table and figure placement controls." in normalized_html_text
     assert "Docscriptor Contributor Certificate" in normalized_html_text
     assert "Portable footnotes are authored inline" in normalized_html_text
     assert "github.com/Gonie-Gonie/docscriptor" in normalized_html_text

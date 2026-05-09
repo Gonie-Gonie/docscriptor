@@ -298,6 +298,30 @@ Table(
 )
 """
 
+TABLE_PLACEMENT_SNIPPET = """from docscriptor import Figure, Table
+
+audit_log = Table(
+    headers=["Step", "Result"],
+    rows=[[f"Step {index}", "ok"] for index in range(40)],
+    caption="Long audit log.",
+    split=False,      # Prefer one block, but auto-split when it is too long.
+    placement="tbp",  # Advanced float-like placement preference.
+)
+
+runbook = Table(
+    headers=["Check", "Owner"],
+    rows=[["Preflight", "Release lead"], ["Smoke test", "QA"]],
+    caption="Runbook checks.",
+    split=True,       # Always render here and allow page breaks.
+)
+
+diagram = Figure(
+    "assets/system-diagram.png",
+    caption="Pipeline diagram.",
+    placement="top", # Advanced placement hint for the renderer.
+)
+"""
+
 
 def _wrapped_lines(lines: list[str], *, width: int) -> list[str]:
     wrapped: list[str] = []
@@ -606,6 +630,17 @@ def build_usage_guide_document() -> Document:
         ],
         caption="Working patterns for media objects and references.",
         column_widths=[1.9, 2.0, 2.7],
+    )
+    media_placement_table = Table(
+        headers=["Option", "Default use", "Renderer effect"],
+        rows=[
+            ["Table(split=False)", "Prefer an uncut table.", "Short tables stay together; very long tables become split tables with repeated headers."],
+            ["Table(split=True)", "Treat the table like LaTeX here placement.", "The table is rendered in source order and can break across pages."],
+            ["placement='tbp'", "Advanced float-like preference.", "Renderers keep the object together when possible and may move it to a better page position."],
+            ["placement='top' or 'page'", "Advanced forced placement.", "Renderers add page-break hints around the table or figure."],
+        ],
+        caption="Advanced table and figure placement controls.",
+        column_widths=[1.7, 2.5, 2.6],
     )
     renderer_rules_table = Table(
         headers=["Concern", "Shared behavior", "Important renderer detail"],
@@ -930,6 +965,29 @@ def build_usage_guide_document() -> Document:
                     renderer_behavior_figure,
                     " is not decorative. It surfaces the concrete behavior differences a user needs to know before choosing which output to send to collaborators."
                 ),
+            ),
+            Section(
+                "Advanced placement and long tables",
+                Paragraph(
+                    "Authors normally decide whether a table may be split, not whether it is a normal table or a long table. With ",
+                    code("Table(split=False)"),
+                    ", docscriptor keeps a short table together but automatically switches very long tables to repeated-header split rendering. With ",
+                    code("Table(split=True)"),
+                    ", the table behaves like a here-placed object that can break in source order."
+                ),
+                Paragraph(
+                    "Tables and figures also accept advanced ",
+                    code("placement"),
+                    " hints such as ",
+                    code("'tbp'"),
+                    ", ",
+                    code("'top'"),
+                    ", and ",
+                    code("'page'"),
+                    " for users who need more direct control over renderer placement."
+                ),
+                media_placement_table,
+                CodeBlock(TABLE_PLACEMENT_SNIPPET, language="python"),
             ),
         ),
         Chapter(

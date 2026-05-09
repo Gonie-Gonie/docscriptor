@@ -982,6 +982,8 @@ class PdfRenderer:
         *,
         in_box: bool = False,
     ) -> list[object]:
+        split_table = block.resolved_split()
+        placement = block.resolved_placement()
         body_style = self._paragraph_style(ParagraphStyle(space_after=0), theme, styles["BodyText"])
         header_style = RLParagraphStyle(
             "TableHeader",
@@ -1096,7 +1098,9 @@ class PdfRenderer:
             table_rows,
             colWidths=column_widths,
             hAlign=FLOWABLE_ALIGNMENTS[theme.table_alignment],
+            repeatRows=layout.header_row_count if split_table else 0,
         )
+        table.splitByRow = 1
         table.setStyle(TableStyle(style_commands))
 
         story: list[object] = []
@@ -1151,8 +1155,23 @@ class PdfRenderer:
             )
         elif not in_box:
             story.append(Spacer(1, 12))
-        if layout.row_count <= 12:
-            return [KeepTogether(story)]
+        if not split_table:
+            story = [KeepTogether(story)]
+        return self._apply_pdf_media_placement(story, placement, in_box=in_box)
+
+    def _apply_pdf_media_placement(
+        self,
+        story: list[object],
+        placement: str,
+        *,
+        in_box: bool = False,
+    ) -> list[object]:
+        if in_box:
+            return story
+        if placement == "page":
+            return [RLPageBreak(), *story, RLPageBreak()]
+        if placement == "top":
+            return [RLPageBreak(), *story]
         return story
 
     def _table_cell_horizontal_alignment(
@@ -1373,6 +1392,7 @@ class PdfRenderer:
         *,
         in_box: bool = False,
     ) -> list[object]:
+        placement = block.resolved_placement()
         image = RLImage(self._figure_image_source(block))
         image.hAlign = FLOWABLE_ALIGNMENTS[theme.figure_alignment]
         resolved_width = block.width_in_inches(unit)
@@ -1439,7 +1459,7 @@ class PdfRenderer:
             )
         elif not in_box:
             elements.append(Spacer(1, 12))
-        return [KeepTogether(elements)]
+        return self._apply_pdf_media_placement([KeepTogether(elements)], placement, in_box=in_box)
 
     def _figure_image_source(self, block: Figure) -> str | BytesIO:
         source = block.image_source

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence, TYPE_CHECKING
+from typing import Literal, Sequence, TYPE_CHECKING
 
 from docscriptor.components.base import Block
 from docscriptor.components.blocks import CellInput, Paragraph, coerce_cell
@@ -20,6 +20,47 @@ from docscriptor.layout.theme import TableStyle
 
 if TYPE_CHECKING:
     from docscriptor.renderers.context import DocxRenderContext, HtmlRenderContext, PdfRenderContext
+
+
+MediaPlacement = Literal["auto", "here", "float", "top", "bottom", "page"]
+TableSplit = bool | Literal["auto"]
+DEFAULT_LONG_TABLE_ROW_THRESHOLD = 12
+
+
+def normalize_media_placement(value: str | None) -> MediaPlacement:
+    """Normalize advanced table/figure placement options."""
+
+    if value is None:
+        return "auto"
+    normalized = value.strip().lower()
+    aliases = {
+        "h": "here",
+        "here": "here",
+        "float": "float",
+        "tbp": "float",
+        "htbp": "float",
+        "t": "top",
+        "top": "top",
+        "b": "bottom",
+        "bottom": "bottom",
+        "p": "page",
+        "page": "page",
+        "auto": "auto",
+    }
+    placement = aliases.get(normalized)
+    if placement is None:
+        raise ValueError(f"Unsupported media placement: {value!r}")
+    return placement  # type: ignore[return-value]
+
+
+def normalize_table_split(value: TableSplit) -> TableSplit:
+    """Normalize table splitting policy."""
+
+    if isinstance(value, bool):
+        return value
+    if value == "auto":
+        return value
+    raise ValueError("Table split must be True, False, or 'auto'")
 
 
 @dataclass(slots=True, init=False)
@@ -321,6 +362,9 @@ class Table(Block):
     identifier: str | None
     style: TableStyle
     include_index: bool
+    split: TableSplit
+    placement: MediaPlacement
+    long_table_threshold: int | None
 
     def __init__(
         self,
@@ -333,6 +377,9 @@ class Table(Block):
         identifier: str | None = None,
         style: TableStyle | None = None,
         include_index: bool = False,
+        split: TableSplit = False,
+        placement: str | None = None,
+        long_table_threshold: int | None = None,
     ) -> None:
         if rows is None and _is_dataframe_like(headers):
             dataframe = headers
@@ -358,6 +405,11 @@ class Table(Block):
         self.identifier = identifier
         self.style = style or TableStyle()
         self.include_index = include_index
+        self.split = normalize_table_split(split)
+        self.placement = normalize_media_placement(placement)
+        if long_table_threshold is not None and long_table_threshold < 1:
+            raise ValueError("long_table_threshold must be >= 1")
+        self.long_table_threshold = long_table_threshold
 
         layout = self.layout()
         if self.column_widths is not None and len(self.column_widths) != layout.column_count:
@@ -373,6 +425,28 @@ class Table(Block):
         """Return the renderer-facing table layout."""
 
         return build_table_layout(self.header_rows, self.rows)
+
+    def row_count(self) -> int:
+        """Return the total rendered row count, including headers."""
+
+        return len(self.header_rows) + len(self.rows)
+
+    def resolved_split(self, default_threshold: int = DEFAULT_LONG_TABLE_ROW_THRESHOLD) -> bool:
+        """Return whether renderers should allow this table to split across pages."""
+
+        if self.split is True:
+            return True
+        threshold = self.long_table_threshold or default_threshold
+        return self.row_count() > threshold
+
+    def resolved_placement(self, default_threshold: int = DEFAULT_LONG_TABLE_ROW_THRESHOLD) -> MediaPlacement:
+        """Return the effective placement after split/long-table rules."""
+
+        if self.split is True or self.resolved_split(default_threshold):
+            return "here"
+        if self.placement == "auto":
+            return "float"
+        return self.placement
 
     def column_widths_in_inches(self, default_unit: str) -> list[float] | None:
         """Return column widths converted through the table or document unit."""
@@ -393,6 +467,9 @@ class Table(Block):
         identifier: str | None = None,
         style: TableStyle | None = None,
         include_index: bool = False,
+        split: TableSplit = False,
+        placement: str | None = None,
+        long_table_threshold: int | None = None,
     ) -> Table:
         """Create a table directly from a dataframe-like object."""
 
@@ -404,6 +481,9 @@ class Table(Block):
             identifier=identifier,
             style=style,
             include_index=include_index,
+            split=split,
+            placement=placement,
+            long_table_threshold=long_table_threshold,
         )
 
     def render_to_docx(
@@ -441,6 +521,7 @@ class Figure(Block):
     identifier: str | None
     format: str
     dpi: int | None
+    placement: MediaPlacement
 
     def __init__(
         self,
@@ -453,6 +534,7 @@ class Figure(Block):
         unit: str | None = None,
         format: str = "png",
         dpi: int | None = 150,
+        placement: str | None = None,
     ) -> None:
         self.image_source = (
             Path(image_source)
@@ -466,6 +548,7 @@ class Figure(Block):
         self.identifier = identifier
         self.format = format
         self.dpi = dpi
+        self.placement = normalize_media_placement(placement)
 
     def width_in_inches(self, default_unit: str) -> float | None:
         """Return figure width converted through the figure or document unit."""
@@ -480,6 +563,13 @@ class Figure(Block):
         if self.height is None:
             return None
         return length_to_inches(self.height, self.unit or default_unit)
+
+    def resolved_placement(self) -> MediaPlacement:
+        """Return the effective placement for this figure."""
+
+        if self.placement == "auto":
+            return "float"
+        return self.placement
 
     def render_to_docx(
         self,
@@ -506,11 +596,15 @@ class Figure(Block):
 
 __all__ = [
     "Figure",
+    "MediaPlacement",
     "Table",
     "TableCell",
     "TableCellInput",
     "TableLayout",
     "TablePlacement",
+    "TableSplit",
     "build_table_layout",
     "coerce_table_cell",
+    "normalize_media_placement",
+    "normalize_table_split",
 ]

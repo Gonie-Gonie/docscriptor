@@ -635,6 +635,39 @@ class DocxRenderer:
             properties = row._tr.get_or_add_trPr()
             properties.append(OxmlElement("w:cantSplit"))
 
+    def _repeat_table_header_rows(self, table: object, header_row_count: int) -> None:
+        for row in table.rows[:header_row_count]:
+            properties = row._tr.get_or_add_trPr()
+            properties.append(OxmlElement("w:tblHeader"))
+
+    def _keep_table_together(self, table: object) -> None:
+        for row in table.rows[:-1]:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    self._keep_with_next(paragraph)
+
+    def _apply_media_placement_before(
+        self,
+        container: object,
+        word_document: WordDocument,
+        placement: str,
+    ) -> None:
+        if self._is_cell_container(container):
+            return
+        if placement in {"top", "page"} and (word_document.paragraphs or word_document.tables):
+            self._ensure_page_break(word_document)
+
+    def _apply_media_placement_after(
+        self,
+        container: object,
+        word_document: WordDocument,
+        placement: str,
+    ) -> None:
+        if self._is_cell_container(container):
+            return
+        if placement == "page":
+            self._ensure_page_break(word_document)
+
     def _docx_footnotes_part(self, word_document: WordDocument) -> FootnotesPart:
         if self._native_footnotes_part is not None:
             return self._native_footnotes_part
@@ -1561,6 +1594,10 @@ class DocxRenderer:
         *,
         word_document: WordDocument,
     ) -> None:
+        split_table = table_block.resolved_split()
+        placement = table_block.resolved_placement()
+        self._apply_media_placement_before(container, word_document, placement)
+
         def render_caption() -> None:
             if table_block.caption is None:
                 return
@@ -1593,6 +1630,10 @@ class DocxRenderer:
         table.style = "Table Grid"
         table.alignment = TABLE_ALIGNMENTS[theme.table_alignment]
         self._prevent_table_row_split(table)
+        if split_table:
+            self._repeat_table_header_rows(table, layout.header_row_count)
+        else:
+            self._keep_table_together(table)
         column_widths = table_block.column_widths_in_inches(unit)
         if column_widths is not None:
             for column_index, width in enumerate(column_widths):
@@ -1646,6 +1687,7 @@ class DocxRenderer:
 
         if table_block.caption is not None and theme.table_caption_position == "below":
             render_caption()
+        self._apply_media_placement_after(container, word_document, placement)
 
     def _table_cell_horizontal_alignment(
         self,
@@ -1680,6 +1722,9 @@ class DocxRenderer:
         word_document: WordDocument,
         in_box: bool = False,
     ) -> None:
+        placement = figure.resolved_placement()
+        self._apply_media_placement_before(container, word_document, placement)
+
         def render_caption() -> None:
             if figure.caption is None:
                 return
@@ -1723,6 +1768,7 @@ class DocxRenderer:
 
         if figure.caption is not None and theme.figure_caption_position == "below":
             render_caption()
+        self._apply_media_placement_after(container, word_document, placement)
 
     def _set_paragraph_shading(self, paragraph: object, fill: str) -> None:
         paragraph_properties = paragraph._p.get_or_add_pPr()

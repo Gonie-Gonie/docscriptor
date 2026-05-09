@@ -539,6 +539,71 @@ def test_table_cell_alignment_options_are_validated() -> None:
         raise AssertionError("Expected invalid vertical alignment to fail")
 
 
+def test_table_split_and_media_placement_options_render(tmp_path: Path) -> None:
+    image_path = tmp_path / "placement.png"
+    _write_sample_image(image_path)
+    long_rows = [[f"Item {index}", f"Value {index}"] for index in range(34)]
+    long_table = Table(
+        headers=["Item", "Value"],
+        rows=long_rows,
+        caption="Long table with repeated headers.",
+        column_widths=[2.0, 2.0],
+        split=False,
+    )
+    here_table = Table(
+        headers=["Mode", "Behavior"],
+        rows=[["split=True", "render here and allow page breaks"]],
+        caption="Explicit split table.",
+        split=True,
+    )
+    top_figure = Figure(
+        image_path,
+        caption=Paragraph("Figure with top placement."),
+        width=1.0,
+        placement="top",
+    )
+    document = Document(
+        "Placement Test",
+        Paragraph("Before media."),
+        long_table,
+        here_table,
+        top_figure,
+        settings=DocumentSettings(
+            page_size=PageSize.letter(),
+            page_margins=PageMargins.all(0.5, unit="in"),
+        ),
+    )
+
+    assert long_table.resolved_split() is True
+    assert long_table.resolved_placement() == "here"
+    assert here_table.resolved_split() is True
+    assert here_table.resolved_placement() == "here"
+    assert top_figure.resolved_placement() == "top"
+
+    docx_path = tmp_path / "placement.docx"
+    pdf_path = tmp_path / "placement.pdf"
+    html_path = tmp_path / "placement.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    pdf_reader = PdfReader(BytesIO(pdf_path.read_bytes()))
+    pdf_text = "\n".join(page.extract_text() or "" for page in pdf_reader.pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert long_table.row_count() == 35
+    assert 'w:tblHeader' in docx_xml
+    assert '<w:br w:type="page"/>' in docx_xml
+    assert "Long table with repeated headers." in pdf_text
+    assert pdf_text.count("Item") >= 2
+    assert len(pdf_reader.pages) >= 2
+    assert 'docscriptor-table-split' in html_text
+    assert 'docscriptor-placement-here' in html_text
+    assert 'docscriptor-placement-top' in html_text
+    assert 'break-before: page' in html_text
+
+
 def test_heading_hierarchy_uses_latex_like_levels() -> None:
     chapter = Chapter(
         "Part I",

@@ -316,6 +316,8 @@ class HtmlRenderer:
         """Render a table block into HTML."""
 
         layout = build_table_layout(block.header_rows, block.rows)
+        split_table = block.resolved_split()
+        placement = block.resolved_placement()
         colgroup = ""
         column_widths = block.column_widths_in_inches(context.unit)
         if column_widths is not None:
@@ -350,8 +352,10 @@ class HtmlRenderer:
             else ""
         )
         table_html = (
-            '<div class="docscriptor-table-wrapper" '
-            f'style="{self._table_wrapper_css(context.theme, in_box=context.in_box)}">'
+            '<div class="docscriptor-table-wrapper '
+            f'docscriptor-placement-{placement} '
+            f'{"docscriptor-table-split" if split_table else "docscriptor-table-keep"}" '
+            f'style="{self._table_wrapper_css(context.theme, in_box=context.in_box)} {self._media_placement_css(placement, in_box=context.in_box)}">'
             + (
                 caption_html
                 if block.caption is not None and context.theme.table_caption_position == "above"
@@ -374,6 +378,7 @@ class HtmlRenderer:
     def render_figure(self, block: Figure, context: HtmlRenderContext) -> str:
         """Render a figure block into HTML."""
 
+        placement = block.resolved_placement()
         image_style = ""
         resolved_width = block.width_in_inches(context.unit)
         resolved_height = block.height_in_inches(context.unit)
@@ -413,8 +418,8 @@ class HtmlRenderer:
         if block.caption is not None and context.theme.figure_caption_position == "below":
             content_parts.append(caption_html)
         return (
-            '<figure class="docscriptor-figure" '
-            f'style="{self._figure_css(context.theme, in_box=context.in_box)}">'
+            f'<figure class="docscriptor-figure docscriptor-placement-{placement}" '
+            f'style="{self._figure_css(context.theme, in_box=context.in_box)} {self._media_placement_css(placement, in_box=context.in_box)}">'
             + "".join(content_parts)
             + "</figure>"
         )
@@ -1435,6 +1440,19 @@ class HtmlRenderer:
             + f" {self._block_alignment_css(theme.figure_alignment)}"
         )
 
+    def _media_placement_css(self, placement: str, *, in_box: bool = False) -> str:
+        if in_box:
+            return ""
+        if placement == "page":
+            return "break-before: page; page-break-before: always; break-after: page; page-break-after: always;"
+        if placement == "top":
+            return "break-before: page; page-break-before: always;"
+        if placement == "float":
+            return "break-inside: avoid; page-break-inside: avoid;"
+        if placement == "here":
+            return "break-inside: auto; page-break-inside: auto;"
+        return ""
+
     def _block_alignment_css(self, alignment: str) -> str:
         if alignment == "right":
             return "margin-left: auto; margin-right: 0;"
@@ -1634,6 +1652,21 @@ body {{
   width: auto;
   max-width: 100%;
   border-collapse: collapse;
+}}
+.docscriptor-table-split {{
+  break-inside: auto;
+  page-break-inside: auto;
+}}
+.docscriptor-table-keep {{
+  break-inside: avoid;
+  page-break-inside: avoid;
+}}
+.docscriptor-table-split thead {{
+  display: table-header-group;
+}}
+.docscriptor-table tr {{
+  break-inside: avoid;
+  page-break-inside: avoid;
 }}
 .docscriptor-table .docscriptor-paragraph {{
   margin-bottom: 0;
