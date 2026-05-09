@@ -26,9 +26,9 @@ This file is the shared memory for ongoing work on this repository. Keep it read
 - Backward compatibility does not need to be preserved unless the user gives a specific compatibility guide or constraint.
 - This project is still in an API-shaping stage. Prefer clear, explicit, maintainable APIs over carrying old names by default.
 - Prefer document-level defaults through `DocumentSettings` when a setting should apply consistently across renderers.
-- Prefer editable flow primitives for report-like layouts: `Box` + `BoxStyle`, `Table`, `Figure`, and normal paragraphs should cover tcolorbox-style panels, callouts, and form sections before reaching for fixed-position sheets.
-- Use `Sheet` only for short fixed-layout form pages such as certificates and cover inserts where exact positioning matters more than normal Word editing. It remains a normal block inside `Document`, but users should expect it to own a page by default through page breaks before and after the sheet. Keep fixed-sheet growth incremental and limit cross-renderer shapes to the Word-editable subset (`rect`, `ellipse`, `line`) before adding richer drawing features.
-- Nested sheets should still behave like standalone pages. DOCX rendering uses section breaks around sheets to switch page size/margins; HTML renders sheets in a breakout page wrapper so a wide sheet does not get squeezed into the prose card; PDF uses sheet-specific `PageTemplate` objects so the actual PDF page media box can match the sheet size.
+- Prefer editable flow primitives for report-like layouts: `Box` + `BoxStyle`, `Table`, `Figure`, and normal paragraphs should cover tcolorbox-style panels, callouts, and form sections before reaching for page-positioned drawing objects.
+- The old `Sheet` model is removed. Use `Document(..., page_items=[Shape..., TextBox..., ImageBox...])` for absolute page overlays that do not move body text. Anchors are `page`, `margin`/`content`, or an earlier named `Shape`.
+- `Shape`, `TextBox`, and `ImageBox` also support `placement="inline"` so users can insert drawing objects into the body flow in a Word-like "in line with text" mode, similar to direct LaTeX `includegraphics` usage.
 - Release versioning rule: bump the minor version when backward compatibility is not guaranteed; bump only the patch version when backward compatibility is preserved.
 
 ## Local Environment Notes

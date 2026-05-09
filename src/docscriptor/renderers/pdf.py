@@ -19,7 +19,6 @@ from reportlab.platypus import (
     Flowable,
     Frame,
     KeepTogether,
-    NextPageTemplate,
     PageBreak as RLPageBreak,
     PageTemplate,
     Paragraph as RLParagraph,
@@ -62,7 +61,14 @@ from docscriptor.components.inline import (
 )
 from docscriptor.components.media import Figure, Table, build_table_layout
 from docscriptor.components.people import AuthorTitleLine
-from docscriptor.components.sheets import ImageBox, Shape, Sheet, TextBox
+from docscriptor.components.positioning import (
+    ImageBox,
+    PositionedBox,
+    PositionedItem,
+    Shape,
+    TextBox,
+    resolve_positioned_boxes,
+)
 from docscriptor.document import Document
 from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
 from docscriptor.core import DocscriptorError, PathLike, length_to_inches
@@ -180,151 +186,66 @@ class FilteredTableOfContents(RLTableOfContents):
         super().notify(kind, stuff)
 
 
-class SheetFlowable(Flowable):
-    """ReportLab flowable that draws a fixed-layout sheet."""
+class PositionedItemFlowable(Flowable):
+    """ReportLab flowable for inline drawing items."""
 
     def __init__(
         self,
-        sheet: Sheet,
+        item: PositionedItem,
         renderer: "PdfRenderer",
         context: PdfRenderContext,
     ) -> None:
         super().__init__()
-        self.sheet = sheet
+        self.item = item
         self.renderer = renderer
         self.context = context
-        self.width = renderer._sheet_width(sheet, context) * inch
-        self.height = renderer._sheet_height(sheet, context) * inch
+        self.width = length_to_inches(item.width, item.unit or context.unit) * inch
+        self.height = length_to_inches(item.height, item.unit or context.unit) * inch
 
     def wrap(self, available_width: float, available_height: float) -> tuple[float, float]:
         return (self.width, self.height)
 
     def draw(self) -> None:
-        canvas = self.canv
-        sheet = self.sheet
-        canvas.saveState()
-        self._draw_background()
-        if sheet.border_color is not None and sheet.border_width > 0:
-            canvas.setStrokeColor(colors.HexColor(f"#{sheet.border_color}"))
-            canvas.setLineWidth(sheet.border_width)
-            canvas.rect(0, 0, self.width, self.height, fill=0, stroke=1)
-        for item in self._items():
-            if isinstance(item, TextBox):
-                self._draw_text_box(item)
-            elif isinstance(item, ImageBox):
-                self._draw_image_box(item)
-            else:
-                self._draw_shape(item)
-        canvas.restoreState()
-
-    def _draw_background(self) -> None:
-        canvas = self.canv
-        sheet = self.sheet
-        if sheet.background_gradient is not None and hasattr(canvas, "linearGradient"):
-            start, end = sheet.background_gradient
-            if sheet.gradient_direction == "horizontal":
-                canvas.linearGradient(
-                    0,
-                    0,
-                    self.width,
-                    0,
-                    (colors.HexColor(f"#{start}"), colors.HexColor(f"#{end}")),
-                )
-            else:
-                canvas.linearGradient(
-                    0,
-                    self.height,
-                    0,
-                    0,
-                    (colors.HexColor(f"#{start}"), colors.HexColor(f"#{end}")),
-                )
-            canvas.rect(0, 0, self.width, self.height, fill=1, stroke=0)
-            return
-        canvas.setFillColor(colors.HexColor(f"#{sheet.background_color}"))
-        canvas.rect(0, 0, self.width, self.height, fill=1, stroke=0)
-
-    def _items(self) -> list[TextBox | Shape | ImageBox]:
-        return [
-            item
-            for _, item in sorted(
-                enumerate(self.sheet.items),
-                key=lambda indexed: (indexed[1].z_index, indexed[0]),
-            )
-        ]
-
-    def _length(self, value: float) -> float:
-        return length_to_inches(value, self.sheet.unit or self.context.unit) * inch
-
-    def _draw_text_box(self, item: TextBox) -> None:
-        font_size = item.font_size or self.context.theme.body_font_size
-        style = RLParagraphStyle(
-            "SheetTextBox",
-            fontName=self.renderer._resolve_font(self.context.theme.body_font_name, False, False),
-            fontSize=font_size,
-            leading=font_size * 1.22,
-            alignment=ALIGNMENTS[item.align],
-            textColor=colors.black,
+        self.renderer._draw_positioned_item(
+            self.canv,
+            self.item,
+            x=0,
+            y_top=0,
+            width=self.width,
+            height=self.height,
+            page_height=self.height,
+            context=self.context,
         )
-        paragraph = RLParagraph(
-            self.renderer._inline_markup(
-                item.content,
-                self.context.theme,
-                self.context.render_index,
-                base_font_name=style.fontName,
-                base_size=font_size,
-            ),
-            style,
-        )
-        x = self._length(item.x)
-        y_top = self._length(item.y)
-        width = self._length(item.width)
-        height = self._length(item.height)
-        _, paragraph_height = paragraph.wrap(width, height)
-        if item.valign == "middle":
-            y = self.height - y_top - ((height + paragraph_height) / 2)
-        elif item.valign == "bottom":
-            y = self.height - y_top - height
-        else:
-            y = self.height - y_top - paragraph_height
-        paragraph.drawOn(self.canv, x, y)
 
-    def _draw_shape(self, item: Shape) -> None:
-        canvas = self.canv
-        x = self._length(item.x)
-        y_top = self._length(item.y)
-        width = self._length(item.width)
-        height = self._length(item.height)
-        y = self.height - y_top - height
-        if item.stroke_color is not None and item.stroke_width > 0:
-            canvas.setStrokeColor(colors.HexColor(f"#{item.stroke_color}"))
-            canvas.setLineWidth(item.stroke_width)
-        if item.fill_color is not None:
-            canvas.setFillColor(colors.HexColor(f"#{item.fill_color}"))
-        fill = 1 if item.fill_color is not None else 0
-        stroke = 1 if item.stroke_color is not None and item.stroke_width > 0 else 0
-        if item.kind == "rect":
-            canvas.rect(x, y, width, height, fill=fill, stroke=stroke)
-        elif item.kind == "ellipse":
-            canvas.ellipse(x, y, x + width, y + height, fill=fill, stroke=stroke)
-        else:
-            canvas.line(x, self.height - y_top, x + width, self.height - y_top - height)
 
-    def _draw_image_box(self, item: ImageBox) -> None:
-        x = self._length(item.x)
-        y_top = self._length(item.y)
-        width = self._length(item.width)
-        height = self._length(item.height)
-        y = self.height - y_top - height
-        preserve_aspect_ratio = item.fit == "contain"
-        self.canv.drawImage(
-            self.renderer._image_box_source(item),
-            x,
-            y,
-            width=width,
-            height=height,
-            preserveAspectRatio=preserve_aspect_ratio,
-            anchor="c",
-            mask="auto",
+class PagePositionedItemFlowable(Flowable):
+    """Zero-size flowable that draws a page-positioned item on the current page."""
+
+    def __init__(
+        self,
+        box: PositionedBox,
+        renderer: "PdfRenderer",
+        context: PdfRenderContext,
+    ) -> None:
+        super().__init__()
+        self.box = box
+        self.renderer = renderer
+        self.context = context
+
+    def wrap(self, available_width: float, available_height: float) -> tuple[float, float]:
+        return (0, 0)
+
+    def draw(self) -> None:
+        settings = self.context.settings
+        self.renderer._draw_positioned_item(
+            self.canv,
+            self.box.item,
+            x=self.box.x * inch,
+            y_top=self.box.y * inch,
+            width=self.box.width * inch,
+            height=self.box.height * inch,
+            page_height=settings.page_height_in_inches() * inch,
+            context=self.context,
         )
 
 
@@ -334,33 +255,6 @@ class DocscriptorPdfTemplate(SimpleDocTemplate):
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         self.main_matter_start_page: int | None = None
-        self._sheet_page_templates: list[PageTemplate] = []
-
-    def register_sheet_page_template(
-        self,
-        template_id: str,
-        *,
-        width: float,
-        height: float,
-    ) -> None:
-        frame = Frame(
-            0,
-            0,
-            width,
-            height,
-            leftPadding=0,
-            bottomPadding=0,
-            rightPadding=0,
-            topPadding=0,
-            id=f"{template_id}_frame",
-        )
-        self._sheet_page_templates.append(
-            PageTemplate(
-                id=template_id,
-                frames=[frame],
-                pagesize=(width, height),
-            )
-        )
 
     def build(
         self,
@@ -381,7 +275,6 @@ class DocscriptorPdfTemplate(SimpleDocTemplate):
             [
                 PageTemplate(id="First", frames=frame, onPage=onFirstPage, pagesize=self.pagesize),
                 PageTemplate(id="Later", frames=frame, onPage=onLaterPages, pagesize=self.pagesize),
-                *self._sheet_page_templates,
             ]
         )
         if onFirstPage is _doNothing and hasattr(self, "onFirstPage"):
@@ -416,8 +309,6 @@ class PdfRenderer:
 
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        self._sheet_template_ids: dict[int, str] = {}
-        self._sheet_template_specs: dict[str, tuple[float, float]] = {}
 
         pdf = DocscriptorPdfTemplate(
             str(path),
@@ -462,11 +353,9 @@ class PdfRenderer:
         if self._should_auto_render_footnotes_page(document, render_index):
             story.extend(self.render_footnotes_page(FootnotesPage(), context))
 
-        for template_id, (width, height) in self._sheet_template_specs.items():
-            pdf.register_sheet_page_template(template_id, width=width, height=height)
-
         page_callback = self._page_callback(
-            document.theme,
+            document,
+            context,
             has_front_matter=has_front_matter,
         )
         if self._story_has_indexing_flowable(story):
@@ -610,22 +499,32 @@ class PdfRenderer:
             context.unit,
         )
 
-    def render_sheet(
+    def render_shape(
         self,
-        block: Sheet,
+        block: Shape,
         context: PdfRenderContext,
     ) -> list[object]:
-        """Render a fixed-layout sheet into PDF flowables."""
+        """Render a shape into PDF flowables."""
 
-        story: list[object] = []
-        if block.page_break_before:
-            story.append(NextPageTemplate(self._sheet_template_id(block, context)))
-            story.append(RLPageBreak())
-        story.append(SheetFlowable(block, self, context))
-        if block.page_break_after:
-            story.append(NextPageTemplate("Later"))
-            story.append(RLPageBreak())
-        return story
+        return self._render_positioned_item(block, context)
+
+    def render_text_box(
+        self,
+        block: TextBox,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render a textbox into PDF flowables."""
+
+        return self._render_positioned_item(block, context)
+
+    def render_image_box(
+        self,
+        block: ImageBox,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render an image box into PDF flowables."""
+
+        return self._render_positioned_item(block, context)
 
     def render_table(
         self,
@@ -887,28 +786,147 @@ class PdfRenderer:
     def _story_has_indexing_flowable(self, story: list[object]) -> bool:
         return any(getattr(flowable, "isIndexing", lambda: False)() for flowable in story)
 
-    def _sheet_width(self, sheet: Sheet, context: PdfRenderContext) -> float:
-        if sheet.width is None:
-            return context.settings.page_width_in_inches()
-        return length_to_inches(sheet.width, sheet.unit or context.unit)
+    def _render_positioned_item(
+        self,
+        item: PositionedItem,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        if item.placement == "inline":
+            return [PositionedItemFlowable(item, self, context)]
+        box = resolve_positioned_boxes([item], context.settings, context.unit)[0]
+        return [PagePositionedItemFlowable(box, self, context)]
 
-    def _sheet_height(self, sheet: Sheet, context: PdfRenderContext) -> float:
-        if sheet.height is None:
-            return context.settings.page_height_in_inches()
-        return length_to_inches(sheet.height, sheet.unit or context.unit)
+    def _draw_page_items(
+        self,
+        canvas: object,
+        document: Document,
+        context: PdfRenderContext,
+    ) -> None:
+        if not document.settings.page_items:
+            return
+        page_height = document.settings.page_height_in_inches() * inch
+        for box in resolve_positioned_boxes(
+            document.settings.page_items,
+            document.settings,
+            context.unit,
+        ):
+            self._draw_positioned_item(
+                canvas,
+                box.item,
+                x=box.x * inch,
+                y_top=box.y * inch,
+                width=box.width * inch,
+                height=box.height * inch,
+                page_height=page_height,
+                context=context,
+            )
 
-    def _sheet_template_id(self, sheet: Sheet, context: PdfRenderContext) -> str:
-        key = id(sheet)
-        template_id = self._sheet_template_ids.get(key)
-        if template_id is not None:
-            return template_id
-        template_id = f"docscriptor_sheet_{len(self._sheet_template_ids) + 1}"
-        self._sheet_template_ids[key] = template_id
-        self._sheet_template_specs[template_id] = (
-            self._sheet_width(sheet, context) * inch,
-            self._sheet_height(sheet, context) * inch,
+    def _draw_positioned_item(
+        self,
+        canvas: object,
+        item: PositionedItem,
+        *,
+        x: float,
+        y_top: float,
+        width: float,
+        height: float,
+        page_height: float,
+        context: PdfRenderContext,
+    ) -> None:
+        canvas.saveState()
+        if isinstance(item, TextBox):
+            self._draw_text_box(canvas, item, x, y_top, width, height, page_height, context)
+        elif isinstance(item, ImageBox):
+            self._draw_image_box(canvas, item, x, y_top, width, height, page_height)
+        else:
+            self._draw_shape(canvas, item, x, y_top, width, height, page_height)
+        canvas.restoreState()
+
+    def _draw_text_box(
+        self,
+        canvas: object,
+        item: TextBox,
+        x: float,
+        y_top: float,
+        width: float,
+        height: float,
+        page_height: float,
+        context: PdfRenderContext,
+    ) -> None:
+        font_size = item.font_size or context.theme.body_font_size
+        style = RLParagraphStyle(
+            "PositionedTextBox",
+            fontName=self._resolve_font(context.theme.body_font_name, False, False),
+            fontSize=font_size,
+            leading=font_size * 1.22,
+            alignment=ALIGNMENTS[item.align],
+            textColor=colors.black,
         )
-        return template_id
+        paragraph = RLParagraph(
+            self._inline_markup(
+                item.content,
+                context.theme,
+                context.render_index,
+                base_font_name=style.fontName,
+                base_size=font_size,
+            ),
+            style,
+        )
+        _, paragraph_height = paragraph.wrap(width, height)
+        if item.valign == "middle":
+            y = page_height - y_top - ((height + paragraph_height) / 2)
+        elif item.valign == "bottom":
+            y = page_height - y_top - height
+        else:
+            y = page_height - y_top - paragraph_height
+        paragraph.drawOn(canvas, x, y)
+
+    def _draw_shape(
+        self,
+        canvas: object,
+        item: Shape,
+        x: float,
+        y_top: float,
+        width: float,
+        height: float,
+        page_height: float,
+    ) -> None:
+        y = page_height - y_top - height
+        if item.stroke_color is not None and item.stroke_width > 0:
+            canvas.setStrokeColor(colors.HexColor(f"#{item.stroke_color}"))
+            canvas.setLineWidth(item.stroke_width)
+        if item.fill_color is not None:
+            canvas.setFillColor(colors.HexColor(f"#{item.fill_color}"))
+        fill = 1 if item.fill_color is not None else 0
+        stroke = 1 if item.stroke_color is not None and item.stroke_width > 0 else 0
+        if item.kind == "rect":
+            canvas.rect(x, y, width, height, fill=fill, stroke=stroke)
+        elif item.kind == "ellipse":
+            canvas.ellipse(x, y, x + width, y + height, fill=fill, stroke=stroke)
+        else:
+            canvas.line(x, page_height - y_top, x + width, page_height - y_top - height)
+
+    def _draw_image_box(
+        self,
+        canvas: object,
+        item: ImageBox,
+        x: float,
+        y_top: float,
+        width: float,
+        height: float,
+        page_height: float,
+    ) -> None:
+        y = page_height - y_top - height
+        canvas.drawImage(
+            self._image_box_source(item),
+            x,
+            y,
+            width=width,
+            height=height,
+            preserveAspectRatio=item.fit == "contain",
+            anchor="c",
+            mask="auto",
+        )
 
     def _paragraph_style(
         self,
@@ -1451,7 +1469,7 @@ class PdfRenderer:
             source.savefig(buffer, **save_kwargs)
             buffer.seek(0)
             return ImageReader(buffer)
-        raise TypeError(f"Unsupported image source for PDF sheet rendering: {type(source)!r}")
+        raise TypeError(f"Unsupported image source for PDF positioned image rendering: {type(source)!r}")
 
     def _inline_markup(
         self,
@@ -1494,6 +1512,28 @@ class PdfRenderer:
         base_bold: bool,
         base_italic: bool,
     ) -> str:
+        if isinstance(fragment, ImageBox):
+            source = fragment.image_source
+            if not isinstance(source, Path):
+                return ""
+            width = length_to_inches(fragment.width, fragment.unit or "in") * inch
+            height = length_to_inches(fragment.height, fragment.unit or "in") * inch
+            return (
+                f'<img src="{escape(str(source))}" '
+                f'width="{width:.2f}" height="{height:.2f}" valign="middle"/>'
+            )
+        if isinstance(fragment, TextBox):
+            return self._inline_markup(
+                fragment.content,
+                theme,
+                render_index,
+                base_font_name=base_font_name,
+                base_size=fragment.font_size or base_size,
+                base_bold=base_bold,
+                base_italic=base_italic,
+            )
+        if isinstance(fragment, Shape):
+            return ""
         if isinstance(fragment, Hyperlink):
             return self._link_markup(
                 fragment.target,
@@ -2099,7 +2139,14 @@ class PdfRenderer:
             italic=defaults.italic if override.italic is None else override.italic,
         )
 
-    def _page_callback(self, theme: Theme, *, has_front_matter: bool):
+    def _page_callback(
+        self,
+        document: Document,
+        context: PdfRenderContext,
+        *,
+        has_front_matter: bool,
+    ):
+        theme = document.theme
         font_name = self._resolve_font(theme.body_font_name, False, False)
 
         def draw_page(canvas: object, doc: object) -> None:
@@ -2107,6 +2154,7 @@ class PdfRenderer:
             if theme.page_background_color != "FFFFFF":
                 canvas.setFillColor(colors.HexColor(f"#{theme.page_background_color}"))
                 canvas.rect(0, 0, doc.pagesize[0], doc.pagesize[1], fill=1, stroke=0)
+            self._draw_page_items(canvas, document, context)
             if not theme.show_page_numbers:
                 canvas.restoreState()
                 return

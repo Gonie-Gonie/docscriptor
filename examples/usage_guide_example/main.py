@@ -44,7 +44,6 @@ from docscriptor import (
     ReferencesPage,
     Section,
     Shape,
-    Sheet,
     Subsection,
     Subsubsection,
     Table,
@@ -156,6 +155,32 @@ figure = Figure(
     "assets/system-diagram.png",
     width=settings.get_text_width(0.75),
     height=8.0,
+)
+"""
+
+POSITIONED_DRAWING_SNIPPET = """from docscriptor import Document, ImageBox, Paragraph, Shape, TextBox
+
+frame = Shape.rect(
+    name="approval-frame",
+    anchor="margin",
+    x=0,
+    y=0,
+    width=6.0,
+    height=1.0,
+    stroke_color="#476172",
+)
+
+document = Document(
+    "Drawing placement",
+    Paragraph(
+        "Inline logo ",
+        ImageBox("assets/docscriptor-logo.png", width=0.35, height=0.18, placement="inline"),
+        " stays in the sentence flow.",
+    ),
+    page_items=[
+        frame,
+        TextBox("Approval area", anchor="approval-frame", x=0.25, y=0.25, width=2.0, height=0.3),
+    ],
 )
 """
 
@@ -627,6 +652,15 @@ def build_usage_guide_document() -> Document:
         caption="Figure sizing patterns for width, height, and document-relative sizing.",
         column_widths=[1.8, 2.9, 2.3],
     )
+    drawing_placement_table = Table(
+        headers=["Placement", "Use it for", "Anchor behavior"],
+        rows=[
+            ["page_items", "Watermarks, trim guides, fixed approval areas, and form decoration.", "Coordinates start from page, margin/content, or a named Shape."],
+            ["placement='inline'", "Small logos, seals, badges, and simple shapes that should move with nearby prose.", "The object sits in the authored flow like directly inserted Word media."],
+        ],
+        caption="Coordinate-based drawings can be page overlays or inline flow objects.",
+        column_widths=[1.6, 3.0, 2.2],
+    )
     scaling_table = Table(
         headers=["Project stage", "Suggested structure", "Reasoning"],
         rows=[
@@ -1000,6 +1034,23 @@ def build_usage_guide_document() -> Document:
                 ),
                 figure_sizing_table,
                 CodeBlock(FIGURE_SIZING_SNIPPET, language="python"),
+            ),
+            Section(
+                "Positioned and inline drawing objects",
+                Paragraph(
+                    "Use ",
+                    code("page_items"),
+                    " for page-positioned shapes, text boxes, and image boxes that should not push body text around. Use ",
+                    code("placement='inline'"),
+                    " when the same object should behave more like directly inserted Word media."
+                ),
+                Paragraph(
+                    "Inline image example: ",
+                    ImageBox(LOGO_PATH, width=0.35, height=0.18, placement="inline"),
+                    " stays in the sentence flow, while page items stay independent of the paragraph layout."
+                ),
+                drawing_placement_table,
+                CodeBlock(POSITIONED_DRAWING_SNIPPET, language="python"),
             ),
             Section(
                 "Report panels for structured forms",

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 from docscriptor.components.inline import InlineInput, Text, coerce_inlines
+from docscriptor.components.positioning import PositionedItem, coerce_positioned_items
 from docscriptor.core import inches_to_length, length_to_inches, normalize_length_unit
 from docscriptor.components.people import (
     Affiliation,
@@ -126,6 +127,7 @@ class DocumentSettings:
     unit: str
     page_size: PageSize
     page_margins: PageMargins
+    page_items: tuple[PositionedItem, ...]
     theme: Theme
 
     def __init__(
@@ -140,6 +142,7 @@ class DocumentSettings:
         unit: str = "in",
         page_size: PageSize | None = None,
         page_margins: PageMargins | None = None,
+        page_items: Sequence[PositionedItem] | None = None,
         theme: Theme | None = None,
     ) -> None:
         self.author = author
@@ -151,6 +154,7 @@ class DocumentSettings:
         self.unit = normalize_length_unit(unit)
         self.page_size = page_size or PageSize.a4()
         self.page_margins = page_margins or PageMargins()
+        self.page_items = coerce_positioned_items(page_items)
         self.theme = theme or Theme()
 
     def page_width_in_inches(self) -> float:

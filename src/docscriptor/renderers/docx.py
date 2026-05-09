@@ -7,7 +7,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
 from docx import Document as WordDocument
-from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_ROW_HEIGHT_RULE, WD_TABLE_ALIGNMENT
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
 from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT, WD_TAB_LEADER
 from docx.enum.text import WD_BREAK
@@ -52,7 +52,14 @@ from docscriptor.components.inline import (
 )
 from docscriptor.components.media import Figure, Table, build_table_layout
 from docscriptor.components.people import AuthorTitleLine
-from docscriptor.components.sheets import ImageBox, Shape, Sheet, TextBox
+from docscriptor.components.positioning import (
+    ImageBox,
+    PositionedBox,
+    PositionedItem,
+    Shape,
+    TextBox,
+    resolve_positioned_boxes,
+)
 from docscriptor.document import Document
 from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
 from docscriptor.core import DocscriptorError, PathLike, length_to_inches
@@ -135,7 +142,6 @@ class DocxRenderer:
         self._bookmark_id = 1
         self._native_footnotes_part: FootnotesPart | None = None
         self._rendered_native_footnotes: set[int] = set()
-        self._sheet_section_indexes: set[int] = set()
         render_index = build_render_index(document)
         self._configure_document(word_document, document)
         context = DocxRenderContext(
@@ -145,6 +151,7 @@ class DocxRenderer:
             unit=document.settings.unit,
             word_document=word_document,
         )
+        self._render_page_items(word_document, document, context)
         front_children, main_children = document.split_top_level_children()
         has_front_matter = document.cover_page or bool(front_children)
 
@@ -176,7 +183,6 @@ class DocxRenderer:
                 has_front_matter=has_front_matter,
                 has_main_matter=bool(main_children) or not has_front_matter,
             )
-            self._suppress_sheet_page_numbers(word_document, document.theme)
 
         word_document.save(path)
         return path
@@ -218,6 +224,7 @@ class DocxRenderer:
             theme=context.theme,
             render_index=context.render_index,
             word_document=context.word_document,
+            unit=context.unit,
         )
 
     def render_list(
@@ -286,36 +293,35 @@ class DocxRenderer:
             word_document=context.word_document,
         )
 
-    def render_sheet(
+    def render_shape(
         self,
         container: object,
-        sheet: Sheet,
+        shape: Shape,
         context: DocxRenderContext,
     ) -> None:
-        """Render a fixed-layout sheet into the current DOCX container."""
+        """Render a shape either inline or as a page-positioned drawing."""
 
-        restore_section = False
-        if not self._is_cell_container(container):
-            if sheet.page_break_before and (context.word_document.paragraphs or context.word_document.tables):
-                section = context.word_document.add_section(WD_SECTION.NEW_PAGE)
-            else:
-                section = context.word_document.sections[-1]
-            self._configure_sheet_section_page_box(section, sheet, context)
-            self._sheet_section_indexes.add(len(context.word_document.sections) - 1)
-            restore_section = sheet.page_break_after
+        self._render_positioned_item(container, shape, context)
 
-        self._render_sheet(
-            container,
-            sheet,
-            context.theme,
-            context.render_index,
-            context.settings,
-            context.unit,
-            word_document=context.word_document,
-        )
-        if restore_section:
-            section = context.word_document.add_section(WD_SECTION.NEW_PAGE)
-            self._configure_section_page_box(section, context.settings)
+    def render_text_box(
+        self,
+        container: object,
+        text_box: TextBox,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render a textbox either inline or as a page-positioned drawing."""
+
+        self._render_positioned_item(container, text_box, context)
+
+    def render_image_box(
+        self,
+        container: object,
+        image_box: ImageBox,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render an image either inline or as a page-positioned drawing."""
+
+        self._render_positioned_item(container, image_box, context)
 
     def render_comments_page(
         self,
@@ -499,23 +505,6 @@ class DocxRenderer:
         section.bottom_margin = Inches(bottom)
         section.left_margin = Inches(left)
 
-    def _configure_sheet_section_page_box(
-        self,
-        section: object,
-        sheet: Sheet,
-        context: DocxRenderContext,
-    ) -> None:
-        width = self._sheet_width(sheet, context.settings, context.unit)
-        height = self._sheet_height(sheet, context.settings, context.unit)
-        section.page_width = Inches(width)
-        section.page_height = Inches(height)
-        section.top_margin = Inches(0)
-        section.right_margin = Inches(0)
-        section.bottom_margin = Inches(0)
-        section.left_margin = Inches(0)
-        section.header_distance = Inches(0)
-        section.footer_distance = Inches(0)
-
     def _render_top_level_children(
         self,
         word_document: WordDocument,
@@ -523,9 +512,6 @@ class DocxRenderer:
         context: DocxRenderContext,
     ) -> None:
         for index, child in enumerate(children):
-            if isinstance(child, Sheet):
-                child.render_to_docx(self, word_document, context)
-                continue
             if self._is_paginated_generated_page(child) and context.theme.generated_page_breaks:
                 if word_document.paragraphs and not self._ends_with_page_break(word_document):
                     self._ensure_page_break(word_document)
@@ -805,8 +791,19 @@ class DocxRenderer:
         theme: Theme | None = None,
         render_index: RenderIndex | None = None,
         word_document: WordDocument | None = None,
+        unit: str = "in",
     ) -> None:
         for fragment in fragments:
+            if isinstance(fragment, (ImageBox, Shape, TextBox)):
+                self._append_inline_positioned_fragment(
+                    paragraph,
+                    fragment,
+                    theme=theme,
+                    render_index=render_index,
+                    word_document=word_document,
+                    unit=unit,
+                )
+                continue
             fragment_style = default_style.merged(fragment.style) if default_style is not None else fragment.style
             if isinstance(fragment, LineBreak):
                 paragraph.add_run().add_break()
@@ -867,6 +864,41 @@ class DocxRenderer:
                 continue
             run = paragraph.add_run(self._resolve_fragment_text(fragment, theme, render_index))
             self._apply_run_style(run, fragment_style, default_size=default_size)
+
+    def _append_inline_positioned_fragment(
+        self,
+        paragraph: object,
+        fragment: PositionedItem,
+        *,
+        theme: Theme | None,
+        render_index: RenderIndex | None,
+        word_document: WordDocument | None,
+        unit: str,
+    ) -> None:
+        if isinstance(fragment, ImageBox):
+            paragraph.add_run().add_picture(
+                self._image_box_picture_source(fragment),
+                width=Inches(length_to_inches(fragment.width, fragment.unit or unit)),
+                height=Inches(length_to_inches(fragment.height, fragment.unit or unit)),
+            )
+            return
+        box = PositionedBox(
+            item=fragment,
+            x=0.0,
+            y=0.0,
+            width=length_to_inches(fragment.width, fragment.unit or unit),
+            height=length_to_inches(fragment.height, fragment.unit or unit),
+        )
+        if isinstance(fragment, Shape):
+            pict = self._shape_pict(fragment, box, absolute=False)
+        else:
+            pict = self._text_box_pict(
+                fragment,
+                box,
+                theme=theme or Theme(),
+                absolute=False,
+            )
+        paragraph.add_run()._r.append(pict)
 
     def _append_hyperlink_runs(
         self,
@@ -1210,136 +1242,163 @@ class DocxRenderer:
         if not cell.paragraphs:
             cell.add_paragraph()
 
-    def _render_sheet(
+    def _render_page_items(
+        self,
+        word_document: WordDocument,
+        document: Document,
+        context: DocxRenderContext,
+    ) -> None:
+        if not document.settings.page_items:
+            return
+        boxes = resolve_positioned_boxes(
+            document.settings.page_items,
+            document.settings,
+            context.unit,
+        )
+        header = word_document.sections[0].header
+        paragraph = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+        paragraph.paragraph_format.space_before = Pt(0)
+        paragraph.paragraph_format.space_after = Pt(0)
+        for box in boxes:
+            paragraph.add_run()._r.append(
+                self._positioned_item_pict(
+                    box,
+                    context,
+                    container=header,
+                    absolute=True,
+                )
+            )
+
+    def _render_positioned_item(
         self,
         container: object,
-        sheet: Sheet,
-        theme: Theme,
-        render_index: RenderIndex,
-        settings: object,
-        unit: str,
-        *,
-        word_document: WordDocument,
+        item: PositionedItem,
+        context: DocxRenderContext,
     ) -> None:
-        width = self._sheet_width(sheet, settings, unit)
-        height = self._sheet_height(sheet, settings, unit)
-        outer_table = container.add_table(rows=1, cols=1)
-        outer_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-        outer_table.autofit = False
-        self._set_table_width(outer_table, width)
-        outer_table.columns[0].width = Inches(width)
-        outer_table.rows[0].height = Inches(height)
-        outer_table.rows[0].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-        cell = outer_table.rows[0].cells[0]
-        cell._tc.clear_content()
-        self._initialized_cells.discard(id(cell))
-        self._set_cell_width(cell, width)
-        self._set_cell_shading(cell, self._sheet_docx_background(sheet))
-        if sheet.border_color is not None and sheet.border_width > 0:
-            self._set_cell_borders(cell, sheet.border_color, sheet.border_width)
-        self._set_cell_padding(cell, 0)
-
-        visible_items = sorted(
-            (
-                (index, item)
-                for index, item in enumerate(sheet.items)
-                if isinstance(item, (ImageBox, Shape, TextBox))
-            ),
-            key=lambda indexed: (indexed[1].z_index, indexed[0]),
+        if item.placement == "inline":
+            self._render_inline_positioned_item(container, item, context)
+            return
+        paragraph = self._positioned_paragraph(container)
+        paragraph.add_run()._r.append(
+            self._positioned_item_pict(
+                self._single_positioned_box(item, context),
+                context,
+                container=container,
+                absolute=True,
+            )
         )
-        for _, item in visible_items:
-            if isinstance(item, Shape):
-                paragraph = self._add_paragraph(cell)
-                paragraph.paragraph_format.space_before = Pt(0)
-                paragraph.paragraph_format.space_after = Pt(0)
-                paragraph.add_run()._r.append(
-                    self._sheet_shape_pict(item, sheet.unit or unit)
-                )
-            elif isinstance(item, ImageBox):
-                paragraph = self._add_paragraph(cell)
-                paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                paragraph.paragraph_format.left_indent = Inches(
-                    length_to_inches(item.x, sheet.unit or unit)
-                )
-                paragraph.paragraph_format.space_before = Pt(
-                    length_to_inches(item.y, sheet.unit or unit) * 72
-                )
-                paragraph.paragraph_format.space_after = Pt(0)
-                run = paragraph.add_run()
-                run.add_picture(
-                    self._image_box_picture_source(item),
-                    width=Inches(length_to_inches(item.width, sheet.unit or unit)),
-                    height=Inches(length_to_inches(item.height, sheet.unit or unit)),
-                )
-            else:
-                paragraph = self._add_paragraph(cell)
-                paragraph.alignment = ALIGNMENTS[item.align]
-                paragraph.paragraph_format.left_indent = Inches(
-                    length_to_inches(item.x, sheet.unit or unit)
-                )
-                paragraph.paragraph_format.right_indent = Inches(
-                    max(width - length_to_inches(item.x + item.width, sheet.unit or unit), 0)
-                )
-                paragraph.paragraph_format.space_before = Pt(
-                    length_to_inches(item.y, sheet.unit or unit) * 72
-                )
-                paragraph.paragraph_format.space_after = Pt(2)
-                self._append_runs(
-                    paragraph,
-                    item.content,
-                    default_size=item.font_size or theme.body_font_size,
-                    theme=theme,
-                    render_index=render_index,
-                    word_document=word_document,
-                )
 
-        if not visible_items:
-            cell.add_paragraph()
+    def _render_inline_positioned_item(
+        self,
+        container: object,
+        item: PositionedItem,
+        context: DocxRenderContext,
+    ) -> None:
+        paragraph = self._add_paragraph(container)
+        paragraph.paragraph_format.space_after = Pt(6)
+        if isinstance(item, ImageBox):
+            paragraph.add_run().add_picture(
+                self._image_box_picture_source(item),
+                width=Inches(length_to_inches(item.width, item.unit or context.unit)),
+                height=Inches(length_to_inches(item.height, item.unit or context.unit)),
+            )
+            return
+        box = PositionedBox(
+            item=item,
+            x=0.0,
+            y=0.0,
+            width=length_to_inches(item.width, item.unit or context.unit),
+            height=length_to_inches(item.height, item.unit or context.unit),
+        )
+        paragraph.add_run()._r.append(
+            self._positioned_item_pict(
+                box,
+                context,
+                container=container,
+                absolute=False,
+            )
+        )
 
-    def _sheet_width(self, sheet: Sheet, settings: object, unit: str) -> float:
-        if sheet.width is None:
-            return settings.page_width_in_inches()
-        return length_to_inches(sheet.width, sheet.unit or unit)
+    def _positioned_paragraph(self, container: object) -> object:
+        paragraphs = getattr(container, "paragraphs", None)
+        if paragraphs:
+            return paragraphs[-1]
+        paragraph = self._add_paragraph(container)
+        paragraph.paragraph_format.space_before = Pt(0)
+        paragraph.paragraph_format.space_after = Pt(0)
+        paragraph.paragraph_format.line_spacing = Pt(1)
+        return paragraph
 
-    def _sheet_height(self, sheet: Sheet, settings: object, unit: str) -> float:
-        if sheet.height is None:
-            return settings.page_height_in_inches()
-        return length_to_inches(sheet.height, sheet.unit or unit)
+    def _single_positioned_box(
+        self,
+        item: PositionedItem,
+        context: DocxRenderContext,
+    ) -> PositionedBox:
+        return resolve_positioned_boxes([item], context.settings, context.unit)[0]
 
-    def _sheet_docx_background(self, sheet: Sheet) -> str:
-        if sheet.background_gradient is None:
-            return sheet.background_color
-        return sheet.background_gradient[0]
+    def _positioned_item_pict(
+        self,
+        box: PositionedBox,
+        context: DocxRenderContext,
+        *,
+        container: object,
+        absolute: bool,
+    ) -> object:
+        item = box.item
+        if isinstance(item, Shape):
+            return self._shape_pict(item, box, absolute=absolute)
+        if isinstance(item, TextBox):
+            return self._text_box_pict(
+                item,
+                box,
+                theme=context.theme,
+                absolute=absolute,
+            )
+        return self._image_box_pict(item, box, container=container, absolute=absolute)
 
-    def _sheet_shape_pict(self, shape: Shape, unit: str) -> object:
-        x = length_to_inches(shape.x, unit) * 72
-        y = length_to_inches(shape.y, unit) * 72
-        width = length_to_inches(shape.width, unit) * 72
-        height = length_to_inches(shape.height, unit) * 72
+    def _shape_pict(self, shape: Shape, box: PositionedBox, *, absolute: bool) -> object:
+        x = box.x * 72
+        y = box.y * 72
+        width = box.width * 72
+        height = box.height * 72
         shape_id = f"docscriptor_shape_{self._bookmark_id}"
         self._bookmark_id += 1
         stroke = self._vml_stroke_xml(shape)
         fill = self._vml_fill_xml(shape)
 
         if shape.kind == "line":
+            if absolute:
+                style = (
+                    f"position:absolute;z-index:{shape.z_index};"
+                    "mso-position-horizontal-relative:page;"
+                    "mso-position-vertical-relative:page;"
+                    "mso-wrap-style:none"
+                )
+                line_from = f'{x:.2f}pt,{y:.2f}pt'
+                line_to = f'{x + width:.2f}pt,{y + height:.2f}pt'
+            else:
+                style = f"width:{abs(width):.2f}pt;height:{abs(height):.2f}pt"
+                line_from = "0,0"
+                line_to = f'{width:.2f}pt,{height:.2f}pt'
             return parse_xml(
                 f'<w:pict xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
                 f'xmlns:v="urn:schemas-microsoft-com:vml">'
                 f'<v:line id="{shape_id}" '
-                f'style="position:absolute;z-index:{shape.z_index};mso-wrap-style:none" '
-                f'from="{x:.2f}pt,{y:.2f}pt" to="{x + width:.2f}pt,{y + height:.2f}pt">'
+                f'style="{xml_escape(style)}" '
+                f'from="{line_from}" to="{line_to}">'
                 f'{stroke}'
                 f'</v:line>'
                 f'</w:pict>'
             )
 
         tag = "v:oval" if shape.kind == "ellipse" else "v:rect"
-        style = (
-            f"position:absolute;margin-left:{x:.2f}pt;margin-top:{y:.2f}pt;"
-            f"width:{width:.2f}pt;height:{height:.2f}pt;z-index:{shape.z_index};"
-            "mso-position-horizontal-relative:text;"
-            "mso-position-vertical-relative:text;"
-            "mso-wrap-style:none"
+        style = self._vml_box_style(
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+            z_index=shape.z_index,
+            absolute=absolute,
         )
         return parse_xml(
             f'<w:pict xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
@@ -1349,6 +1408,134 @@ class DocxRenderer:
             f'{stroke}'
             f'</{tag}>'
             f'</w:pict>'
+        )
+
+    def _text_box_pict(
+        self,
+        text_box: TextBox,
+        box: PositionedBox,
+        *,
+        theme: Theme,
+        absolute: bool,
+    ) -> object:
+        x = box.x * 72
+        y = box.y * 72
+        width = box.width * 72
+        height = box.height * 72
+        shape_id = f"docscriptor_textbox_{self._bookmark_id}"
+        self._bookmark_id += 1
+        style = self._vml_box_style(
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+            z_index=text_box.z_index,
+            absolute=absolute,
+        )
+        style += f";v-text-anchor:{self._vml_text_anchor(text_box.valign)}"
+        font_size = text_box.font_size or theme.body_font_size
+        paragraph_xml = self._text_box_paragraph_xml(text_box, font_size)
+        return parse_xml(
+            f'<w:pict xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            f'xmlns:v="urn:schemas-microsoft-com:vml">'
+            f'<v:shape id="{shape_id}" type="#_x0000_t202" '
+            f'style="{xml_escape(style)}" stroked="f" filled="f">'
+            '<v:textbox inset="0,0,0,0">'
+            f'<w:txbxContent>{paragraph_xml}</w:txbxContent>'
+            '</v:textbox>'
+            '</v:shape>'
+            '</w:pict>'
+        )
+
+    def _image_box_pict(
+        self,
+        image_box: ImageBox,
+        box: PositionedBox,
+        *,
+        container: object,
+        absolute: bool,
+    ) -> object:
+        x = box.x * 72
+        y = box.y * 72
+        width = box.width * 72
+        height = box.height * 72
+        shape_id = f"docscriptor_image_{self._bookmark_id}"
+        self._bookmark_id += 1
+        style = self._vml_box_style(
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+            z_index=image_box.z_index,
+            absolute=absolute,
+        )
+        relationship_id = self._image_box_relationship_id(container, image_box)
+        return parse_xml(
+            f'<w:pict xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            f'xmlns:v="urn:schemas-microsoft-com:vml" '
+            f'xmlns:o="urn:schemas-microsoft-com:office:office" '
+            f'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            f'<v:shape id="{shape_id}" type="#_x0000_t75" '
+            f'style="{xml_escape(style)}" stroked="f">'
+            f'<v:imagedata r:id="{relationship_id}" o:title=""/>'
+            '</v:shape>'
+            '</w:pict>'
+        )
+
+    def _vml_box_style(
+        self,
+        *,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        z_index: int,
+        absolute: bool,
+    ) -> str:
+        if not absolute:
+            return f"width:{width:.2f}pt;height:{height:.2f}pt;z-index:{z_index}"
+        return (
+            f"position:absolute;margin-left:{x:.2f}pt;margin-top:{y:.2f}pt;"
+            f"width:{width:.2f}pt;height:{height:.2f}pt;z-index:{z_index};"
+            "mso-position-horizontal-relative:page;"
+            "mso-position-vertical-relative:page;"
+            "mso-wrap-style:none"
+        )
+
+    def _vml_text_anchor(self, valign: str) -> str:
+        return {"top": "top", "middle": "middle", "bottom": "bottom"}[valign]
+
+    def _text_box_paragraph_xml(self, text_box: TextBox, font_size: float) -> str:
+        runs = "".join(
+            self._text_box_run_xml(fragment, font_size)
+            for fragment in text_box.content
+        )
+        alignment = {"left": "left", "center": "center", "right": "right"}[text_box.align]
+        return (
+            '<w:p>'
+            f'<w:pPr><w:jc w:val="{alignment}"/></w:pPr>'
+            f'{runs or self._text_box_run_xml(Text(""), font_size)}'
+            '</w:p>'
+        )
+
+    def _text_box_run_xml(self, fragment: Text, font_size: float) -> str:
+        style = fragment.style
+        properties = [
+            f'<w:sz w:val="{int(round((style.font_size or font_size) * 2))}"/>',
+            f'<w:szCs w:val="{int(round((style.font_size or font_size) * 2))}"/>',
+        ]
+        if style.bold:
+            properties.append("<w:b/>")
+        if style.italic:
+            properties.append("<w:i/>")
+        if style.color is not None:
+            properties.append(f'<w:color w:val="{style.color}"/>')
+        text = xml_escape(fragment.value)
+        return (
+            '<w:r>'
+            f'<w:rPr>{"".join(properties)}</w:rPr>'
+            f'<w:t xml:space="preserve">{text}</w:t>'
+            '</w:r>'
         )
 
     def _vml_stroke_xml(self, shape: Shape) -> str:
@@ -1740,7 +1927,17 @@ class DocxRenderer:
             source.savefig(buffer, **save_kwargs)
             buffer.seek(0)
             return buffer
-        raise TypeError(f"Unsupported image source for DOCX sheet rendering: {type(source)!r}")
+        raise TypeError(f"Unsupported image source for DOCX positioned image rendering: {type(source)!r}")
+
+    def _image_box_relationship_id(self, container: object, image_box: ImageBox) -> str:
+        part = getattr(container, "part", None)
+        if part is None:
+            part = getattr(container, "_parent", None)
+            part = getattr(part, "part", None)
+        if part is None:
+            raise TypeError("Cannot attach positioned image to this DOCX container")
+        relationship_id, _ = part.get_or_add_image(self._image_box_picture_source(image_box))
+        return relationship_id
 
     def _render_footnotes_page(
         self,
@@ -1892,28 +2089,6 @@ class DocxRenderer:
             theme,
             front_matter=False,
         )
-
-    def _suppress_sheet_page_numbers(self, word_document: WordDocument, theme: Theme) -> None:
-        if not self._sheet_section_indexes:
-            return
-        sections = list(word_document.sections)
-        for index, section in enumerate(sections):
-            if index in self._sheet_section_indexes:
-                section.footer.is_linked_to_previous = False
-                self._clear_story_part(section.footer)
-                continue
-            if index > 0 and (index - 1) in self._sheet_section_indexes:
-                section.footer.is_linked_to_previous = False
-                self._add_page_number_footer(
-                    section,
-                    theme,
-                    front_matter=False,
-                )
-
-    def _clear_story_part(self, story_part: object) -> None:
-        element = story_part._element
-        for child in list(element):
-            element.remove(child)
 
     def _add_page_number_footer(
         self,

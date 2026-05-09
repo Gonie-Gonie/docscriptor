@@ -9,6 +9,7 @@ from typing import Sequence
 from docscriptor.components.base import BlockInput, Body
 from docscriptor.components.inline import Text
 from docscriptor.components.people import Author, AuthorInput, coerce_authors
+from docscriptor.components.positioning import PositionedItem, coerce_positioned_items
 from docscriptor.components.references import CitationLibrary, CitationSource, coerce_citation_library
 from docscriptor.core import PathLike
 from docscriptor.layout.theme import Theme
@@ -23,6 +24,8 @@ class Document:
         title: Document title rendered at the top of the output.
         *children: Top-level blocks. Mutually exclusive with ``body=...``.
         body: Optional pre-built ``Body`` container.
+        page_items: Optional page-positioned drawing items rendered independently
+            of the text flow.
         settings: Optional grouped document metadata and rendering settings.
         citations: Bibliography metadata supplied as a library, a sequence of
             ``CitationSource`` objects, or BibTeX text.
@@ -38,6 +41,7 @@ class Document:
         title: str,
         *children: BlockInput,
         body: Body | None = None,
+        page_items: Sequence[PositionedItem] | None = None,
         settings: DocumentSettings | None = None,
         citations: CitationLibrary | Sequence[CitationSource] | str | None = None,
     ) -> None:
@@ -47,6 +51,8 @@ class Document:
         self.title = title
         self.body = body if body is not None else Body(*children)
         self.settings = settings or DocumentSettings()
+        if page_items is not None:
+            self.settings.page_items = coerce_positioned_items(page_items)
         self.citations = coerce_citation_library(citations)
 
     @property

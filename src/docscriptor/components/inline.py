@@ -465,7 +465,7 @@ def link(
     return Hyperlink.external(target, *label, style=style)
 
 
-InlineInput = Text | str | Sequence["InlineInput"] | None
+InlineInput = Text | str | Sequence["InlineInput"] | None | object
 
 
 def coerce_inlines(values: Iterable[InlineInput]) -> list[Text]:
@@ -477,6 +477,9 @@ def coerce_inlines(values: Iterable[InlineInput]) -> list[Text]:
             continue
         if isinstance(value, Text):
             normalized.append(value)
+            continue
+        if _is_positioned_inline(value):
+            normalized.append(value)  # type: ignore[arg-type]
             continue
         if _is_block_reference(value):
             normalized.append(BlockReference(value))
@@ -494,6 +497,14 @@ def coerce_inlines(values: Iterable[InlineInput]) -> list[Text]:
 def _is_block_reference(value: object) -> bool:
     block_name = type(value).__name__
     return block_name in {"Table", "Figure"}
+
+
+def _is_positioned_inline(value: object) -> bool:
+    value_type = type(value)
+    return (
+        value_type.__module__ == "docscriptor.components.positioning"
+        and value_type.__name__ in {"ImageBox", "Shape", "TextBox"}
+    )
 
 
 _BlockReference = BlockReference

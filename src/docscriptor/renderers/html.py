@@ -38,7 +38,14 @@ from docscriptor.components.inline import (
 )
 from docscriptor.components.media import Figure, Table, TablePlacement, build_table_layout
 from docscriptor.components.people import AuthorTitleLine
-from docscriptor.components.sheets import ImageBox, Shape, Sheet, TextBox
+from docscriptor.components.positioning import (
+    ImageBox,
+    PositionedBox,
+    PositionedItem,
+    Shape,
+    TextBox,
+    resolve_positioned_boxes,
+)
 from docscriptor.core import DocscriptorError, PathLike, length_to_inches
 from docscriptor.document import Document
 from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
@@ -67,6 +74,8 @@ class HtmlRenderer:
         has_front_matter = document.cover_page or bool(front_children)
 
         body_parts = [
+            '<div class="docscriptor-page-frame">',
+            self._page_items_html(document, context),
             '<div class="docscriptor-document">',
             self._render_title_matter(
                 document,
@@ -98,6 +107,7 @@ class HtmlRenderer:
         if self._should_auto_render_footnotes_page(document, render_index):
             body_parts.append(self.render_footnotes_page(FootnotesPage(), context))
 
+        body_parts.append("</div>")
         body_parts.append("</div>")
 
         html = "\n".join(
@@ -255,37 +265,20 @@ class HtmlRenderer:
             + "</section>"
         )
 
-    def render_sheet(self, block: Sheet, context: HtmlRenderContext) -> str:
-        """Render a fixed-layout sheet into HTML."""
+    def render_shape(self, block: Shape, context: HtmlRenderContext) -> str:
+        """Render a shape into HTML."""
 
-        width = self._sheet_width(block, context)
-        height = self._sheet_height(block, context)
-        background = self._sheet_background_css(block)
-        border = (
-            f"border: {block.border_width:.2f}pt solid #{block.border_color};"
-            if block.border_color is not None and block.border_width > 0
-            else "border: 0;"
-        )
-        items = "".join(
-            self._sheet_item_html(item, block, context)
-            for item in self._sheet_items(block)
-        )
-        page_break_parts = []
-        if block.page_break_before:
-            page_break_parts.append("break-before: page; page-break-before: always;")
-        if block.page_break_after:
-            page_break_parts.append("break-after: page; page-break-after: always;")
-        page_break = " " + " ".join(page_break_parts) if page_break_parts else ""
-        return (
-            '<div class="docscriptor-sheet-page" '
-            f'style="position: relative; left: 50%; transform: translateX(-50%); width: {width:.4f}in; max-width: calc(100vw - 32px); '
-            f'overflow-x: auto; padding: 0; background: transparent;{page_break}">'
-            '<section class="docscriptor-sheet" '
-            f'style="position: relative; width: {width:.4f}in; height: {height:.4f}in; max-width: none; '
-            f'{background} {border} overflow: hidden; box-sizing: border-box;">'
-            + items
-            + "</section></div>"
-        )
+        return self._positioned_item_html(self._inline_or_page_box(block, context), context)
+
+    def render_text_box(self, block: TextBox, context: HtmlRenderContext) -> str:
+        """Render a textbox into HTML."""
+
+        return self._positioned_item_html(self._inline_or_page_box(block, context), context)
+
+    def render_image_box(self, block: ImageBox, context: HtmlRenderContext) -> str:
+        """Render an image box into HTML."""
+
+        return self._positioned_item_html(self._inline_or_page_box(block, context), context)
 
     def render_section(self, block: Section, context: HtmlRenderContext) -> str:
         """Render a titled section and its children into HTML."""
@@ -927,62 +920,72 @@ class HtmlRenderer:
             for fragment in fragments
         ) or "&nbsp;"
 
-    def _sheet_width(self, sheet: Sheet, context: HtmlRenderContext) -> float:
-        if sheet.width is None:
-            return context.settings.page_width_in_inches()
-        return length_to_inches(sheet.width, sheet.unit or context.unit)
+    def _page_items_html(self, document: Document, context: HtmlRenderContext) -> str:
+        if not document.settings.page_items:
+            return ""
+        return (
+            '<div class="docscriptor-page-items" aria-hidden="true">'
+            + "".join(
+                self._positioned_item_html(box, context)
+                for box in resolve_positioned_boxes(
+                    document.settings.page_items,
+                    document.settings,
+                    context.unit,
+                )
+            )
+            + "</div>"
+        )
 
-    def _sheet_height(self, sheet: Sheet, context: HtmlRenderContext) -> float:
-        if sheet.height is None:
-            return context.settings.page_height_in_inches()
-        return length_to_inches(sheet.height, sheet.unit or context.unit)
-
-    def _sheet_background_css(self, sheet: Sheet) -> str:
-        if sheet.background_gradient is None:
-            return f"background: #{sheet.background_color};"
-        direction = "to bottom" if sheet.gradient_direction == "vertical" else "to right"
-        start, end = sheet.background_gradient
-        return f"background: linear-gradient({direction}, #{start}, #{end});"
-
-    def _sheet_length(self, value: float, sheet: Sheet, context: HtmlRenderContext) -> float:
-        return length_to_inches(value, sheet.unit or context.unit)
-
-    def _sheet_item_html(
+    def _inline_or_page_box(
         self,
-        item: TextBox | Shape | ImageBox,
-        sheet: Sheet,
+        item: PositionedItem,
+        context: HtmlRenderContext,
+    ) -> PositionedBox:
+        if item.placement == "inline":
+            return PositionedBox(
+                item=item,
+                x=0.0,
+                y=0.0,
+                width=length_to_inches(item.width, item.unit or context.unit),
+                height=length_to_inches(item.height, item.unit or context.unit),
+            )
+        return resolve_positioned_boxes([item], context.settings, context.unit)[0]
+
+    def _positioned_item_html(
+        self,
+        box: PositionedBox,
         context: HtmlRenderContext,
     ) -> str:
-        if isinstance(item, TextBox):
-            return self._sheet_text_box_html(item, sheet, context)
-        if isinstance(item, ImageBox):
-            return self._sheet_image_box_html(item, sheet, context)
-        return self._sheet_shape_html(item, sheet, context)
+        if isinstance(box.item, TextBox):
+            return self._text_box_html(box.item, box, context)
+        if isinstance(box.item, ImageBox):
+            return self._image_box_html(box.item, box)
+        return self._shape_html(box.item, box)
 
-    def _sheet_items(self, sheet: Sheet) -> list[TextBox | Shape | ImageBox]:
-        return [
-            item
-            for _, item in sorted(
-                enumerate(sheet.items),
-                key=lambda indexed: (indexed[1].z_index, indexed[0]),
+    def _position_css(self, box: PositionedBox) -> str:
+        if box.item.placement == "inline":
+            return (
+                "position: relative; display: inline-block; "
+                f"width: {box.width:.4f}in; height: {box.height:.4f}in; "
+                "vertical-align: middle; box-sizing: border-box;"
             )
-        ]
+        return (
+            f"position: absolute; left: {box.x:.4f}in; top: {box.y:.4f}in; "
+            f"width: {box.width:.4f}in; height: {box.height:.4f}in; "
+            f"z-index: {box.item.z_index}; box-sizing: border-box;"
+        )
 
-    def _sheet_text_box_html(
+    def _text_box_html(
         self,
         item: TextBox,
-        sheet: Sheet,
+        box: PositionedBox,
         context: HtmlRenderContext,
     ) -> str:
-        x = self._sheet_length(item.x, sheet, context)
-        y = self._sheet_length(item.y, sheet, context)
-        width = self._sheet_length(item.width, sheet, context)
-        height = self._sheet_length(item.height, sheet, context)
         align_items = {"top": "flex-start", "middle": "center", "bottom": "flex-end"}[item.valign]
         font_size = item.font_size or context.theme.body_font_size
         return (
-            '<div class="docscriptor-sheet-textbox" '
-            f'style="position: absolute; left: {x:.4f}in; top: {y:.4f}in; width: {width:.4f}in; height: {height:.4f}in; '
+            '<div class="docscriptor-page-item docscriptor-textbox" '
+            f'style="{self._position_css(box)} '
             f'display: flex; align-items: {align_items}; justify-content: stretch; text-align: {item.align}; '
             f'font-size: {font_size:.1f}pt; line-height: {font_size * 1.22:.1f}pt; box-sizing: border-box;">'
             '<div style="width: 100%;">'
@@ -995,47 +998,37 @@ class HtmlRenderer:
             + "</div></div>"
         )
 
-    def _sheet_shape_html(
+    def _shape_html(
         self,
         item: Shape,
-        sheet: Sheet,
-        context: HtmlRenderContext,
+        box: PositionedBox,
     ) -> str:
-        x = self._sheet_length(item.x, sheet, context)
-        y = self._sheet_length(item.y, sheet, context)
-        width = self._sheet_length(item.width, sheet, context)
-        height = self._sheet_length(item.height, sheet, context)
         stroke = f"#{item.stroke_color}" if item.stroke_color is not None else "transparent"
         fill = f"#{item.fill_color}" if item.fill_color is not None else "transparent"
         if item.kind == "line":
             return (
-                '<svg class="docscriptor-sheet-shape" '
-                f'style="position: absolute; left: {x:.4f}in; top: {y:.4f}in; width: {abs(width):.4f}in; height: {abs(height):.4f}in; overflow: visible;">'
-                f'<line x1="0" y1="0" x2="{width:.4f}in" y2="{height:.4f}in" stroke="{stroke}" stroke-width="{item.stroke_width:.2f}pt" />'
+                '<svg class="docscriptor-page-item docscriptor-shape" '
+                f'style="{self._position_css(box)} overflow: visible;">'
+                f'<line x1="0" y1="0" x2="{box.width:.4f}in" y2="{box.height:.4f}in" stroke="{stroke}" stroke-width="{item.stroke_width:.2f}pt" />'
                 "</svg>"
             )
         border_radius = "50%" if item.kind == "ellipse" else "0"
         return (
-            '<div class="docscriptor-sheet-shape" '
-            f'style="position: absolute; left: {x:.4f}in; top: {y:.4f}in; width: {width:.4f}in; height: {height:.4f}in; '
+            '<div class="docscriptor-page-item docscriptor-shape" '
+            f'style="{self._position_css(box)} '
             f'border: {item.stroke_width:.2f}pt solid {stroke}; background: {fill}; border-radius: {border_radius}; box-sizing: border-box;"></div>'
         )
 
-    def _sheet_image_box_html(
+    def _image_box_html(
         self,
         item: ImageBox,
-        sheet: Sheet,
-        context: HtmlRenderContext,
+        box: PositionedBox,
     ) -> str:
-        x = self._sheet_length(item.x, sheet, context)
-        y = self._sheet_length(item.y, sheet, context)
-        width = self._sheet_length(item.width, sheet, context)
-        height = self._sheet_length(item.height, sheet, context)
         object_fit = "fill" if item.fit == "stretch" else "contain"
         return (
-            '<img class="docscriptor-sheet-image" '
+            '<img class="docscriptor-page-item docscriptor-imagebox" '
             f'src="{self._image_box_src(item)}" alt="" '
-            f'style="position: absolute; left: {x:.4f}in; top: {y:.4f}in; width: {width:.4f}in; height: {height:.4f}in; '
+            f'style="{self._position_css(box)} '
             f'object-fit: {object_fit}; object-position: center; box-sizing: border-box;" />'
         )
 
@@ -1053,7 +1046,7 @@ class HtmlRenderer:
             image_bytes = buffer.getvalue()
             mime_type = self._mime_type_for_format(image_box.format)
         else:
-            raise TypeError(f"Unsupported image source for HTML sheet rendering: {type(source)!r}")
+            raise TypeError(f"Unsupported image source for HTML positioned image rendering: {type(source)!r}")
         return f"data:{mime_type};base64,{b64encode(image_bytes).decode('ascii')}"
 
     def _fragment_html(
@@ -1066,6 +1059,24 @@ class HtmlRenderer:
         base_italic: bool,
         base_size: float | None,
     ) -> str:
+        if isinstance(fragment, (ImageBox, Shape, TextBox)):
+            fragment_unit = fragment.unit or "in"
+            inline_box = PositionedBox(
+                item=fragment,
+                x=0.0,
+                y=0.0,
+                width=length_to_inches(fragment.width, fragment_unit),
+                height=length_to_inches(fragment.height, fragment_unit),
+            )
+            return self._positioned_item_html(
+                inline_box,
+                HtmlRenderContext(
+                    theme=theme,
+                    render_index=render_index,
+                    settings=object(),
+                    unit=fragment_unit,
+                ),
+            )
         if isinstance(fragment, Hyperlink):
             return self._link_html(
                 fragment.target,
@@ -1499,11 +1510,26 @@ body {{
   font-family: {self._css_font_family(theme.body_font_name)};
   font-size: {theme.body_font_size:.1f}pt;
 }}
-.docscriptor-document {{
-  max-width: {page_width:.2f}in;
+.docscriptor-page-frame {{
+  position: relative;
+  width: {page_width:.2f}in;
+  max-width: 100vw;
+  min-height: {settings.page_height_in_inches():.2f}in;
   margin: 0 auto;
+}}
+.docscriptor-document {{
+  width: {page_width:.2f}in;
+  max-width: 100%;
+  margin: 0;
   padding: {margin_top:.2f}in {margin_right:.2f}in {margin_bottom:.2f}in {margin_left:.2f}in;
   box-sizing: border-box;
+}}
+.docscriptor-page-items {{
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: {page_width:.2f}in;
+  height: {settings.page_height_in_inches():.2f}in;
+  pointer-events: none;
 }}
 .docscriptor-title-matter,
 .docscriptor-front-matter,
@@ -1621,14 +1647,6 @@ body {{
   display: inline-block;
   max-width: 100%;
   height: auto;
-}}
-.docscriptor-sheet-page {{
-  margin-top: 18pt;
-  margin-bottom: 18pt;
-  box-shadow: 0 18px 40px rgba(24, 34, 43, 0.16);
-}}
-.docscriptor-sheet {{
-  display: block;
 }}
 .docscriptor-generated-title {{
   margin-top: 0;

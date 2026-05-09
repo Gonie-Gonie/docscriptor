@@ -128,7 +128,7 @@ The default behavior is intentionally conventional:
 - Use `TableCell(horizontal_alignment=..., vertical_alignment=...)` or table-wide `TableStyle(cell_horizontal_alignment=..., cell_vertical_alignment=...)` when a table needs Word-like cell alignment.
 - Use `Figure(...)` for image files or `savefig()`-compatible Python figure objects.
 - Use `Box(...)` for callouts, evidence panels, and tcolorbox-like report sections that should stay editable in Word.
-- Use `Sheet(...)` only when you need a fixed-position insert such as a certificate or custom form page.
+- Use `Shape(...)`, `TextBox(...)`, and `ImageBox(...)` with `Document(..., page_items=[...])` for page-positioned overlays that do not move the body text. Use `placement="inline"` when the same objects should sit in the text flow like Word's inline drawing mode.
 - Use `DocumentSettings(...)` for document-wide choices: authors, subtitle, page size, margins, units, and theme defaults.
 - Use `document.save_all("artifacts")` when a workflow normally needs DOCX, PDF, and HTML together.
 
@@ -142,7 +142,8 @@ The default behavior is intentionally conventional:
 - captioned tables and figures with automatic numbering and in-text references
 - table support for `TableCell(...)`, `rowspan`, `colspan`, banded rows, and dataframe-like inputs
 - figure support for both stored image files and `savefig()`-compatible Python objects
-- fixed-layout `Sheet(...)` pages for short form inserts, with DOCX/PDF/HTML support for the shared `Shape.rect(...)`, `Shape.ellipse(...)`, and `Shape.line(...)` subset; prefer `Box(...)`, `Table(...)`, and normal flow blocks when Word editability matters
+- page-positioned `Shape.rect(...)`, `Shape.ellipse(...)`, `Shape.line(...)`, `TextBox(...)`, and `ImageBox(...)` objects with anchors to the page, the margin box, or an earlier named shape
+- inline drawing placement for `Shape(...)`, `TextBox(...)`, and `ImageBox(...)`, similar to using an image directly in the document flow
 - bibliography support through `CitationSource`, `CitationLibrary`, direct citation objects, and BibTeX import
 - optional title matter such as subtitle, structured `Author(...)` metadata, `AuthorLayout(...)`, affiliations, and a cover page
 - inline hyperlinks and heading/caption anchors for cross-references
@@ -182,7 +183,7 @@ The package is organized by responsibility:
 
 - `src/docscriptor/document.py` for the root `Document`
 - `src/docscriptor/settings.py` for `DocumentSettings` plus grouped configuration exports
-- `src/docscriptor/components/` for the concrete authoring model (`base.py`, `blocks.py`, `equations.py`, `generated.py`, `inline.py`, `markup.py`, `media.py`, `people.py`, and `references.py`)
+- `src/docscriptor/components/` for the concrete authoring model (`base.py`, `blocks.py`, `equations.py`, `generated.py`, `inline.py`, `markup.py`, `media.py`, `people.py`, `positioning.py`, and `references.py`)
 - `src/docscriptor/layout/` for low-level theme and indexing support
 - `src/docscriptor/renderers/docx.py`, `src/docscriptor/renderers/pdf.py`, and `src/docscriptor/renderers/html.py` for format-specific layout
 

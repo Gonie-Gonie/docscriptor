@@ -52,7 +52,6 @@ from docscriptor import (
     ReferencesPage,
     Section,
     Shape,
-    Sheet,
     Subsection,
     Subsubsection,
     Table,
@@ -235,6 +234,15 @@ def _pdf_text_context(pdf_path: Path, text: str, window: int = 160) -> bytes:
 def _docx_document_xml(docx_path: Path) -> str:
     with zipfile.ZipFile(docx_path) as archive:
         return archive.read("word/document.xml").decode("utf-8")
+
+
+def _docx_word_xml(docx_path: Path) -> str:
+    with zipfile.ZipFile(docx_path) as archive:
+        return "\n".join(
+            archive.read(name).decode("utf-8")
+            for name in archive.namelist()
+            if name.startswith("word/") and name.endswith(".xml")
+        )
 
 
 def _normalized_html_text(html_path: Path) -> str:
@@ -567,7 +575,6 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "AuthorLayout")
     assert hasattr(docscriptor, "Section")
     assert hasattr(docscriptor, "Shape")
-    assert hasattr(docscriptor, "Sheet")
     assert hasattr(docscriptor, "Paragraph")
     assert hasattr(docscriptor, "BulletList")
     assert hasattr(docscriptor, "NumberedList")
@@ -597,6 +604,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "TextStyle")
     assert hasattr(docscriptor, "TextBox")
     assert hasattr(docscriptor, "LineBreak")
+    assert not hasattr(docscriptor, "Sheet")
     assert not hasattr(docscriptor, "Body")
     assert not hasattr(docscriptor, "Bold")
     assert not hasattr(docscriptor, "Hyperlink")
@@ -645,75 +653,72 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
         assert not hasattr(docscriptor, removed_name)
 
 
-def test_sheet_renders_fixed_layout_text_and_shapes(tmp_path: Path) -> None:
-    image_path = tmp_path / "sheet-logo.png"
+def test_page_items_render_without_affecting_document_flow(tmp_path: Path) -> None:
+    image_path = tmp_path / "page-logo.png"
     _write_sample_image(image_path)
-    sheet = Sheet(
+    page_items = [
         Shape.rect(
+            name="frame",
             x=0.25,
             y=0.25,
             width=7.0,
-            height=4.5,
+            height=10.0,
             stroke_color="#476172",
             stroke_width=1.4,
         ),
         Shape.ellipse(
-            x=3.25,
-            y=3.15,
-            width=1.0,
-            height=0.45,
+            anchor="frame",
+            x=5.7,
+            y=0.25,
+            width=0.7,
+            height=0.7,
             stroke_color="#B2783D",
             fill_color="#FFF1D8",
         ),
         ImageBox(
             image_path,
-            x=3.35,
-            y=3.22,
-            width=0.8,
-            height=0.28,
+            anchor="frame",
+            x=0.4,
+            y=0.35,
+            width=0.7,
+            height=0.42,
             z_index=1,
         ),
         TextBox(
-            "Docscriptor Contributor Certificate",
-            x=0.75,
-            y=0.85,
-            width=6.0,
+            "Positioned Page Overlay",
+            anchor="margin",
+            x=0.0,
+            y=0.0,
+            width=3.0,
             height=0.45,
-            align="center",
-            font_size=18,
+            font_size=12,
         ),
         TextBox(
-            "Awarded for keeping document structure readable across DOCX, PDF, and HTML.",
-            x=1.0,
-            y=1.75,
-            width=5.5,
-            height=0.75,
+            "Anchored to the named frame shape.",
+            anchor="frame",
+            x=0.7,
+            y=0.95,
+            width=5.4,
+            height=0.5,
             align="center",
             valign="middle",
             font_size=11,
             z_index=2,
         ),
-        width=7.5,
-        height=5.0,
-        unit="in",
-        background_color="#FDFBF6",
-        background_gradient=("#FDFBF6", "#EEF6FF"),
-        border_color="#D4B56A",
-        border_width=1.0,
-    )
+    ]
     document = Document(
-        "Sheet Test",
-        sheet,
-        Paragraph("After sheet."),
+        "Page Item Test",
+        Paragraph("Body text keeps its normal position."),
+        page_items=page_items,
         settings=DocumentSettings(
             page_size=PageSize.letter(),
             theme=Theme(show_page_numbers=True),
         ),
     )
 
-    docx_path = tmp_path / "sheet.docx"
-    pdf_path = tmp_path / "sheet.pdf"
-    html_path = tmp_path / "sheet.html"
+    docx_path = tmp_path / "page-items.docx"
+    pdf_path = tmp_path / "page-items.pdf"
+    html_path = tmp_path / "page-items.html"
 
     document.save_docx(docx_path)
     document.save_pdf(pdf_path)
@@ -721,103 +726,92 @@ def test_sheet_renders_fixed_layout_text_and_shapes(tmp_path: Path) -> None:
 
     word_document = WordDocument(docx_path)
     word_text = "\n".join(paragraph.text for paragraph in word_document.paragraphs)
-    table_text = "\n".join(
-        cell.text
-        for table in word_document.tables
-        for row in table.rows
-        for cell in row.cells
-    )
     pdf_reader = PdfReader(BytesIO(pdf_path.read_bytes()))
     pdf_text = "\n".join(page.extract_text() or "" for page in pdf_reader.pages)
     html_text = html_path.read_text(encoding="utf-8")
+    word_xml = _docx_word_xml(docx_path)
 
-    assert "Docscriptor Contributor Certificate" in table_text
-    assert "Awarded for keeping document structure readable" in table_text
-    assert "After sheet." in word_text
-    assert len(word_document.sections) >= 3
-    document_xml = _docx_document_xml(docx_path)
-    sheet_table_xml = re.search(
-        r"<w:tbl>.*?Docscriptor Contributor Certificate.*?</w:tbl>",
-        document_xml,
-    )
-    assert sheet_table_xml is not None
-    assert "<v:rect" in sheet_table_xml.group(0)
-    assert "<v:oval" in sheet_table_xml.group(0)
-    assert '<w:tblW w:w="10800" w:type="dxa"/>' in sheet_table_xml.group(0)
-    assert sheet_table_xml.group(0).count("<w:tcW") == 1
-    assert '<w:tcW w:w="10800" w:type="dxa"/>' in sheet_table_xml.group(0)
-    assert '<w:footerReference w:type="default"' in word_document.sections[1]._sectPr.xml
-    assert "PAGE" not in word_document.sections[1].footer._element.xml
-    assert "Docscriptor Contributor Certificate" in pdf_text
-    assert "Awarded for keeping document structure readable" in pdf_text
-    assert len(pdf_reader.pages) >= 3
-    sheet_page = next(page for page in pdf_reader.pages if "Docscriptor Contributor Certificate" in (page.extract_text() or ""))
-    assert round(float(sheet_page.mediabox.width) / 72, 1) == 7.5
-    assert round(float(sheet_page.mediabox.height) / 72, 1) == 5.0
-    assert len(word_document.inline_shapes) == 1
+    assert "Body text keeps its normal position." in word_text
+    assert "Positioned Page Overlay" in word_xml
+    assert "Anchored to the named frame shape." in word_xml
+    assert "<v:rect" in word_xml
+    assert "<v:oval" in word_xml
+    assert "<v:imagedata" in word_xml
+    assert "Positioned Page Overlay" in pdf_text
+    assert "Anchored to the named frame shape." in pdf_text
     assert _pdf_image_draw_count(pdf_path) == 1
-    assert 'class="docscriptor-sheet"' in html_text
-    assert 'class="docscriptor-sheet-page"' in html_text
-    assert "transform: translateX(-50%)" in html_text
-    assert 'class="docscriptor-sheet-image"' in html_text
-    assert "Docscriptor Contributor Certificate" in html_text
+    assert 'class="docscriptor-page-items"' in html_text
+    assert 'class="docscriptor-page-item docscriptor-imagebox"' in html_text
+    assert "Positioned Page Overlay" in html_text
+    assert "Anchored to the named frame shape." in html_text
     assert html_text.count("data:image/png;base64,") == 1
-    assert "linear-gradient(to bottom, #FDFBF6, #EEF6FF)" in html_text
+    assert "docscriptor-sheet" not in html_text
 
 
-def test_nested_sheet_owns_docx_section_and_html_page_wrapper(tmp_path: Path) -> None:
-    sheet = Sheet(
+def test_positioned_items_can_render_inline_like_text(tmp_path: Path) -> None:
+    image_path = tmp_path / "inline-logo.png"
+    _write_sample_image(image_path)
+    document = Document(
+        "Inline Drawing Test",
+        Paragraph("Before inline drawing."),
+        Shape.rect(
+            width=1.2,
+            height=0.35,
+            placement="inline",
+            stroke_color="#476172",
+            fill_color="#EEF6FF",
+        ),
+        ImageBox(
+            image_path,
+            width=0.7,
+            height=0.42,
+            placement="inline",
+        ),
         TextBox(
-            "Nested Sheet Page",
-            x=1.0,
-            y=1.0,
-            width=5.0,
-            height=0.5,
+            "Inline textbox",
+            width=1.8,
+            height=0.35,
+            placement="inline",
             align="center",
         ),
-        width=8.5,
-        height=5.5,
-        unit="in",
-        border_color="#476172",
-        border_width=1.0,
-    )
-    document = Document(
-        "Nested Sheet Test",
-        Chapter(
-            "Flow",
-            Section(
-                "Before and after",
-                Paragraph("Before sheet."),
-                sheet,
-                Paragraph("After sheet."),
+        Paragraph(
+            "Image can sit ",
+            ImageBox(
+                image_path,
+                width=0.45,
+                height=0.27,
+                placement="inline",
             ),
+            " inside text.",
         ),
+        Paragraph("After inline drawing."),
         settings=DocumentSettings(page_size=PageSize.letter()),
     )
 
-    docx_path = tmp_path / "nested-sheet.docx"
-    pdf_path = tmp_path / "nested-sheet.pdf"
-    html_path = tmp_path / "nested-sheet.html"
+    docx_path = tmp_path / "inline-drawing.docx"
+    pdf_path = tmp_path / "inline-drawing.pdf"
+    html_path = tmp_path / "inline-drawing.html"
 
     document.save_docx(docx_path)
     document.save_pdf(pdf_path)
     document.save_html(html_path)
 
     word_document = WordDocument(docx_path)
-    pdf_reader = PdfReader(BytesIO(pdf_path.read_bytes()))
+    word_text = "\n".join(paragraph.text for paragraph in word_document.paragraphs)
+    word_xml = _docx_document_xml(docx_path)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
     html_text = html_path.read_text(encoding="utf-8")
 
-    assert len(word_document.sections) >= 3
-    assert round(word_document.sections[1].page_width.inches, 1) == 8.5
-    assert round(word_document.sections[1].page_height.inches, 1) == 5.5
-    assert word_document.sections[1].left_margin.inches == 0
-    sheet_page = next(page for page in pdf_reader.pages if "Nested Sheet Page" in (page.extract_text() or ""))
-    assert round(float(sheet_page.mediabox.width) / 72, 1) == 8.5
-    assert round(float(sheet_page.mediabox.height) / 72, 1) == 5.5
-    assert 'class="docscriptor-sheet-page"' in html_text
-    assert "width: 8.5000in" in html_text
-    assert "Before sheet." in html_text
-    assert "After sheet." in html_text
+    assert "Before inline drawing." in word_text
+    assert "After inline drawing." in word_text
+    assert "<v:rect" in word_xml
+    assert "Inline textbox" in word_xml
+    assert len(word_document.inline_shapes) == 2
+    assert "Inline textbox" in pdf_text
+    assert _pdf_image_draw_count(pdf_path) == 2
+    assert "display: inline-block" in html_text
+    assert "Inline textbox" in html_text
+    assert html_text.count("data:image/png;base64,") == 2
 
 
 def test_box_style_supports_tcolorbox_like_layout_controls(tmp_path: Path) -> None:
