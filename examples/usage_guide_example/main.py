@@ -286,7 +286,18 @@ Paragraph(
 )
 """
 
-PARAGRAPH_INDENT_SNIPPET = """from docscriptor import Paragraph, ParagraphStyle
+PARAGRAPH_INDENT_SNIPPET = """from docscriptor import DocumentSettings, Paragraph, ParagraphStyle, Theme
+
+settings = DocumentSettings(theme=Theme(paragraph_alignment="left"))
+
+Paragraph(
+    "This paragraph inherits the document-wide left alignment."
+)
+
+Paragraph(
+    "This one overrides the document-wide default.",
+    style=ParagraphStyle(alignment="right"),
+)
 
 Paragraph(
     "First-line indents work like a normal word processor paragraph.",
@@ -949,7 +960,11 @@ def build_usage_guide_document() -> Document:
                 Paragraph(
                     "Paragraph-level Word features are also part of the authored source. ",
                     code("ParagraphStyle"),
-                    " supports left and right indents, first-line indents, and hanging indents for reference-like blocks that should not be simulated with spaces. Indent values can use the document unit or an explicit per-style unit."
+                    " supports explicit alignment, left and right indents, first-line indents, and hanging indents for reference-like blocks that should not be simulated with spaces. Use ",
+                    code("Theme(paragraph_alignment=...)"),
+                    " for the document-wide default and per-paragraph ",
+                    code("ParagraphStyle(alignment=...)"),
+                    " only where the text should diverge."
                 ),
                 CodeBlock(PARAGRAPH_INDENT_SNIPPET, language="python"),
                 Paragraph(

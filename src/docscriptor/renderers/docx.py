@@ -217,7 +217,12 @@ class DocxRenderer:
         """Render a paragraph block into the current DOCX container."""
 
         paragraph = self._add_paragraph(container)
-        self._apply_paragraph_style(paragraph, paragraph_block.style, context.unit)
+        self._apply_paragraph_style(
+            paragraph,
+            paragraph_block.style,
+            context.theme,
+            context.unit,
+        )
         self._append_runs(
             paragraph,
             paragraph_block.content,
@@ -815,9 +820,10 @@ class DocxRenderer:
         self,
         paragraph: object,
         style: ParagraphStyle,
+        theme: Theme,
         default_unit: str,
     ) -> None:
-        paragraph.alignment = ALIGNMENTS[style.alignment]
+        paragraph.alignment = ALIGNMENTS[theme.resolve_paragraph_alignment(style)]
         if style.space_after is not None:
             paragraph.paragraph_format.space_after = Pt(style.space_after)
         if style.leading is not None:
@@ -1175,7 +1181,7 @@ class DocxRenderer:
         list_style = list_block.style or theme.list_style(ordered=isinstance(list_block, NumberedList))
         for index, item in enumerate(list_block.items):
             paragraph = self._add_paragraph(container)
-            self._apply_paragraph_style(paragraph, item.style, unit)
+            self._apply_paragraph_style(paragraph, item.style, theme, unit)
             paragraph.paragraph_format.left_indent = Inches(list_style.indent)
             paragraph.paragraph_format.first_line_indent = Inches(-list_style.indent)
             marker = list_style.marker_for(index)
@@ -1201,7 +1207,7 @@ class DocxRenderer:
             run.font.bold = True
 
         paragraph = self._add_paragraph(container)
-        self._apply_paragraph_style(paragraph, code_block.style, unit)
+        self._apply_paragraph_style(paragraph, code_block.style, theme, unit)
         paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
         paragraph.paragraph_format.left_indent = Inches(0.25)
         paragraph.paragraph_format.right_indent = Inches(0.1)
@@ -1225,7 +1231,7 @@ class DocxRenderer:
         unit: str,
     ) -> None:
         paragraph = self._add_paragraph(container)
-        self._apply_paragraph_style(paragraph, equation.style, unit)
+        self._apply_paragraph_style(paragraph, equation.style, theme, unit)
         if paragraph.alignment is None:
             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         self._append_math_runs(

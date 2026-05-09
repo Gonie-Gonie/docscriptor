@@ -72,7 +72,7 @@ class TextStyle:
 class ParagraphStyle:
     """Block-level paragraph spacing and alignment settings."""
 
-    alignment: str = "justify"
+    alignment: str | None = None
     space_after: float | None = 12.0
     leading: float | None = None
     left_indent: float | None = None
@@ -81,7 +81,11 @@ class ParagraphStyle:
     unit: str | None = None
 
     def __post_init__(self) -> None:
-        self.alignment = normalize_text_alignment(self.alignment)
+        self.alignment = (
+            normalize_text_alignment(self.alignment)
+            if self.alignment is not None
+            else None
+        )
         self.unit = normalize_length_unit(self.unit) if self.unit is not None else None
         if self.left_indent is not None and self.left_indent < 0:
             raise ValueError("ParagraphStyle.left_indent must be >= 0")
@@ -94,7 +98,7 @@ class ParagraphStyle:
         left: float = 0.5,
         *,
         by: float | None = None,
-        alignment: str = "justify",
+        alignment: str | None = None,
         space_after: float | None = 12.0,
         leading: float | None = None,
         unit: str | None = None,
@@ -296,6 +300,7 @@ class Theme:
     monospace_font_name: str = "Courier New"
     title_font_size: float = 22.0
     body_font_size: float = 11.0
+    paragraph_alignment: str = "justify"
     heading_sizes: tuple[float, ...] = (18.0, 15.0, 13.0, 11.5)
     caption_font_size: float | None = None
     caption_alignment: str = "center"
@@ -335,6 +340,7 @@ class Theme:
 
     def __post_init__(self) -> None:
         self.page_background_color = normalize_color(self.page_background_color) or "FFFFFF"
+        self.paragraph_alignment = normalize_text_alignment(self.paragraph_alignment)
         if self.caption_alignment not in {"left", "center", "right", "justify"}:
             raise ValueError(
                 f"Unsupported caption alignment: {self.caption_alignment!r}"
@@ -404,6 +410,11 @@ class Theme:
         """Return the alignment to use for the given heading level."""
 
         return "left"
+
+    def resolve_paragraph_alignment(self, style: ParagraphStyle) -> str:
+        """Return a paragraph style's alignment or the document-wide default."""
+
+        return style.alignment or self.paragraph_alignment
 
     def caption_size(self) -> float:
         """Return the effective caption font size."""

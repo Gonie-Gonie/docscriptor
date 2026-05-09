@@ -209,7 +209,7 @@ class HtmlRenderer:
         line_height = block.style.leading or max(context.theme.body_font_size + 1, 12) * 1.3
         return (
             '<div class="docscriptor-equation" '
-            f'style="text-align: {block.style.alignment}; margin: 0 0 {(block.style.space_after or 0):.1f}pt; line-height: {line_height:.1f}pt;">'
+            f'style="text-align: {context.theme.resolve_paragraph_alignment(block.style)}; margin: 0 0 {(block.style.space_after or 0):.1f}pt; line-height: {line_height:.1f}pt;">'
             + self._math_html(
                 Math(block.expression),
                 context.theme,
@@ -1473,8 +1473,9 @@ class HtmlRenderer:
             if first_line_indent_value is not None
             else ""
         )
+        resolved_alignment = alignment or theme.resolve_paragraph_alignment(style)
         return (
-            f"text-align: {alignment or style.alignment};"
+            f"text-align: {resolved_alignment};"
             f" margin: 0 0 {space_after:.1f}pt;"
             f"{left_indent}"
             f"{right_indent}"

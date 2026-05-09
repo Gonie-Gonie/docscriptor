@@ -123,6 +123,7 @@ The default behavior is intentionally conventional:
 
 - Use `Paragraph(...)` for prose. Pass strings and inline helpers directly; you do not need to pre-build `Text(...)` objects for normal writing.
 - Use `highlight(...)`, `strike(...)`, and `line_break()` for Word-style emphasis and manual line breaks inside one paragraph.
+- Use `Theme(paragraph_alignment=...)` for the document-wide paragraph default, and `ParagraphStyle(alignment=...)` when a specific paragraph should override it.
 - Use `ParagraphStyle(left_indent=..., right_indent=..., first_line_indent=..., unit=...)` or `ParagraphStyle.hanging(..., unit=...)` when you need Word-like first-line and hanging indents. If `unit` is omitted, indent values follow `DocumentSettings(unit=...)`.
 - Use `Chapter(...)`, `Section(...)`, `Subsection(...)`, and `Subsubsection(...)` for the visible outline. Their nesting in Python should match how you expect the final document to read.
 - Use `Table(...)` for small authored tables and `Table.from_dataframe(...)` when the data already lives in pandas.

@@ -350,7 +350,48 @@ def test_theme_validates_page_number_configuration() -> None:
 def test_paragraph_style_defaults_to_justify_alignment() -> None:
     paragraph = Paragraph("Default alignment paragraph.")
 
-    assert paragraph.style.alignment == "justify"
+    assert paragraph.style.alignment is None
+    assert Theme().resolve_paragraph_alignment(paragraph.style) == "justify"
+
+
+def test_document_and_paragraph_alignment_options_render(tmp_path: Path) -> None:
+    document = Document(
+        "Alignment Test",
+        Paragraph("Document-level centered paragraph."),
+        Paragraph(
+            "Paragraph-level right paragraph.",
+            style=ParagraphStyle(alignment="right"),
+        ),
+        settings=DocumentSettings(theme=Theme(paragraph_alignment="center")),
+    )
+
+    docx_path = tmp_path / "alignment.docx"
+    pdf_path = tmp_path / "alignment.pdf"
+    html_path = tmp_path / "alignment.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_document = WordDocument(docx_path)
+    centered = next(
+        paragraph
+        for paragraph in word_document.paragraphs
+        if paragraph.text == "Document-level centered paragraph."
+    )
+    right = next(
+        paragraph
+        for paragraph in word_document.paragraphs
+        if paragraph.text == "Paragraph-level right paragraph."
+    )
+    assert centered.alignment == WD_ALIGN_PARAGRAPH.CENTER
+    assert right.alignment == WD_ALIGN_PARAGRAPH.RIGHT
+
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+    assert "Document-level centered paragraph." in pdf_text
+    assert "Paragraph-level right paragraph." in pdf_text
+    assert "text-align: center" in html_text
+    assert "text-align: right" in html_text
 
 
 def test_paragraph_style_supports_word_like_indents() -> None:
