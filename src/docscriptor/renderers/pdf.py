@@ -985,12 +985,6 @@ class PdfRenderer:
         split_table = block.resolved_split()
         placement = block.resolved_placement()
         body_style = self._paragraph_style(ParagraphStyle(space_after=0), theme, styles["BodyText"])
-        header_style = RLParagraphStyle(
-            "TableHeader",
-            parent=body_style,
-            fontName=self._resolve_font(theme.body_font_name, True, False),
-            textColor=colors.HexColor(f"#{block.style.header_text_color}"),
-        )
         layout = build_table_layout(block.header_rows, block.rows)
         table_rows: list[list[object]] = [["" for _ in range(layout.column_count)] for _ in range(layout.row_count)]
         style_commands: list[tuple[str, tuple[int, int], tuple[int, int], object]] = [
@@ -1002,7 +996,20 @@ class PdfRenderer:
             ("BOTTOMPADDING", (0, 0), (-1, -1), block.style.cell_padding),
         ]
         for placement in layout.placements:
-            paragraph_style = header_style if placement.header else body_style
+            effective_style = block.effective_cell_style(placement)
+            cell_bold = bool(effective_style.bold)
+            cell_italic = bool(effective_style.italic)
+            cell_text_color = (
+                colors.HexColor(f"#{effective_style.text_color}")
+                if effective_style.text_color is not None
+                else colors.black
+            )
+            paragraph_style = RLParagraphStyle(
+                f"TableCell{placement.row}_{placement.column}_{int(cell_bold)}_{int(cell_italic)}",
+                parent=body_style,
+                fontName=self._resolve_font(theme.body_font_name, cell_bold, cell_italic),
+                textColor=cell_text_color,
+            )
             cell_horizontal_alignment = self._table_cell_horizontal_alignment(
                 placement,
                 block,
@@ -1020,8 +1027,8 @@ class PdfRenderer:
                     render_index,
                     base_font_name=paragraph_style.fontName,
                     base_size=paragraph_style.fontSize,
-                    base_bold=placement.header,
-                    base_italic=False,
+                    base_bold=cell_bold,
+                    base_italic=cell_italic,
                 ),
                 paragraph_style,
             )
@@ -1061,7 +1068,7 @@ class PdfRenderer:
                         TABLE_CELL_ALIGNMENTS[cell_horizontal_alignment],
                     )
                 )
-            if placement.header:
+            if effective_style.background_color is not None:
                 style_commands.append(
                     (
                         "BACKGROUND",
@@ -1070,27 +1077,9 @@ class PdfRenderer:
                             placement.column + placement.cell.colspan - 1,
                             placement.row + placement.cell.rowspan - 1,
                         ),
-                        colors.HexColor(f"#{block.style.header_background_color}"),
+                        colors.HexColor(f"#{effective_style.background_color}"),
                     )
                 )
-            else:
-                background_color = placement.cell.background_color
-                if background_color is None and block.style.alternate_row_background_color is not None and placement.body_row_index is not None and placement.body_row_index % 2 == 1:
-                    background_color = block.style.alternate_row_background_color
-                if background_color is None:
-                    background_color = block.style.body_background_color
-                if background_color is not None:
-                    style_commands.append(
-                        (
-                            "BACKGROUND",
-                            (placement.column, placement.row),
-                            (
-                                placement.column + placement.cell.colspan - 1,
-                                placement.row + placement.cell.rowspan - 1,
-                            ),
-                            colors.HexColor(f"#{background_color}"),
-                        )
-                    )
 
         resolved_widths = block.column_widths_in_inches(unit)
         column_widths = [width * inch for width in resolved_widths] if resolved_widths is not None else None
@@ -1179,22 +1168,14 @@ class PdfRenderer:
         placement: object,
         block: Table,
     ) -> str | None:
-        return placement.cell.horizontal_alignment or (
-            block.style.header_horizontal_alignment
-            if placement.header
-            else block.style.cell_horizontal_alignment
-        )
+        return block.effective_cell_style(placement).horizontal_alignment
 
     def _table_cell_vertical_alignment(
         self,
         placement: object,
         block: Table,
     ) -> str | None:
-        return placement.cell.vertical_alignment or (
-            block.style.header_vertical_alignment
-            if placement.header
-            else block.style.cell_vertical_alignment
-        )
+        return block.effective_cell_style(placement).vertical_alignment
 
     def _render_list(
         self,

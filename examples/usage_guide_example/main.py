@@ -47,6 +47,7 @@ from docscriptor import (
     Subsection,
     Subsubsection,
     Table,
+    TableCellStyle,
     TableStyle,
     TableList,
     TableOfContents,
@@ -281,16 +282,25 @@ Paragraph(
 )
 """
 
-TABLE_ALIGNMENT_SNIPPET = """from docscriptor import Table, TableCell, TableStyle
+TABLE_ALIGNMENT_SNIPPET = """from docscriptor import Table, TableCell, TableCellStyle, TableStyle
 
 Table(
     headers=[["Metric", "Value"]],
     rows=[
         [
             "Latency",
-            TableCell("14 ms", horizontal_alignment="right", vertical_alignment="middle"),
+            TableCell(
+                "14 ms",
+                style=TableCellStyle(background_color="#FFE699", text_color="#7F1D1D", bold=True),
+                horizontal_alignment="right",
+                vertical_alignment="middle",
+            ),
         ],
+        ["Quality", "Stable"],
     ],
+    row_styles={1: TableCellStyle(background_color="#E2F0D9", italic=True)},
+    column_styles={0: TableCellStyle(text_color="#1F4E79", bold=True)},
+    header_row_styles={0: TableCellStyle(background_color="#1F4E79", text_color="#FFFFFF")},
     style=TableStyle(
         header_horizontal_alignment="center",
         cell_vertical_alignment="middle",
@@ -930,7 +940,9 @@ def build_usage_guide_document() -> Document:
                     code("TableCell"),
                     ", or use ",
                     code("TableStyle"),
-                    " to set table-wide body and header defaults."
+                    " to set table-wide body and header defaults. For more direct formatting, apply ",
+                    code("TableCellStyle"),
+                    " to individual cells, body rows, header rows, or expanded columns."
                 ),
                 CodeBlock(TABLE_ALIGNMENT_SNIPPET, language="python"),
                 Paragraph(

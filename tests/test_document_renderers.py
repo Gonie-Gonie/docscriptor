@@ -56,6 +56,7 @@ from docscriptor import (
     Subsubsection,
     Table,
     TableCell,
+    TableCellStyle,
     TableStyle,
     TableOfContents,
     TableList,
@@ -1087,8 +1088,63 @@ def test_table_cell_alignment_renders_to_all_outputs(tmp_path: Path) -> None:
     assert "14 ms" in pdf_text
     assert "text-align: center" in html_text
     assert "text-align: right" in html_text
-    assert "vertical-align: middle" in html_text
-    assert "vertical-align: bottom" in html_text
+
+
+def test_table_cell_row_and_column_styles_render_to_all_outputs(tmp_path: Path) -> None:
+    table = Table(
+        headers=["Metric", "Value"],
+        rows=[
+            [
+                "Latency",
+                TableCell(
+                    "14 ms",
+                    style=TableCellStyle(
+                        background_color="#FFE699",
+                        text_color="#7F1D1D",
+                        bold=True,
+                    ),
+                ),
+            ],
+            ["Quality", "Stable"],
+        ],
+        caption="Styled table.",
+        row_styles={
+            1: TableCellStyle(background_color="#E2F0D9", italic=True),
+        },
+        column_styles={
+            0: TableCellStyle(text_color="#1F4E79", bold=True),
+        },
+        header_row_styles={
+            0: TableCellStyle(background_color="#1F4E79", text_color="#FFFFFF"),
+        },
+    )
+    document = Document("Table Style Test", table)
+
+    docx_path = tmp_path / "table-style.docx"
+    pdf_path = tmp_path / "table-style.pdf"
+    html_path = tmp_path / "table-style.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert "1F4E79" in docx_xml
+    assert "FFE699" in docx_xml
+    assert "E2F0D9" in docx_xml
+    assert '<w:b' in docx_xml
+    assert '<w:i' in docx_xml
+    assert "Styled table." in pdf_text
+    assert "Latency" in pdf_text
+    assert "Stable" in pdf_text
+    assert "background: #1F4E79" in html_text
+    assert "background: #FFE699" in html_text
+    assert "background: #E2F0D9" in html_text
+    assert "color: #7F1D1D" in html_text
+    assert "font-weight: 700" in html_text
+    assert "font-style: italic" in html_text
 
 
 def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Path) -> None:

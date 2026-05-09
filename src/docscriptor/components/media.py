@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Sequence, TYPE_CHECKING
+from typing import Literal, Mapping, Sequence, TYPE_CHECKING
 
 from docscriptor.components.base import Block
 from docscriptor.components.blocks import CellInput, Paragraph, coerce_cell
@@ -16,7 +16,7 @@ from docscriptor.core import (
     normalize_text_alignment,
     normalize_vertical_alignment,
 )
-from docscriptor.layout.theme import TableStyle
+from docscriptor.layout.theme import TableStyle, TextStyle
 
 if TYPE_CHECKING:
     from docscriptor.renderers.context import DocxRenderContext, HtmlRenderContext, PdfRenderContext
@@ -63,6 +63,100 @@ def normalize_table_split(value: TableSplit) -> TableSplit:
     raise ValueError("Table split must be True, False, or 'auto'")
 
 
+@dataclass(slots=True)
+class TableCellStyle:
+    """Cell-level table styling that can be applied to cells, rows, or columns."""
+
+    background_color: str | None = None
+    text_color: str | None = None
+    bold: bool | None = None
+    italic: bool | None = None
+    horizontal_alignment: str | None = None
+    vertical_alignment: str | None = None
+
+    def __post_init__(self) -> None:
+        self.background_color = normalize_color(self.background_color)
+        self.text_color = normalize_color(self.text_color)
+        self.horizontal_alignment = (
+            normalize_text_alignment(self.horizontal_alignment)
+            if self.horizontal_alignment is not None
+            else None
+        )
+        self.vertical_alignment = (
+            normalize_vertical_alignment(self.vertical_alignment)
+            if self.vertical_alignment is not None
+            else None
+        )
+
+    def merged(self, *others: TableCellStyle | None) -> TableCellStyle:
+        """Return a new style with later non-``None`` values overriding earlier ones."""
+
+        merged = TableCellStyle(
+            background_color=self.background_color,
+            text_color=self.text_color,
+            bold=self.bold,
+            italic=self.italic,
+            horizontal_alignment=self.horizontal_alignment,
+            vertical_alignment=self.vertical_alignment,
+        )
+        for other in others:
+            if other is None:
+                continue
+            for field_name in (
+                "background_color",
+                "text_color",
+                "bold",
+                "italic",
+                "horizontal_alignment",
+                "vertical_alignment",
+            ):
+                value = getattr(other, field_name)
+                if value is not None:
+                    setattr(merged, field_name, value)
+        return merged
+
+    def text_style(self) -> TextStyle:
+        """Return the inline text defaults represented by this cell style."""
+
+        return TextStyle(
+            color=self.text_color,
+            bold=self.bold,
+            italic=self.italic,
+        )
+
+
+TableCellStyleInput = TableCellStyle | Mapping[str, object]
+
+
+def coerce_table_cell_style(value: TableCellStyleInput) -> TableCellStyle:
+    """Normalize a table cell style object or mapping."""
+
+    if isinstance(value, TableCellStyle):
+        return value
+    if isinstance(value, Mapping):
+        return TableCellStyle(**dict(value))
+    raise TypeError(f"Unsupported table cell style: {type(value)!r}")
+
+
+def _style_overrides(
+    *,
+    background_color: str | None = None,
+    text_color: str | None = None,
+    bold: bool | None = None,
+    italic: bool | None = None,
+    horizontal_alignment: str | None = None,
+    vertical_alignment: str | None = None,
+) -> TableCellStyle:
+    return TableCellStyle(
+        background_color=background_color,
+        text_color=text_color,
+        bold=bold,
+        italic=italic,
+        horizontal_alignment=horizontal_alignment,
+        vertical_alignment=vertical_alignment,
+    )
+
+
 @dataclass(slots=True, init=False)
 class TableCell:
     """A single table cell with optional row or column spanning."""
@@ -73,6 +167,7 @@ class TableCell:
     background_color: str | None
     horizontal_alignment: str | None
     vertical_alignment: str | None
+    style: TableCellStyle
 
     def __init__(
         self,
@@ -80,7 +175,11 @@ class TableCell:
         *,
         colspan: int = 1,
         rowspan: int = 1,
+        style: TableCellStyleInput | None = None,
         background_color: str | None = None,
+        text_color: str | None = None,
+        bold: bool | None = None,
+        italic: bool | None = None,
         horizontal_alignment: str | None = None,
         vertical_alignment: str | None = None,
     ) -> None:
@@ -91,17 +190,24 @@ class TableCell:
         self.content = coerce_cell(value)
         self.colspan = colspan
         self.rowspan = rowspan
-        self.background_color = normalize_color(background_color)
-        self.horizontal_alignment = (
-            normalize_text_alignment(horizontal_alignment)
-            if horizontal_alignment is not None
-            else None
+        base_style = (
+            coerce_table_cell_style(style)
+            if style is not None
+            else TableCellStyle()
         )
-        self.vertical_alignment = (
-            normalize_vertical_alignment(vertical_alignment)
-            if vertical_alignment is not None
-            else None
+        self.style = base_style.merged(
+            _style_overrides(
+                background_color=background_color,
+                text_color=text_color,
+                bold=bold,
+                italic=italic,
+                horizontal_alignment=horizontal_alignment,
+                vertical_alignment=vertical_alignment,
+            )
         )
+        self.background_color = self.style.background_color
+        self.horizontal_alignment = self.style.horizontal_alignment
+        self.vertical_alignment = self.style.vertical_alignment
 
 
 TableCellInput = TableCell | CellInput
@@ -350,6 +456,22 @@ def build_table_layout(
     )
 
 
+def _coerce_style_mapping(
+    styles: Mapping[int, TableCellStyleInput] | None,
+    *,
+    name: str,
+) -> dict[int, TableCellStyle]:
+    if styles is None:
+        return {}
+    normalized: dict[int, TableCellStyle] = {}
+    for key, value in styles.items():
+        index = int(key)
+        if index < 0:
+            raise ValueError(f"{name} indexes must be >= 0")
+        normalized[index] = coerce_table_cell_style(value)
+    return normalized
+
+
 @dataclass(slots=True, init=False)
 class Table(Block):
     """A table supporting explicit spans and dataframe-like inputs."""
@@ -365,6 +487,9 @@ class Table(Block):
     split: TableSplit
     placement: MediaPlacement
     long_table_threshold: int | None
+    row_styles: dict[int, TableCellStyle]
+    column_styles: dict[int, TableCellStyle]
+    header_row_styles: dict[int, TableCellStyle]
 
     def __init__(
         self,
@@ -380,6 +505,9 @@ class Table(Block):
         split: TableSplit = False,
         placement: str | None = None,
         long_table_threshold: int | None = None,
+        row_styles: Mapping[int, TableCellStyleInput] | None = None,
+        column_styles: Mapping[int, TableCellStyleInput] | None = None,
+        header_row_styles: Mapping[int, TableCellStyleInput] | None = None,
     ) -> None:
         if rows is None and _is_dataframe_like(headers):
             dataframe = headers
@@ -410,6 +538,12 @@ class Table(Block):
         if long_table_threshold is not None and long_table_threshold < 1:
             raise ValueError("long_table_threshold must be >= 1")
         self.long_table_threshold = long_table_threshold
+        self.row_styles = _coerce_style_mapping(row_styles, name="row_styles")
+        self.column_styles = _coerce_style_mapping(column_styles, name="column_styles")
+        self.header_row_styles = _coerce_style_mapping(
+            header_row_styles,
+            name="header_row_styles",
+        )
 
         layout = self.layout()
         if self.column_widths is not None and len(self.column_widths) != layout.column_count:
@@ -448,6 +582,47 @@ class Table(Block):
             return "float"
         return self.placement
 
+    def effective_cell_style(self, placement: TablePlacement) -> TableCellStyle:
+        """Return the resolved style for a rendered cell placement."""
+
+        row_style = (
+            self.header_row_styles.get(placement.row)
+            if placement.header
+            else (
+                self.row_styles.get(placement.body_row_index)
+                if placement.body_row_index is not None
+                else None
+            )
+        )
+        return self._base_cell_style(placement).merged(
+            self.column_styles.get(placement.column),
+            row_style,
+            placement.cell.style,
+        )
+
+    def _base_cell_style(self, placement: TablePlacement) -> TableCellStyle:
+        if placement.header:
+            return TableCellStyle(
+                background_color=self.style.header_background_color,
+                text_color=self.style.header_text_color,
+                bold=True,
+                horizontal_alignment=self.style.header_horizontal_alignment,
+                vertical_alignment=self.style.header_vertical_alignment,
+            )
+
+        background_color = self.style.body_background_color
+        if (
+            self.style.alternate_row_background_color is not None
+            and placement.body_row_index is not None
+            and placement.body_row_index % 2 == 1
+        ):
+            background_color = self.style.alternate_row_background_color
+        return TableCellStyle(
+            background_color=background_color,
+            horizontal_alignment=self.style.cell_horizontal_alignment,
+            vertical_alignment=self.style.cell_vertical_alignment,
+        )
+
     def column_widths_in_inches(self, default_unit: str) -> list[float] | None:
         """Return column widths converted through the table or document unit."""
 
@@ -470,6 +645,9 @@ class Table(Block):
         split: TableSplit = False,
         placement: str | None = None,
         long_table_threshold: int | None = None,
+        row_styles: Mapping[int, TableCellStyleInput] | None = None,
+        column_styles: Mapping[int, TableCellStyleInput] | None = None,
+        header_row_styles: Mapping[int, TableCellStyleInput] | None = None,
     ) -> Table:
         """Create a table directly from a dataframe-like object."""
 
@@ -484,6 +662,9 @@ class Table(Block):
             split=split,
             placement=placement,
             long_table_threshold=long_table_threshold,
+            row_styles=row_styles,
+            column_styles=column_styles,
+            header_row_styles=header_row_styles,
         )
 
     def render_to_docx(
@@ -600,11 +781,14 @@ __all__ = [
     "Table",
     "TableCell",
     "TableCellInput",
+    "TableCellStyle",
+    "TableCellStyleInput",
     "TableLayout",
     "TablePlacement",
     "TableSplit",
     "build_table_layout",
     "coerce_table_cell",
+    "coerce_table_cell_style",
     "normalize_media_placement",
     "normalize_table_split",
 ]

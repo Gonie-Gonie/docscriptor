@@ -125,7 +125,7 @@ The default behavior is intentionally conventional:
 - Use `ParagraphStyle(left_indent=..., right_indent=..., first_line_indent=..., unit=...)` or `ParagraphStyle.hanging(..., unit=...)` when you need Word-like first-line and hanging indents. If `unit` is omitted, indent values follow `DocumentSettings(unit=...)`.
 - Use `Chapter(...)`, `Section(...)`, `Subsection(...)`, and `Subsubsection(...)` for the visible outline. Their nesting in Python should match how you expect the final document to read.
 - Use `Table(...)` for small authored tables and `Table.from_dataframe(...)` when the data already lives in pandas.
-- Use `TableCell(horizontal_alignment=..., vertical_alignment=...)` or table-wide `TableStyle(cell_horizontal_alignment=..., cell_vertical_alignment=...)` when a table needs Word-like cell alignment.
+- Use `TableCell(horizontal_alignment=..., vertical_alignment=...)` or table-wide `TableStyle(cell_horizontal_alignment=..., cell_vertical_alignment=...)` when a table needs Word-like cell alignment. Use `TableCellStyle(...)` on a `TableCell`, `row_styles`, `header_row_styles`, or `column_styles` when cells, rows, or columns need background color, text color, bold, or italic formatting.
 - Use `Table(split=True)` when a table should render in source order and may break across pages. Leave `split=False` when the table should stay together when possible; very long tables are automatically rendered as split repeated-header tables.
 - Use `Figure(...)` for image files or `savefig()`-compatible Python figure objects.
 - Use advanced `placement=...` hints on tables and figures only when needed. Supported values include `here`, `tbp`/`float`, `top`, `bottom`, and `page`.
@@ -142,7 +142,7 @@ The default behavior is intentionally conventional:
 - portable comments and footnotes that stay stable across DOCX, PDF, and HTML
 - footnotes target page-bottom placement by default when the renderer supports it; `Theme(footnote_placement="document")` keeps the collected-notes pattern
 - captioned tables and figures with automatic numbering and in-text references
-- table support for `TableCell(...)`, `rowspan`, `colspan`, banded rows, and dataframe-like inputs
+- table support for `TableCell(...)`, `rowspan`, `colspan`, banded rows, dataframe-like inputs, and cell/row/column styling
 - automatic split-table rendering for long tables, with repeated headers where renderers support them
 - advanced table and figure placement hints for here/float/top/bottom/page-style workflows
 - figure support for both stored image files and `savefig()`-compatible Python objects

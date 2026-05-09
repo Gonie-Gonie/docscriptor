@@ -809,6 +809,7 @@ class HtmlRenderer:
             f"border: 1px solid #{block.style.border_color}",
             f"padding: {block.style.cell_padding:.1f}pt",
         ]
+        effective_style = block.effective_cell_style(placement)
         horizontal_alignment = self._table_cell_horizontal_alignment(placement, block)
         vertical_alignment = self._table_cell_vertical_alignment(placement, block)
         style_parts.append(
@@ -817,23 +818,14 @@ class HtmlRenderer:
         style_parts.append(
             f"vertical-align: {vertical_alignment}" if vertical_alignment is not None else "vertical-align: top"
         )
-        if placement.header:
-            style_parts.append(f"background: #{block.style.header_background_color}")
-            style_parts.append(f"color: #{block.style.header_text_color}")
-            style_parts.append("font-weight: 700")
-        else:
-            background_color = placement.cell.background_color
-            if (
-                background_color is None
-                and block.style.alternate_row_background_color is not None
-                and placement.body_row_index is not None
-                and placement.body_row_index % 2 == 1
-            ):
-                background_color = block.style.alternate_row_background_color
-            if background_color is None:
-                background_color = block.style.body_background_color
-            if background_color is not None:
-                style_parts.append(f"background: #{background_color}")
+        if effective_style.background_color is not None:
+            style_parts.append(f"background: #{effective_style.background_color}")
+        if effective_style.text_color is not None:
+            style_parts.append(f"color: #{effective_style.text_color}")
+        if effective_style.bold is not None:
+            style_parts.append(f"font-weight: {'700' if effective_style.bold else '400'}")
+        if effective_style.italic is not None:
+            style_parts.append(f"font-style: {'italic' if effective_style.italic else 'normal'}")
         attrs = []
         if placement.cell.colspan > 1:
             attrs.append(f' colspan="{placement.cell.colspan}"')
@@ -846,6 +838,8 @@ class HtmlRenderer:
                 placement.cell.content.content,
                 context.theme,
                 context.render_index,
+                base_bold=bool(effective_style.bold),
+                base_italic=bool(effective_style.italic),
             )
             + "</p>"
         )
@@ -860,22 +854,14 @@ class HtmlRenderer:
         placement: TablePlacement,
         block: Table,
     ) -> str | None:
-        return placement.cell.horizontal_alignment or (
-            block.style.header_horizontal_alignment
-            if placement.header
-            else block.style.cell_horizontal_alignment
-        )
+        return block.effective_cell_style(placement).horizontal_alignment
 
     def _table_cell_vertical_alignment(
         self,
         placement: TablePlacement,
         block: Table,
     ) -> str | None:
-        return placement.cell.vertical_alignment or (
-            block.style.header_vertical_alignment
-            if placement.header
-            else block.style.cell_vertical_alignment
-        )
+        return block.effective_cell_style(placement).vertical_alignment
 
     def _caption_html(
         self,

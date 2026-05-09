@@ -1595,8 +1595,8 @@ class DocxRenderer:
         word_document: WordDocument,
     ) -> None:
         split_table = table_block.resolved_split()
-        placement = table_block.resolved_placement()
-        self._apply_media_placement_before(container, word_document, placement)
+        media_placement = table_block.resolved_placement()
+        self._apply_media_placement_before(container, word_document, media_placement)
 
         def render_caption() -> None:
             if table_block.caption is None:
@@ -1639,77 +1639,60 @@ class DocxRenderer:
             for column_index, width in enumerate(column_widths):
                 table.columns[column_index].width = Inches(width)
 
-        for placement in layout.placements:
-            start_cell = table.cell(placement.row, placement.column)
+        for cell_placement in layout.placements:
+            start_cell = table.cell(cell_placement.row, cell_placement.column)
             target_cell = start_cell
-            if placement.cell.colspan > 1 or placement.cell.rowspan > 1:
+            if cell_placement.cell.colspan > 1 or cell_placement.cell.rowspan > 1:
                 end_cell = table.cell(
-                    placement.row + placement.cell.rowspan - 1,
-                    placement.column + placement.cell.colspan - 1,
+                    cell_placement.row + cell_placement.cell.rowspan - 1,
+                    cell_placement.column + cell_placement.cell.colspan - 1,
                 )
                 target_cell = start_cell.merge(end_cell)
 
             paragraph = target_cell.paragraphs[0]
+            effective_style = table_block.effective_cell_style(cell_placement)
             cell_horizontal_alignment = self._table_cell_horizontal_alignment(
-                placement,
+                cell_placement,
                 table_block,
             )
             if cell_horizontal_alignment is not None:
                 paragraph.alignment = ALIGNMENTS[cell_horizontal_alignment]
             cell_vertical_alignment = self._table_cell_vertical_alignment(
-                placement,
+                cell_placement,
                 table_block,
             )
             if cell_vertical_alignment is not None:
                 target_cell.vertical_alignment = CELL_VERTICAL_ALIGNMENTS[cell_vertical_alignment]
             self._append_runs(
                 paragraph,
-                placement.cell.content.content or [Text("")],
+                cell_placement.cell.content.content or [Text("")],
+                default_style=effective_style.text_style(),
                 theme=theme,
                 render_index=render_index,
                 word_document=word_document,
             )
-            if placement.header:
-                for run in paragraph.runs:
-                    run.bold = True
-                    run.font.color.rgb = RGBColor.from_string(table_block.style.header_text_color)
-                self._set_cell_shading(target_cell, table_block.style.header_background_color)
-            else:
-                background_color = placement.cell.background_color
-                if background_color is None and table_block.style.alternate_row_background_color is not None and placement.body_row_index is not None and placement.body_row_index % 2 == 1:
-                    background_color = table_block.style.alternate_row_background_color
-                if background_color is None:
-                    background_color = table_block.style.body_background_color
-                if background_color is not None:
-                    self._set_cell_shading(target_cell, background_color)
+            if effective_style.background_color is not None:
+                self._set_cell_shading(target_cell, effective_style.background_color)
             self._set_cell_borders(target_cell, table_block.style.border_color, 0.5)
             self._set_cell_padding(target_cell, table_block.style.cell_padding)
 
         if table_block.caption is not None and theme.table_caption_position == "below":
             render_caption()
-        self._apply_media_placement_after(container, word_document, placement)
+        self._apply_media_placement_after(container, word_document, media_placement)
 
     def _table_cell_horizontal_alignment(
         self,
         placement: object,
         table_block: Table,
     ) -> str | None:
-        return placement.cell.horizontal_alignment or (
-            table_block.style.header_horizontal_alignment
-            if placement.header
-            else table_block.style.cell_horizontal_alignment
-        )
+        return table_block.effective_cell_style(placement).horizontal_alignment
 
     def _table_cell_vertical_alignment(
         self,
         placement: object,
         table_block: Table,
     ) -> str | None:
-        return placement.cell.vertical_alignment or (
-            table_block.style.header_vertical_alignment
-            if placement.header
-            else table_block.style.cell_vertical_alignment
-        )
+        return table_block.effective_cell_style(placement).vertical_alignment
 
     def _render_figure(
         self,

@@ -40,6 +40,7 @@ _EXPORTS = {
     "Subsubsection": "docscriptor.components.blocks",
     "Table": "docscriptor.components.media",
     "TableCell": "docscriptor.components.media",
+    "TableCellStyle": "docscriptor.components.media",
     "TableList": "docscriptor.components.generated",
     "TableOfContents": "docscriptor.components.generated",
     "Text": "docscriptor.components.inline",
