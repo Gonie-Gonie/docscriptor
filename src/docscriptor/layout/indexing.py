@@ -16,7 +16,7 @@ from docscriptor.components.generated import (
     TableOfContents,
 )
 from docscriptor.components.inline import Citation, Comment, Footnote, Hyperlink, Text
-from docscriptor.components.media import Figure, Table
+from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table
 from docscriptor.components.references import CitationLibrary, CitationSource
 from docscriptor.core import DocscriptorError
 from docscriptor.document import Document
@@ -63,7 +63,7 @@ class CaptionEntry:
     """A numbered caption entry for a table or figure block."""
 
     number: int
-    block: Table | Figure
+    block: Table | Figure | SubFigureGroup
     anchor: str
 
 
@@ -75,6 +75,7 @@ class RenderIndex:
     figures: list[CaptionEntry] = field(default_factory=list)
     table_numbers: dict[int, int] = field(default_factory=dict)
     figure_numbers: dict[int, int] = field(default_factory=dict)
+    subfigure_labels: dict[int, str] = field(default_factory=dict)
     citations: list[CitationReferenceEntry] = field(default_factory=list)
     citation_numbers: dict[str, int] = field(default_factory=dict)
     citation_source_numbers: dict[int, int] = field(default_factory=dict)
@@ -91,10 +92,15 @@ class RenderIndex:
 
         return self.table_numbers.get(id(table))
 
-    def figure_number(self, figure: Figure) -> int | None:
+    def figure_number(self, figure: Figure | SubFigure | SubFigureGroup) -> int | None:
         """Return the assigned figure number for a captioned figure."""
 
         return self.figure_numbers.get(id(figure))
+
+    def subfigure_label(self, subfigure: SubFigure) -> str | None:
+        """Return the assigned label for a subfigure inside a numbered group."""
+
+        return self.subfigure_labels.get(id(subfigure))
 
     def citation_number(self, target: CitationSource | str) -> int:
         """Return the assigned citation number for a source or key."""
@@ -137,12 +143,16 @@ class RenderIndex:
             return None
         return f"table_{number}"
 
-    def figure_anchor(self, figure: Figure) -> str | None:
+    def figure_anchor(self, figure: Figure | SubFigure | SubFigureGroup) -> str | None:
         """Return the bookmark name for a captioned figure."""
 
         number = self.figure_number(figure)
         if number is None:
             return None
+        if isinstance(figure, SubFigure):
+            label = self.subfigure_label(figure)
+            if label is not None:
+                return f"figure_{number}_{label}"
         return f"figure_{number}"
 
     def citation_anchor(self, target: CitationSource | str) -> str:
@@ -288,6 +298,26 @@ def _index_blocks(
                     )
                 )
                 render_index.figure_numbers[id(block)] = number
+            continue
+        if isinstance(block, SubFigureGroup):
+            for subfigure in block.subfigures:
+                if subfigure.caption is not None:
+                    _index_inlines(subfigure.caption.content, render_index, citations)
+            if block.caption is not None:
+                _index_inlines(block.caption.content, render_index, citations)
+                number = len(render_index.figures) + 1
+                render_index.figures.append(
+                    CaptionEntry(
+                        number=number,
+                        block=block,
+                        anchor=f"figure_{number}",
+                    )
+                )
+                render_index.figure_numbers[id(block)] = number
+                for index, subfigure in enumerate(block.subfigures):
+                    label = block.label_for_index(index)
+                    render_index.figure_numbers[id(subfigure)] = number
+                    render_index.subfigure_labels[id(subfigure)] = label
 
 
 def _index_inlines(

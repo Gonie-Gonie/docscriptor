@@ -50,7 +50,7 @@ from docscriptor.components.inline import (
     Math,
     Text,
 )
-from docscriptor.components.media import Figure, Table, build_table_layout
+from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table, build_table_layout
 from docscriptor.components.people import AuthorTitleLine
 from docscriptor.components.positioning import (
     ImageBox,
@@ -440,6 +440,24 @@ class DocxRenderer:
         self._render_figure(
             container,
             figure,
+            context.theme,
+            context.render_index,
+            context.unit,
+            word_document=context.word_document,
+            in_box=context.in_box,
+        )
+
+    def render_subfigure_group(
+        self,
+        container: object,
+        group: SubFigureGroup,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render a subfigure group into the current DOCX container."""
+
+        self._render_subfigure_group(
+            container,
+            group,
             context.theme,
             context.render_index,
             context.unit,
@@ -1026,7 +1044,7 @@ class DocxRenderer:
 
     def _block_reference_anchor(
         self,
-        target: Table | Figure,
+        target: Table | Figure | SubFigure | SubFigureGroup,
         render_index: RenderIndex,
     ) -> str | None:
         if isinstance(target, Table):
@@ -1753,6 +1771,99 @@ class DocxRenderer:
             render_caption()
         self._apply_media_placement_after(container, word_document, placement)
 
+    def _render_subfigure_group(
+        self,
+        container: object,
+        group: SubFigureGroup,
+        theme: Theme,
+        render_index: RenderIndex,
+        unit: str,
+        *,
+        word_document: WordDocument,
+        in_box: bool = False,
+    ) -> None:
+        placement = group.resolved_placement()
+        self._apply_media_placement_before(container, word_document, placement)
+
+        def render_caption() -> None:
+            if group.caption is None:
+                return
+            caption = self._add_paragraph(container)
+            caption.alignment = ALIGNMENTS[theme.caption_alignment]
+            caption.paragraph_format.space_after = Pt(0 if in_box else 12)
+            self._keep_lines_together(caption)
+            self._append_runs(
+                caption,
+                self._caption_fragments(
+                    theme.figure_label,
+                    render_index.figure_number(group),
+                    group.caption,
+                ),
+                default_size=theme.caption_size(),
+                theme=theme,
+                render_index=render_index,
+                word_document=word_document,
+            )
+            anchor = render_index.figure_anchor(group)
+            if anchor is not None:
+                self._add_bookmark(caption, anchor)
+            if theme.figure_caption_position == "above":
+                self._keep_with_next(caption)
+
+        if group.caption is not None and theme.figure_caption_position == "above":
+            render_caption()
+
+        row_count = (len(group.subfigures) + group.columns - 1) // group.columns
+        table = container.add_table(rows=row_count, cols=group.columns)
+        table.alignment = TABLE_ALIGNMENTS[theme.figure_alignment]
+        gap_points = length_to_inches(group.column_gap, group.unit or unit) * 72
+
+        for index, subfigure in enumerate(group.subfigures):
+            row_index = index // group.columns
+            column_index = index % group.columns
+            cell = table.cell(row_index, column_index)
+            self._set_cell_margins(
+                cell,
+                0,
+                gap_points / 2 if column_index < group.columns - 1 else 0,
+                0,
+                gap_points / 2 if column_index > 0 else 0,
+            )
+            image_paragraph = cell.paragraphs[0]
+            image_paragraph.alignment = ALIGNMENTS[theme.figure_alignment]
+            image_paragraph.paragraph_format.space_after = Pt(2)
+            run = image_paragraph.add_run()
+            resolved_width = subfigure.width_in_inches(unit)
+            resolved_height = subfigure.height_in_inches(unit)
+            width = Inches(resolved_width) if resolved_width is not None else None
+            height = Inches(resolved_height) if resolved_height is not None else None
+            run.add_picture(self._figure_picture_source(subfigure), width=width, height=height)
+
+            anchor_paragraph = image_paragraph
+            if subfigure.caption is not None:
+                subcaption = cell.add_paragraph()
+                subcaption.alignment = ALIGNMENTS[theme.caption_alignment]
+                subcaption.paragraph_format.space_after = Pt(0)
+                self._append_runs(
+                    subcaption,
+                    self._subfigure_caption_fragments(
+                        group.formatted_label_for_index(index),
+                        subfigure.caption,
+                    ),
+                    default_size=theme.caption_size(),
+                    theme=theme,
+                    render_index=render_index,
+                    word_document=word_document,
+                )
+                anchor_paragraph = subcaption
+            anchor = render_index.figure_anchor(subfigure)
+            if anchor is not None:
+                self._add_bookmark(anchor_paragraph, anchor)
+
+        if group.caption is not None and theme.figure_caption_position == "below":
+            render_caption()
+        self._apply_media_placement_after(container, word_document, placement)
+
     def _set_paragraph_shading(self, paragraph: object, fill: str) -> None:
         paragraph_properties = paragraph._p.get_or_add_pPr()
         shading = OxmlElement("w:shd")
@@ -1865,7 +1976,12 @@ class DocxRenderer:
             return fragment.plain_text()
         return fragment.value
 
-    def _resolve_block_reference(self, target: Table | Figure, theme: Theme, render_index: RenderIndex) -> str:
+    def _resolve_block_reference(
+        self,
+        target: Table | Figure | SubFigure | SubFigureGroup,
+        theme: Theme,
+        render_index: RenderIndex,
+    ) -> str:
         if isinstance(target, Table):
             number = render_index.table_number(target)
             if number is None:
@@ -1875,12 +1991,20 @@ class DocxRenderer:
         number = render_index.figure_number(target)
         if number is None:
             raise DocscriptorError("Figure references require the target figure to have a caption and be included in the document")
+        if isinstance(target, SubFigure):
+            label = render_index.subfigure_label(target)
+            if label is None:
+                raise DocscriptorError("Subfigure references require the target subfigure to belong to a captioned SubFigureGroup")
+            return f"{theme.figure_label} {number}({label})"
         return f"{theme.figure_label} {number}"
 
     def _caption_fragments(self, label: str, number: int | None, caption: Paragraph) -> list[Text]:
         if number is None:
             return caption.content
         return [Text(f"{label} {number}. ")] + caption.content
+
+    def _subfigure_caption_fragments(self, label: str, caption: Paragraph) -> list[Text]:
+        return [Text(f"{label} ")] + caption.content
 
     def _render_caption_list(
         self,
@@ -1928,7 +2052,7 @@ class DocxRenderer:
                 word_document=word_document,
             )
 
-    def _figure_picture_source(self, figure: Figure) -> str | BytesIO:
+    def _figure_picture_source(self, figure: Figure | SubFigure) -> str | BytesIO:
         source = figure.image_source
         if isinstance(source, Path):
             return str(source)

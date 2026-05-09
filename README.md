@@ -93,6 +93,7 @@ Common translations:
 - LaTeX `\textbf{...}` / `\emph{...}` / `\texttt{...}` -> `bold(...)`, `italic(...)`, `code(...)`
 - Word highlight / strikethrough / manual line break -> `highlight(...)`, `strike(...)`, `line_break()`
 - LaTeX `\includegraphics` -> `Figure(path_or_matplotlib_figure, caption=...)`
+- LaTeX subfigures -> `SubFigure(...)` children inside a captioned `SubFigureGroup(...)`
 - LaTeX `tabular` or copied tables -> `Table(...)` or `Table.from_dataframe(...)`
 - LaTeX `\label` / `\ref` -> insert the captioned `Table` or `Figure` object directly inside `Paragraph(...)`
 - LaTeX `tcolorbox`-style report panels -> editable `Box(..., style=BoxStyle(...))`
@@ -128,6 +129,7 @@ The default behavior is intentionally conventional:
 - Use `TableCell(horizontal_alignment=..., vertical_alignment=...)` or table-wide `TableStyle(cell_horizontal_alignment=..., cell_vertical_alignment=...)` when a table needs Word-like cell alignment. Use `TableCellStyle(...)` on a `TableCell`, `row_styles`, `header_row_styles`, or `column_styles` when cells, rows, or columns need background color, text color, bold, or italic formatting.
 - Use `Table(split=True)` when a table should render in source order and may break across pages. Leave `split=False` when the table should stay together when possible; very long tables are automatically rendered as split repeated-header tables.
 - Use `Figure(...)` for image files or `savefig()`-compatible Python figure objects.
+- Use `SubFigureGroup(SubFigure(...), SubFigure(...), caption=...)` when related images should share one figure number and expose `(a)`, `(b)`, and similar subfigure references.
 - Use advanced `placement=...` hints on tables and figures only when needed. Supported values include `here`, `tbp`/`float`, `top`, `bottom`, and `page`.
 - Use `Box(...)` for callouts, evidence panels, and tcolorbox-like report sections that should stay editable in Word.
 - Use `Shape(...)`, `TextBox(...)`, and `ImageBox(...)` with `Document(..., page_items=[...])` for page-positioned overlays that do not move the body text. Use `placement="inline"` when the same objects should sit in the text flow like Word's inline drawing mode.
@@ -146,6 +148,7 @@ The default behavior is intentionally conventional:
 - automatic split-table rendering for long tables, with repeated headers where renderers support them
 - advanced table and figure placement hints for here/float/top/bottom/page-style workflows
 - figure support for both stored image files and `savefig()`-compatible Python objects
+- subfigure groups with automatic child labels and references such as `Figure 1(a)`
 - page-positioned `Shape.rect(...)`, `Shape.ellipse(...)`, `Shape.line(...)`, `TextBox(...)`, and `ImageBox(...)` objects with anchors to the page, the margin box, or an earlier named shape
 - inline drawing placement for `Shape(...)`, `TextBox(...)`, and `ImageBox(...)`, similar to using an image directly in the document flow
 - bibliography support through `CitationSource`, `CitationLibrary`, direct citation objects, and BibTeX import

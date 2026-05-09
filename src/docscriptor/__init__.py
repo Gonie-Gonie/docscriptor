@@ -18,7 +18,7 @@ from docscriptor.components.blocks import (
     Subsubsection,
 )
 from docscriptor.components.generated import CommentsPage, FigureList, ReferencesPage, TableList, TableOfContents, TocLevelStyle
-from docscriptor.components.media import Figure, Table, TableCell, TableCellStyle
+from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table, TableCell, TableCellStyle
 from docscriptor.components.markup import md, markup
 from docscriptor.components.people import Affiliation, Author, AuthorLayout
 from docscriptor.components.references import CitationLibrary, CitationSource
@@ -112,6 +112,8 @@ __all__ = [
     "ReferencesPage",
     "Section",
     "Shape",
+    "SubFigure",
+    "SubFigureGroup",
     "Subsection",
     "Subsubsection",
     "Table",

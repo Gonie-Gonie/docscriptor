@@ -44,6 +44,8 @@ from docscriptor import (
     ReferencesPage,
     Section,
     Shape,
+    SubFigure,
+    SubFigureGroup,
     Subsection,
     Subsubsection,
     Table,
@@ -157,6 +159,21 @@ figure = Figure(
     width=settings.get_text_width(0.75),
     height=8.0,
 )
+"""
+
+SUBFIGURE_SNIPPET = """from docscriptor import Paragraph, SubFigure, SubFigureGroup
+
+before = SubFigure("assets/before.png", caption="Before calibration.", width=6.0, unit="cm")
+after = SubFigure("assets/after.png", caption="After calibration.", width=6.0, unit="cm")
+
+comparison = SubFigureGroup(
+    before,
+    after,
+    caption="Calibration comparison.",
+    columns=2,
+)
+
+Paragraph("The post-calibration case is shown in ", after, ".")
 """
 
 POSITIONED_DRAWING_SNIPPET = """from docscriptor import Document, ImageBox, Paragraph, Shape, TextBox
@@ -961,6 +978,18 @@ def build_usage_guide_document() -> Document:
                 Paragraph(
                     "That block-reference behavior is especially helpful in late revisions. When the order of figures or tables changes, the text stays synchronized because references resolve against the indexed caption numbers rather than a hard-coded label."
                 ),
+                Paragraph(
+                    "When several related images should share one figure number, use ",
+                    code("SubFigure"),
+                    " children inside a ",
+                    code("SubFigureGroup"),
+                    ". Each child receives an automatic ",
+                    code("(a)"),
+                    ", ",
+                    code("(b)"),
+                    " label and can be referenced from prose."
+                ),
+                CodeBlock(SUBFIGURE_SNIPPET, language="python"),
             ),
             Section(
                 "Use figures to explain the authoring model, not just decorate it",

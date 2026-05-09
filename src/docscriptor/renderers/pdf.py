@@ -59,7 +59,7 @@ from docscriptor.components.inline import (
     Math,
     Text,
 )
-from docscriptor.components.media import Figure, Table, build_table_layout
+from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table, build_table_layout
 from docscriptor.components.people import AuthorTitleLine
 from docscriptor.components.positioning import (
     ImageBox,
@@ -550,6 +550,22 @@ class PdfRenderer:
         """Render a figure block into PDF flowables."""
 
         return self._render_figure(
+            block,
+            context.theme,
+            context.styles,
+            context.render_index,
+            context.unit,
+            in_box=context.in_box,
+        )
+
+    def render_subfigure_group(
+        self,
+        block: SubFigureGroup,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render a subfigure group into PDF flowables."""
+
+        return self._render_subfigure_group(
             block,
             context.theme,
             context.styles,
@@ -1374,23 +1390,7 @@ class PdfRenderer:
         in_box: bool = False,
     ) -> list[object]:
         placement = block.resolved_placement()
-        image = RLImage(self._figure_image_source(block))
-        image.hAlign = FLOWABLE_ALIGNMENTS[theme.figure_alignment]
-        resolved_width = block.width_in_inches(unit)
-        resolved_height = block.height_in_inches(unit)
-        if resolved_width is not None and resolved_height is not None:
-            image.drawWidth = resolved_width * inch
-            image.drawHeight = resolved_height * inch
-        elif resolved_width is not None:
-            target_width = resolved_width * inch
-            scale = target_width / image.drawWidth
-            image.drawWidth = target_width
-            image.drawHeight = image.drawHeight * scale
-        elif resolved_height is not None:
-            target_height = resolved_height * inch
-            scale = target_height / image.drawHeight
-            image.drawHeight = target_height
-            image.drawWidth = image.drawWidth * scale
+        image = self._figure_image(block, theme, unit)
 
         body_style = self._paragraph_style(ParagraphStyle(space_after=0), theme, styles["BodyText"])
         elements: list[object] = [image]
@@ -1442,7 +1442,148 @@ class PdfRenderer:
             elements.append(Spacer(1, 12))
         return self._apply_pdf_media_placement([KeepTogether(elements)], placement, in_box=in_box)
 
-    def _figure_image_source(self, block: Figure) -> str | BytesIO:
+    def _render_subfigure_group(
+        self,
+        block: SubFigureGroup,
+        theme: Theme,
+        styles: object,
+        render_index: RenderIndex,
+        unit: str,
+        *,
+        in_box: bool = False,
+    ) -> list[object]:
+        placement = block.resolved_placement()
+        body_style = self._paragraph_style(ParagraphStyle(space_after=0), theme, styles["BodyText"])
+        caption_style = RLParagraphStyle(
+            "FigureCaption",
+            parent=body_style,
+            fontSize=theme.caption_size(),
+            alignment=ALIGNMENTS[theme.caption_alignment],
+            spaceBefore=0,
+            spaceAfter=6,
+        )
+        subcaption_style = RLParagraphStyle(
+            "SubFigureCaption",
+            parent=body_style,
+            fontSize=theme.caption_size(),
+            alignment=ALIGNMENTS[theme.caption_alignment],
+            spaceBefore=2,
+            spaceAfter=0,
+        )
+
+        table_rows: list[list[object]] = []
+        for row_start in range(0, len(block.subfigures), block.columns):
+            row: list[object] = []
+            for column_index in range(block.columns):
+                index = row_start + column_index
+                if index >= len(block.subfigures):
+                    row.append(Spacer(1, 1))
+                    continue
+                subfigure = block.subfigures[index]
+                cell_elements: list[object] = [self._figure_image(subfigure, theme, unit)]
+                if subfigure.caption is not None:
+                    cell_elements.append(
+                        RLParagraph(
+                            self._anchor_markup(render_index.figure_anchor(subfigure))
+                            + self._inline_markup(
+                                self._subfigure_caption_fragments(
+                                    block.formatted_label_for_index(index),
+                                    subfigure.caption,
+                                ),
+                                theme,
+                                render_index,
+                                base_font_name=subcaption_style.fontName,
+                                base_size=subcaption_style.fontSize,
+                            ),
+                            subcaption_style,
+                        )
+                    )
+                else:
+                    anchor = render_index.figure_anchor(subfigure)
+                    if anchor is not None:
+                        cell_elements.insert(0, RLParagraph(self._anchor_markup(anchor), subcaption_style))
+                row.append(cell_elements)
+            table_rows.append(row)
+
+        gap_points = length_to_inches(block.column_gap, block.unit or unit) * inch
+        subfigure_table = RLTable(
+            table_rows,
+            hAlign=FLOWABLE_ALIGNMENTS[theme.figure_alignment],
+            repeatRows=0,
+        )
+        subfigure_table.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), gap_points / 2),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), gap_points / 2),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ]
+            )
+        )
+
+        elements: list[object] = []
+        if block.caption is not None and theme.figure_caption_position == "above":
+            elements.append(
+                RLParagraph(
+                    self._anchor_markup(render_index.figure_anchor(block))
+                    + self._inline_markup(
+                        self._caption_fragments(theme.figure_label, render_index.figure_number(block), block.caption),
+                        theme,
+                        render_index,
+                        base_font_name=caption_style.fontName,
+                        base_size=caption_style.fontSize,
+                    ),
+                    caption_style,
+                )
+            )
+        elements.append(subfigure_table)
+        if block.caption is not None and theme.figure_caption_position == "below":
+            below_caption_style = RLParagraphStyle(
+                "FigureCaptionBelow",
+                parent=caption_style,
+                spaceBefore=6,
+                spaceAfter=0 if in_box else 12,
+            )
+            elements.append(
+                RLParagraph(
+                    self._anchor_markup(render_index.figure_anchor(block))
+                    + self._inline_markup(
+                        self._caption_fragments(theme.figure_label, render_index.figure_number(block), block.caption),
+                        theme,
+                        render_index,
+                        base_font_name=below_caption_style.fontName,
+                        base_size=below_caption_style.fontSize,
+                    ),
+                    below_caption_style,
+                )
+            )
+        elif not in_box:
+            elements.append(Spacer(1, 12))
+        return self._apply_pdf_media_placement([KeepTogether(elements)], placement, in_box=in_box)
+
+    def _figure_image(self, block: Figure | SubFigure, theme: Theme, unit: str) -> RLImage:
+        image = RLImage(self._figure_image_source(block))
+        image.hAlign = FLOWABLE_ALIGNMENTS[theme.figure_alignment]
+        resolved_width = block.width_in_inches(unit)
+        resolved_height = block.height_in_inches(unit)
+        if resolved_width is not None and resolved_height is not None:
+            image.drawWidth = resolved_width * inch
+            image.drawHeight = resolved_height * inch
+        elif resolved_width is not None:
+            target_width = resolved_width * inch
+            scale = target_width / image.drawWidth
+            image.drawWidth = target_width
+            image.drawHeight = image.drawHeight * scale
+        elif resolved_height is not None:
+            target_height = resolved_height * inch
+            scale = target_height / image.drawHeight
+            image.drawHeight = target_height
+            image.drawWidth = image.drawWidth * scale
+        return image
+
+    def _figure_image_source(self, block: Figure | SubFigure) -> str | BytesIO:
         source = block.image_source
         if isinstance(source, Path):
             return str(source)
@@ -1755,14 +1896,19 @@ class PdfRenderer:
 
     def _block_reference_anchor(
         self,
-        target: Table | Figure,
+        target: Table | Figure | SubFigure | SubFigureGroup,
         render_index: RenderIndex,
     ) -> str | None:
         if isinstance(target, Table):
             return render_index.table_anchor(target)
         return render_index.figure_anchor(target)
 
-    def _resolve_block_reference(self, target: Table | Figure, theme: Theme, render_index: RenderIndex) -> str:
+    def _resolve_block_reference(
+        self,
+        target: Table | Figure | SubFigure | SubFigureGroup,
+        theme: Theme,
+        render_index: RenderIndex,
+    ) -> str:
         if isinstance(target, Table):
             number = render_index.table_number(target)
             if number is None:
@@ -1772,12 +1918,20 @@ class PdfRenderer:
         number = render_index.figure_number(target)
         if number is None:
             raise DocscriptorError("Figure references require the target figure to have a caption and be included in the document")
+        if isinstance(target, SubFigure):
+            label = render_index.subfigure_label(target)
+            if label is None:
+                raise DocscriptorError("Subfigure references require the target subfigure to belong to a captioned SubFigureGroup")
+            return f"{theme.figure_label} {number}({label})"
         return f"{theme.figure_label} {number}"
 
     def _caption_fragments(self, label: str, number: int | None, caption: Paragraph) -> list[Text]:
         if number is None:
             return caption.content
         return [Text(f"{label} {number}. ")] + caption.content
+
+    def _subfigure_caption_fragments(self, label: str, caption: Paragraph) -> list[Text]:
+        return [Text(f"{label} ")] + caption.content
 
     def _render_caption_list(
         self,

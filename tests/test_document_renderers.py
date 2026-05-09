@@ -52,6 +52,8 @@ from docscriptor import (
     ReferencesPage,
     Section,
     Shape,
+    SubFigure,
+    SubFigureGroup,
     Subsection,
     Subsubsection,
     Table,
@@ -1145,6 +1147,65 @@ def test_table_cell_row_and_column_styles_render_to_all_outputs(tmp_path: Path) 
     assert "color: #7F1D1D" in html_text
     assert "font-weight: 700" in html_text
     assert "font-style: italic" in html_text
+
+
+def test_subfigure_group_renders_labels_and_references(tmp_path: Path) -> None:
+    image_path = tmp_path / "subfigure.png"
+    _write_sample_image(image_path)
+    baseline = SubFigure(image_path, caption="Baseline output.", width=1.0)
+    treatment = SubFigure(image_path, caption="Treatment output.", width=1.0)
+    group = SubFigureGroup(
+        baseline,
+        treatment,
+        caption="Paired outputs.",
+        columns=2,
+        column_gap=0.2,
+    )
+    document = Document(
+        "Subfigure Test",
+        Paragraph("Compare ", baseline, " with ", treatment, " in ", group, "."),
+        group,
+    )
+
+    docx_path = tmp_path / "subfigure.docx"
+    pdf_path = tmp_path / "subfigure.pdf"
+    html_path = tmp_path / "subfigure.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_document = WordDocument(docx_path)
+    paragraph_text = "\n".join(paragraph.text for paragraph in word_document.paragraphs)
+    table_text = "\n".join(
+        paragraph.text
+        for table in word_document.tables
+        for row in table.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+    )
+    assert "Compare Figure 1(a) with Figure 1(b) in Figure 1." in paragraph_text
+    assert "(a) Baseline output." in table_text
+    assert "(b) Treatment output." in table_text
+    assert "Figure 1. Paired outputs." in paragraph_text
+    assert len(word_document.inline_shapes) == 2
+
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    assert "Compare Figure 1(a) with Figure 1(b) in Figure 1." in pdf_text
+    assert "(a) Baseline output." in pdf_text
+    assert "(b) Treatment output." in pdf_text
+    assert "Figure 1. Paired outputs." in pdf_text
+
+    html_text = html_path.read_text(encoding="utf-8")
+    normalized_html_text = _normalized_html_text(html_path)
+    assert "Compare Figure 1(a) with Figure 1(b) in Figure 1" in normalized_html_text
+    assert "(a) Baseline output." in normalized_html_text
+    assert "(b) Treatment output." in normalized_html_text
+    assert "Figure 1. Paired outputs." in normalized_html_text
+    assert 'href="#figure_1_a"' in html_text
+    assert 'href="#figure_1_b"' in html_text
+    assert 'id="figure_1_a"' in html_text
+    assert 'id="figure_1_b"' in html_text
+    assert html_text.count("data:image/png;base64,") == 2
 
 
 def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Path) -> None:

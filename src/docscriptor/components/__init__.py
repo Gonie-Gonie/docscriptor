@@ -36,6 +36,8 @@ _EXPORTS = {
     "ReferencesPage": "docscriptor.components.generated",
     "Section": "docscriptor.components.blocks",
     "Shape": "docscriptor.components.positioning",
+    "SubFigure": "docscriptor.components.media",
+    "SubFigureGroup": "docscriptor.components.media",
     "Subsection": "docscriptor.components.blocks",
     "Subsubsection": "docscriptor.components.blocks",
     "Table": "docscriptor.components.media",

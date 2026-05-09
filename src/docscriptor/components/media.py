@@ -10,6 +10,7 @@ from docscriptor.components.base import Block
 from docscriptor.components.blocks import CellInput, Paragraph, coerce_cell
 from docscriptor.core import (
     PathLike,
+    format_counter_value,
     length_to_inches,
     normalize_color,
     normalize_length_unit,
@@ -775,9 +776,149 @@ class Figure(Block):
         return renderer.render_figure(self, context)
 
 
+@dataclass(slots=True, init=False)
+class SubFigure:
+    """A child image inside a numbered subfigure group."""
+
+    image_source: object
+    caption: Paragraph | None
+    width: float | None
+    height: float | None
+    unit: str | None
+    identifier: str | None
+    format: str
+    dpi: int | None
+    label: str | None
+
+    def __init__(
+        self,
+        image_source: PathLike | object,
+        caption: CellInput | None = None,
+        width: float | None = None,
+        height: float | None = None,
+        identifier: str | None = None,
+        *,
+        unit: str | None = None,
+        format: str = "png",
+        dpi: int | None = 150,
+        label: str | None = None,
+    ) -> None:
+        self.image_source = (
+            Path(image_source)
+            if isinstance(image_source, (str, Path))
+            else image_source
+        )
+        self.caption = coerce_cell(caption) if caption is not None else None
+        self.width = width
+        self.height = height
+        self.unit = normalize_length_unit(unit) if unit is not None else None
+        self.identifier = identifier
+        self.format = format
+        self.dpi = dpi
+        self.label = label
+
+    def width_in_inches(self, default_unit: str) -> float | None:
+        """Return subfigure width converted through the subfigure or document unit."""
+
+        if self.width is None:
+            return None
+        return length_to_inches(self.width, self.unit or default_unit)
+
+    def height_in_inches(self, default_unit: str) -> float | None:
+        """Return subfigure height converted through the subfigure or document unit."""
+
+        if self.height is None:
+            return None
+        return length_to_inches(self.height, self.unit or default_unit)
+
+
+@dataclass(slots=True, init=False)
+class SubFigureGroup(Block):
+    """A numbered figure composed of labeled child figures."""
+
+    subfigures: list[SubFigure]
+    caption: Paragraph | None
+    columns: int
+    column_gap: float
+    unit: str | None
+    identifier: str | None
+    placement: MediaPlacement
+    label_format: str
+
+    def __init__(
+        self,
+        *subfigures: SubFigure,
+        caption: CellInput | None = None,
+        columns: int = 2,
+        column_gap: float = 0.18,
+        unit: str | None = None,
+        identifier: str | None = None,
+        placement: str | None = None,
+        label_format: str = "({label})",
+    ) -> None:
+        if not subfigures:
+            raise ValueError("SubFigureGroup requires at least one SubFigure")
+        if columns < 1:
+            raise ValueError("SubFigureGroup.columns must be >= 1")
+        if column_gap < 0:
+            raise ValueError("SubFigureGroup.column_gap must be >= 0")
+        if "{label}" not in label_format:
+            raise ValueError("SubFigureGroup.label_format must contain '{label}'")
+        self.subfigures = list(subfigures)
+        self.caption = coerce_cell(caption) if caption is not None else None
+        self.columns = columns
+        self.column_gap = column_gap
+        self.unit = normalize_length_unit(unit) if unit is not None else None
+        self.identifier = identifier
+        self.placement = normalize_media_placement(placement)
+        self.label_format = label_format
+
+    def label_for_index(self, index: int) -> str:
+        """Return the raw subfigure label for a zero-based child index."""
+
+        subfigure = self.subfigures[index]
+        return subfigure.label or format_counter_value(index + 1, "lower-alpha")
+
+    def formatted_label_for_index(self, index: int) -> str:
+        """Return the display label for a zero-based child index."""
+
+        return self.label_format.format(label=self.label_for_index(index))
+
+    def resolved_placement(self) -> MediaPlacement:
+        """Return the effective placement for this figure group."""
+
+        if self.placement == "auto":
+            return "float"
+        return self.placement
+
+    def render_to_docx(
+        self,
+        renderer: object,
+        container: object,
+        context: DocxRenderContext,
+    ) -> None:
+        renderer.render_subfigure_group(container, self, context)
+
+    def render_to_pdf(
+        self,
+        renderer: object,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        return renderer.render_subfigure_group(self, context)
+
+    def render_to_html(
+        self,
+        renderer: object,
+        context: HtmlRenderContext,
+    ) -> str:
+        return renderer.render_subfigure_group(self, context)
+
+
 __all__ = [
     "Figure",
     "MediaPlacement",
+    "SubFigure",
+    "SubFigureGroup",
     "Table",
     "TableCell",
     "TableCellInput",

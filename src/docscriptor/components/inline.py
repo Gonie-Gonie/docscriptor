@@ -181,7 +181,8 @@ class BlockReference(Text):
     def plain_text(self) -> str:
         """Return a placeholder reference string before numbering is resolved."""
 
-        label = "Figure" if type(self.target).__name__ == "Figure" else "Table"
+        target_name = type(self.target).__name__
+        label = "Figure" if target_name in {"Figure", "SubFigure", "SubFigureGroup"} else "Table"
         return f"{label} ?"
 
 
@@ -496,7 +497,7 @@ def coerce_inlines(values: Iterable[InlineInput]) -> list[Text]:
 
 def _is_block_reference(value: object) -> bool:
     block_name = type(value).__name__
-    return block_name in {"Table", "Figure"}
+    return block_name in {"Table", "Figure", "SubFigure", "SubFigureGroup"}
 
 
 def _is_positioned_inline(value: object) -> bool:

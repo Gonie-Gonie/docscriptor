@@ -36,7 +36,7 @@ from docscriptor.components.inline import (
     Math,
     Text,
 )
-from docscriptor.components.media import Figure, Table, TablePlacement, build_table_layout
+from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table, TablePlacement, build_table_layout
 from docscriptor.components.people import AuthorTitleLine
 from docscriptor.components.positioning import (
     ImageBox,
@@ -421,6 +421,91 @@ class HtmlRenderer:
             f'<figure class="docscriptor-figure docscriptor-placement-{placement}" '
             f'style="{self._figure_css(context.theme, in_box=context.in_box)} {self._media_placement_css(placement, in_box=context.in_box)}">'
             + "".join(content_parts)
+            + "</figure>"
+        )
+
+    def render_subfigure_group(self, block: SubFigureGroup, context: HtmlRenderContext) -> str:
+        """Render a subfigure group into HTML."""
+
+        placement = block.resolved_placement()
+        caption_html = (
+            self._caption_html(
+                block.caption,
+                label=context.theme.figure_label,
+                number=context.render_index.figure_number(block),
+                anchor=context.render_index.figure_anchor(block),
+                context=context,
+                kind="figure",
+            )
+            if block.caption is not None
+            else ""
+        )
+        subfigures = "".join(
+            self._subfigure_html(subfigure, index, block, context)
+            for index, subfigure in enumerate(block.subfigures)
+        )
+        grid_style = (
+            f"display: grid; grid-template-columns: repeat({block.columns}, minmax(0, 1fr)); "
+            f"gap: {length_to_inches(block.column_gap, block.unit or context.unit):.2f}in;"
+        )
+        content_parts = []
+        if block.caption is not None and context.theme.figure_caption_position == "above":
+            content_parts.append(caption_html)
+        content_parts.append(f'<div class="docscriptor-subfigure-grid" style="{grid_style}">{subfigures}</div>')
+        if block.caption is not None and context.theme.figure_caption_position == "below":
+            content_parts.append(caption_html)
+        return (
+            f'<figure class="docscriptor-figure docscriptor-subfigure-group docscriptor-placement-{placement}" '
+            f'style="{self._figure_css(context.theme, in_box=context.in_box)} {self._media_placement_css(placement, in_box=context.in_box)}">'
+            + "".join(content_parts)
+            + "</figure>"
+        )
+
+    def _subfigure_html(
+        self,
+        subfigure: SubFigure,
+        index: int,
+        group: SubFigureGroup,
+        context: HtmlRenderContext,
+    ) -> str:
+        image_styles = []
+        resolved_width = subfigure.width_in_inches(context.unit)
+        resolved_height = subfigure.height_in_inches(context.unit)
+        if resolved_width is not None:
+            image_styles.append(f"width: {resolved_width:.2f}in")
+            image_styles.append("max-width: 100%")
+        if resolved_height is not None:
+            image_styles.append(f"height: {resolved_height:.2f}in")
+            image_styles.append("max-height: 100%")
+        if resolved_width is None and resolved_height is not None:
+            image_styles.append("width: auto")
+        if resolved_height is None:
+            image_styles.append("height: auto")
+        image_style = f' style="{"; ".join(image_styles)};"' if image_styles else ""
+        anchor = context.render_index.figure_anchor(subfigure)
+        caption_html = ""
+        container_anchor = f' id="{escape(anchor)}"' if anchor and subfigure.caption is None else ""
+        if subfigure.caption is not None:
+            anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
+            caption_html = (
+                f'<figcaption{anchor_attr} class="docscriptor-caption docscriptor-subfigure-caption" '
+                f'style="text-align: {context.theme.caption_alignment}; font-size: {context.theme.caption_size():.1f}pt;">'
+                + self._inline_html(
+                    self._subfigure_caption_fragments(
+                        group.formatted_label_for_index(index),
+                        subfigure.caption,
+                    ),
+                    context.theme,
+                    context.render_index,
+                    base_size=context.theme.caption_size(),
+                )
+                + "</figcaption>"
+            )
+        alt_text = subfigure.caption.plain_text() if subfigure.caption is not None else "Subfigure"
+        return (
+            f'<figure{container_anchor} class="docscriptor-subfigure" style="margin: 0; text-align: {context.theme.figure_alignment};">'
+            f'<img class="docscriptor-figure-image" src="{self._figure_src(subfigure)}" alt="{escape(alt_text)}"{image_style} />'
+            + caption_html
             + "</figure>"
         )
 
@@ -1240,7 +1325,7 @@ class HtmlRenderer:
 
     def _resolve_block_reference(
         self,
-        target: Table | Figure,
+        target: Table | Figure | SubFigure | SubFigureGroup,
         theme: Theme,
         render_index: RenderIndex,
     ) -> str:
@@ -1257,18 +1342,25 @@ class HtmlRenderer:
             raise DocscriptorError(
                 "Figure references require the target figure to have a caption and be included in the document"
             )
+        if isinstance(target, SubFigure):
+            label = render_index.subfigure_label(target)
+            if label is None:
+                raise DocscriptorError(
+                    "Subfigure references require the target subfigure to belong to a captioned SubFigureGroup"
+                )
+            return f"{theme.figure_label} {number}({label})"
         return f"{theme.figure_label} {number}"
 
     def _block_reference_anchor(
         self,
-        target: Table | Figure,
+        target: Table | Figure | SubFigure | SubFigureGroup,
         render_index: RenderIndex,
     ) -> str | None:
         if isinstance(target, Table):
             return render_index.table_anchor(target)
         return render_index.figure_anchor(target)
 
-    def _figure_src(self, figure: Figure) -> str:
+    def _figure_src(self, figure: Figure | SubFigure) -> str:
         source = figure.image_source
         if isinstance(source, Path):
             image_bytes = source.read_bytes()
@@ -1302,6 +1394,9 @@ class HtmlRenderer:
         if number is None:
             return caption.content
         return [Text(f"{label} {number}. ")] + caption.content
+
+    def _subfigure_caption_fragments(self, label: str, caption: Paragraph) -> list[Text]:
+        return [Text(f"{label} ")] + caption.content
 
     def _heading_fragments(
         self,
