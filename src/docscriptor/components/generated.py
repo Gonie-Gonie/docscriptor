@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Mapping, TYPE_CHECKING
 
 from docscriptor.components.base import Block
 from docscriptor.components.inline import InlineInput, Text, coerce_inlines
@@ -22,6 +22,17 @@ class TocLevelStyle:
     font_size_delta: float | None = None
     bold: bool | None = None
     italic: bool | None = None
+
+
+TocLevelStyleInput = TocLevelStyle | Mapping[str, object]
+
+
+def coerce_toc_level_style(value: TocLevelStyleInput) -> TocLevelStyle:
+    if isinstance(value, TocLevelStyle):
+        return value
+    if isinstance(value, Mapping):
+        return TocLevelStyle(**dict(value))
+    raise TypeError(f"Unsupported TOC level style: {type(value)!r}")
 
 
 @dataclass(slots=True, init=False)
@@ -201,7 +212,7 @@ class TableOfContents(Block):
         show_page_numbers: bool = True,
         leader: str = ".",
         max_level: int | None = None,
-        level_styles: dict[int, TocLevelStyle] | None = None,
+        level_styles: Mapping[int, TocLevelStyleInput] | None = None,
     ) -> None:
         if max_level is not None and max_level < 0:
             raise ValueError("TableOfContents.max_level must be >= 0")
@@ -209,7 +220,10 @@ class TableOfContents(Block):
         self.show_page_numbers = show_page_numbers
         self.leader = leader
         self.max_level = max_level
-        self.level_styles = dict(level_styles or {})
+        self.level_styles = {
+            int(level): coerce_toc_level_style(style)
+            for level, style in (level_styles or {}).items()
+        }
 
     def includes_level(self, level: int) -> bool:
         return self.max_level is None or level <= self.max_level
@@ -247,5 +261,7 @@ __all__ = [
     "ReferencesPage",
     "TableList",
     "TableOfContents",
+    "TocLevelStyleInput",
     "TocLevelStyle",
+    "coerce_toc_level_style",
 ]

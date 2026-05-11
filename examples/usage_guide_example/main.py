@@ -22,9 +22,11 @@ from docscriptor import (
     Affiliation,
     Author,
     AuthorLayout,
+    BlockOptions,
     Box,
     BoxStyle,
     BulletList,
+    CaptionOptions,
     Chapter,
     CitationLibrary,
     CitationSource,
@@ -36,8 +38,10 @@ from docscriptor import (
     Figure,
     FigureList,
     Footnote,
+    GeneratedPageOptions,
     ImageBox,
     NumberedList,
+    PageNumberOptions,
     PageMargins,
     PageSize,
     Paragraph,
@@ -58,7 +62,9 @@ from docscriptor import (
     Text,
     TextBox,
     Theme,
+    TitleMatterOptions,
     TocLevelStyle,
+    TypographyOptions,
     badge,
     bold,
     code,
@@ -263,6 +269,30 @@ contents = TableOfContents(
         2: TocLevelStyle(bold=False, space_before=3, space_after=3),
         3: TocLevelStyle(indent=0.48, font_size_delta=-0.2),
     },
+)
+"""
+
+CONFIGURATION_OPTIONS_SNIPPET = """from docscriptor import (
+    BlockOptions, CaptionOptions, DocumentSettings, PageNumberOptions,
+    Paragraph, Table, Theme, TypographyOptions,
+)
+
+settings = DocumentSettings(
+    unit="cm",
+    theme=Theme(
+        TypographyOptions(body_font_name="Arial", body_font_size=10.5),
+        CaptionOptions(figure_label="Fig."),
+        PageNumberOptions(show_page_numbers=True, page_number_format="p. {page}"),
+        BlockOptions(paragraph_alignment="left"),
+    ),
+)
+
+paragraph = Paragraph("Right-aligned note.", alignment="right", space_after=6)
+table = Table(
+    headers=["Metric", "Value"],
+    rows=[["Latency", "14 ms"]],
+    header_background_color="#E8EDF5",
+    cell_horizontal_alignment="center",
 )
 """
 
@@ -776,6 +806,46 @@ def build_usage_guide_document() -> Document:
         caption="Table-of-contents defaults and customization options.",
         column_widths=[1.6, 2.7, 2.7],
     )
+    settings_options_table = Table(
+        headers=["Object", "Options", "Scope"],
+        rows=[
+            ["DocumentSettings", "author, summary, subtitle, authors, author_layout, cover_page", "Document metadata and title matter."],
+            ["DocumentSettings", "unit, page_size, page_margins, page_items", "Page geometry and page-positioned overlays."],
+            ["DocumentSettings", "theme", "Document-wide renderer defaults shared by DOCX, PDF, and HTML."],
+            ["PageSize", "width, height, unit", "Physical page box."],
+            ["PageMargins", "top, right, bottom, left, unit; all(...); symmetric(...)", "Printable area around document content."],
+            ["AuthorLayout", "mode, name_separator, show_affiliations, show_details", "How structured author metadata is displayed."],
+        ],
+        caption="Document-level configuration options.",
+        column_widths=[1.6, 3.2, 2.3],
+    )
+    theme_options_table = Table(
+        headers=["Theme group", "Options", "Use it for"],
+        rows=[
+            ["TypographyOptions", "body_font_name, monospace_font_name, title_font_size, body_font_size, heading_sizes, caption_font_size", "Fonts and type scale."],
+            ["CaptionOptions", "caption_alignment, table_caption_position, figure_caption_position, table_label, figure_label, caption/reference labels", "Caption placement and localized labels."],
+            ["GeneratedPageOptions", "contents/list/comments/footnotes/references titles, generated_section_level, generated_page_breaks", "Generated pages and their heading level."],
+            ["PageNumberOptions", "show_page_numbers, page_number_alignment, page_number_format, front/main matter formats, page_number_font_size", "Footer page labels."],
+            ["TitleMatterOptions", "title_alignment, subtitle_alignment, author_alignment, affiliation_alignment, author_detail_alignment", "Title-page and metadata alignment."],
+            ["BlockOptions", "page_background_color, paragraph_alignment, table/figure/box alignment, footnote_placement, list styles, heading_numbering", "Document-wide defaults that individual blocks can override."],
+        ],
+        caption="Grouped Theme options; pass them positionally to Theme(...) or override the same names directly.",
+        column_widths=[1.7, 3.7, 1.8],
+    )
+    block_options_table = Table(
+        headers=["Block", "Direct kwargs", "Style object when needed"],
+        rows=[
+            ["Paragraph, CodeBlock, Equation", "alignment, space_after, leading, left_indent, right_indent, first_line_indent, unit", "ParagraphStyle for reusable paragraph rhythm."],
+            ["BulletList, NumberedList", "marker_format, bullet, prefix, suffix, start, indent, marker_gap", "ListStyle for repeated list conventions."],
+            ["Box", "border_color, background_color, title colors, border_width, padding, per-side padding, space_after, width, unit, alignment", "BoxStyle for shared callout or report-panel designs."],
+            ["Table", "header/body/alternate colors, border_color, cell/header alignment, cell_padding", "TableStyle plus row_styles, column_styles, header_row_styles."],
+            ["TableCell", "colspan, rowspan, background_color, text_color, bold, italic, horizontal_alignment, vertical_alignment", "TableCellStyle for reusable row, column, or cell styling."],
+            ["TableOfContents", "show_page_numbers, leader, max_level, level_styles", "TocLevelStyle per heading level; dictionaries are accepted for quick overrides."],
+            ["Figure, SubFigure, SubFigureGroup", "width, height, unit, placement, dpi, columns, column_gap, label_format", "Use caption Paragraphs when caption text needs inline styling."],
+        ],
+        caption="Block-level option scope from quick kwargs to reusable style objects.",
+        column_widths=[1.8, 3.6, 2.0],
+    )
     figure_sizing_table = Table(
         headers=["Figure intent", "Pattern", "Renderer behavior"],
         rows=[
@@ -1186,7 +1256,28 @@ def build_usage_guide_document() -> Document:
                 Paragraph(
                     "Theme is where renderer-neutral layout defaults live: heading numbering, list markers, page numbers, caption positions, caption/reference labels, author alignment, and footnote placement strategy. The goal is to keep document-wide choices together so a document does not accumulate hidden style decisions."
                 ),
+                Paragraph(
+                    "The common override path is intentionally shallow: pass a direct keyword argument to the block when the choice is local, use a reusable style object when the same visual treatment repeats, and use a grouped ",
+                    code("Theme"),
+                    " option object when the default should apply across the whole document."
+                ),
                 renderer_rules_table,
+            ),
+            Section(
+                "Configuration option reference",
+                Paragraph(
+                    "Most author-facing options are available as ordinary keyword arguments. Style objects remain available for reusable patterns, and grouped ",
+                    code("Theme"),
+                    " option objects keep document-wide defaults readable when many settings change together. Pass those option objects positionally to ",
+                    code("Theme"),
+                    ", and use direct ",
+                    code("Theme(...)"),
+                    " keyword arguments for one-off overrides."
+                ),
+                settings_options_table,
+                theme_options_table,
+                block_options_table,
+                CodeBlock(CONFIGURATION_OPTIONS_SNIPPET, language="python"),
             ),
             Section(
                 "Page size, margins, and explicit breaks",

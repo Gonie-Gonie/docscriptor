@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Sequence
 
 from docscriptor.core import (
@@ -14,6 +14,71 @@ from docscriptor.core import (
     normalize_text_alignment,
     normalize_vertical_alignment,
 )
+
+_UNSET = object()
+
+
+def _style_with_overrides(
+    style: object | None,
+    style_type: type,
+    overrides: dict[str, object | None],
+) -> object:
+    values = {name: value for name, value in overrides.items() if value is not None}
+    if style is None:
+        return style_type(**values)
+    if not values:
+        return style
+    merged = {style_field.name: getattr(style, style_field.name) for style_field in fields(style_type)}
+    merged.update(values)
+    return style_type(**merged)
+
+
+def paragraph_style_with_overrides(
+    style: ParagraphStyle | None,
+    **overrides: object | None,
+) -> ParagraphStyle:
+    """Return a paragraph style with direct keyword overrides applied."""
+
+    return _style_with_overrides(style, ParagraphStyle, overrides)  # type: ignore[return-value]
+
+
+def box_style_with_overrides(
+    style: BoxStyle | None,
+    **overrides: object | None,
+) -> BoxStyle:
+    """Return a box style with direct keyword overrides applied."""
+
+    return _style_with_overrides(style, BoxStyle, overrides)  # type: ignore[return-value]
+
+
+def table_style_with_overrides(
+    style: TableStyle | None,
+    **overrides: object | None,
+) -> TableStyle:
+    """Return a table style with direct keyword overrides applied."""
+
+    return _style_with_overrides(style, TableStyle, overrides)  # type: ignore[return-value]
+
+
+def list_style_with_overrides(
+    style: ListStyle | None,
+    *,
+    ordered: bool,
+    **overrides: object | None,
+) -> ListStyle | None:
+    """Return a concrete list style when direct list keyword overrides are used."""
+
+    values = {name: value for name, value in overrides.items() if value is not None}
+    if style is None and not values:
+        return None
+    base = style or (
+        ListStyle()
+        if ordered
+        else ListStyle(marker_format="bullet", suffix="")
+    )
+    merged = {style_field.name: getattr(base, style_field.name) for style_field in fields(ListStyle)}
+    merged.update(values)
+    return ListStyle(**merged)
 
 
 @dataclass(slots=True)
@@ -292,9 +357,99 @@ class TableStyle:
 
 
 @dataclass(slots=True)
+class TypographyOptions:
+    """Grouped document-wide font and size defaults for ``Theme``."""
+
+    body_font_name: str = "Times New Roman"
+    monospace_font_name: str = "Courier New"
+    title_font_size: float = 22.0
+    body_font_size: float = 11.0
+    heading_sizes: tuple[float, ...] = (18.0, 15.0, 13.0, 11.5)
+    caption_font_size: float | None = None
+
+
+@dataclass(slots=True)
+class CaptionOptions:
+    """Grouped caption labels, reference labels, positions, and alignment."""
+
+    caption_alignment: str = "center"
+    table_caption_position: str = "above"
+    figure_caption_position: str = "below"
+    table_label: str = "Table"
+    figure_label: str = "Figure"
+    table_caption_label: str | None = None
+    figure_caption_label: str | None = None
+    table_reference_label: str | None = None
+    figure_reference_label: str | None = None
+
+
+@dataclass(slots=True)
+class GeneratedPageOptions:
+    """Grouped generated-page titles and generated-page layout defaults."""
+
+    list_of_tables_title: str = "List of Tables"
+    list_of_figures_title: str = "List of Figures"
+    comments_title: str = "Comments"
+    footnotes_title: str = "Footnotes"
+    references_title: str = "References"
+    contents_title: str = "Contents"
+    generated_section_level: int = 2
+    generated_page_breaks: bool = True
+
+
+@dataclass(slots=True)
+class PageNumberOptions:
+    """Grouped footer page-number defaults."""
+
+    show_page_numbers: bool = False
+    page_number_alignment: str = "center"
+    page_number_format: str = "{page}"
+    front_matter_page_number_format: str = "lower-roman"
+    main_matter_page_number_format: str = "decimal"
+    page_number_font_size: float = 9.0
+
+
+@dataclass(slots=True)
+class TitleMatterOptions:
+    """Grouped title, subtitle, author, and affiliation alignment defaults."""
+
+    title_alignment: str = "center"
+    subtitle_alignment: str = "center"
+    author_alignment: str = "center"
+    affiliation_alignment: str = "center"
+    author_detail_alignment: str = "center"
+
+
+@dataclass(slots=True)
+class BlockOptions:
+    """Grouped block-level document defaults for ``Theme``."""
+
+    page_background_color: str = "FFFFFF"
+    paragraph_alignment: str = "justify"
+    table_alignment: str = "center"
+    figure_alignment: str = "center"
+    box_alignment: str = "center"
+    part_label: str = "Part"
+    part_number_format: str = "upper-roman"
+    footnote_placement: str = "page"
+    auto_footnotes_page: bool = True
+    heading_numbering: HeadingNumbering = field(default_factory=HeadingNumbering)
+    bullet_list_style: ListStyle = field(
+        default_factory=lambda: ListStyle(marker_format="bullet", suffix="")
+    )
+    numbered_list_style: ListStyle = field(default_factory=ListStyle)
+
+
+@dataclass(slots=True, init=False)
 class Theme:
     """Document-wide renderer defaults."""
 
+    typography: TypographyOptions
+    captions: CaptionOptions
+    generated_pages: GeneratedPageOptions
+    page_numbers: PageNumberOptions
+    title_matter: TitleMatterOptions
+    blocks: BlockOptions
     page_background_color: str = "FFFFFF"
     body_font_name: str = "Times New Roman"
     monospace_font_name: str = "Courier New"
@@ -343,6 +498,187 @@ class Theme:
         default_factory=lambda: ListStyle(marker_format="bullet", suffix="")
     )
     numbered_list_style: ListStyle = field(default_factory=ListStyle)
+
+    def __init__(
+        self,
+        *options: object,
+        typography: TypographyOptions | None = None,
+        captions: CaptionOptions | None = None,
+        generated_pages: GeneratedPageOptions | None = None,
+        page_numbers: PageNumberOptions | None = None,
+        title_matter: TitleMatterOptions | None = None,
+        blocks: BlockOptions | None = None,
+        page_background_color: str | object = _UNSET,
+        body_font_name: str | object = _UNSET,
+        monospace_font_name: str | object = _UNSET,
+        title_font_size: float | object = _UNSET,
+        body_font_size: float | object = _UNSET,
+        paragraph_alignment: str | object = _UNSET,
+        heading_sizes: tuple[float, ...] | object = _UNSET,
+        caption_font_size: float | None | object = _UNSET,
+        caption_alignment: str | object = _UNSET,
+        table_alignment: str | object = _UNSET,
+        figure_alignment: str | object = _UNSET,
+        box_alignment: str | object = _UNSET,
+        table_caption_position: str | object = _UNSET,
+        figure_caption_position: str | object = _UNSET,
+        table_label: str | object = _UNSET,
+        figure_label: str | object = _UNSET,
+        part_label: str | object = _UNSET,
+        part_number_format: str | object = _UNSET,
+        table_caption_label: str | None | object = _UNSET,
+        figure_caption_label: str | None | object = _UNSET,
+        table_reference_label: str | None | object = _UNSET,
+        figure_reference_label: str | None | object = _UNSET,
+        list_of_tables_title: str | object = _UNSET,
+        list_of_figures_title: str | object = _UNSET,
+        comments_title: str | object = _UNSET,
+        footnotes_title: str | object = _UNSET,
+        references_title: str | object = _UNSET,
+        contents_title: str | object = _UNSET,
+        generated_section_level: int | object = _UNSET,
+        generated_page_breaks: bool | object = _UNSET,
+        footnote_placement: str | object = _UNSET,
+        auto_footnotes_page: bool | object = _UNSET,
+        show_page_numbers: bool | object = _UNSET,
+        page_number_alignment: str | object = _UNSET,
+        page_number_format: str | object = _UNSET,
+        front_matter_page_number_format: str | object = _UNSET,
+        main_matter_page_number_format: str | object = _UNSET,
+        page_number_font_size: float | object = _UNSET,
+        title_alignment: str | object = _UNSET,
+        subtitle_alignment: str | object = _UNSET,
+        author_alignment: str | object = _UNSET,
+        affiliation_alignment: str | object = _UNSET,
+        author_detail_alignment: str | object = _UNSET,
+        heading_numbering: HeadingNumbering | object = _UNSET,
+        bullet_list_style: ListStyle | object = _UNSET,
+        numbered_list_style: ListStyle | object = _UNSET,
+    ) -> None:
+        option_groups = {
+            TypographyOptions: None,
+            CaptionOptions: None,
+            GeneratedPageOptions: None,
+            PageNumberOptions: None,
+            TitleMatterOptions: None,
+            BlockOptions: None,
+        }
+        for option in options:
+            matching_type = next(
+                (
+                    option_type
+                    for option_type in option_groups
+                    if isinstance(option, option_type)
+                ),
+                None,
+            )
+            if matching_type is None:
+                raise TypeError(
+                    "Theme positional options must be TypographyOptions, "
+                    "CaptionOptions, GeneratedPageOptions, PageNumberOptions, "
+                    "TitleMatterOptions, or BlockOptions"
+                )
+            option_groups[matching_type] = option
+
+        keyword_groups = {
+            TypographyOptions: typography,
+            CaptionOptions: captions,
+            GeneratedPageOptions: generated_pages,
+            PageNumberOptions: page_numbers,
+            TitleMatterOptions: title_matter,
+            BlockOptions: blocks,
+        }
+        option_groups.update(
+            {
+                option_type: option
+                for option_type, option in keyword_groups.items()
+                if option is not None
+            }
+        )
+
+        self.typography = option_groups[TypographyOptions] or TypographyOptions()
+        self.captions = option_groups[CaptionOptions] or CaptionOptions()
+        self.generated_pages = option_groups[GeneratedPageOptions] or GeneratedPageOptions()
+        self.page_numbers = option_groups[PageNumberOptions] or PageNumberOptions()
+        self.title_matter = option_groups[TitleMatterOptions] or TitleMatterOptions()
+        self.blocks = option_groups[BlockOptions] or BlockOptions()
+
+        grouped_values: dict[str, object] = {}
+        for group_type, group in (
+            (BlockOptions, self.blocks),
+            (TypographyOptions, self.typography),
+            (CaptionOptions, self.captions),
+            (GeneratedPageOptions, self.generated_pages),
+            (PageNumberOptions, self.page_numbers),
+            (TitleMatterOptions, self.title_matter),
+        ):
+            grouped_values.update(
+                {
+                    group_field.name: getattr(group, group_field.name)
+                    for group_field in fields(group_type)
+                }
+            )
+
+        direct_values = {
+            "page_background_color": page_background_color,
+            "body_font_name": body_font_name,
+            "monospace_font_name": monospace_font_name,
+            "title_font_size": title_font_size,
+            "body_font_size": body_font_size,
+            "paragraph_alignment": paragraph_alignment,
+            "heading_sizes": heading_sizes,
+            "caption_font_size": caption_font_size,
+            "caption_alignment": caption_alignment,
+            "table_alignment": table_alignment,
+            "figure_alignment": figure_alignment,
+            "box_alignment": box_alignment,
+            "table_caption_position": table_caption_position,
+            "figure_caption_position": figure_caption_position,
+            "table_label": table_label,
+            "figure_label": figure_label,
+            "part_label": part_label,
+            "part_number_format": part_number_format,
+            "table_caption_label": table_caption_label,
+            "figure_caption_label": figure_caption_label,
+            "table_reference_label": table_reference_label,
+            "figure_reference_label": figure_reference_label,
+            "list_of_tables_title": list_of_tables_title,
+            "list_of_figures_title": list_of_figures_title,
+            "comments_title": comments_title,
+            "footnotes_title": footnotes_title,
+            "references_title": references_title,
+            "contents_title": contents_title,
+            "generated_section_level": generated_section_level,
+            "generated_page_breaks": generated_page_breaks,
+            "footnote_placement": footnote_placement,
+            "auto_footnotes_page": auto_footnotes_page,
+            "show_page_numbers": show_page_numbers,
+            "page_number_alignment": page_number_alignment,
+            "page_number_format": page_number_format,
+            "front_matter_page_number_format": front_matter_page_number_format,
+            "main_matter_page_number_format": main_matter_page_number_format,
+            "page_number_font_size": page_number_font_size,
+            "title_alignment": title_alignment,
+            "subtitle_alignment": subtitle_alignment,
+            "author_alignment": author_alignment,
+            "affiliation_alignment": affiliation_alignment,
+            "author_detail_alignment": author_detail_alignment,
+            "heading_numbering": heading_numbering,
+            "bullet_list_style": bullet_list_style,
+            "numbered_list_style": numbered_list_style,
+        }
+        grouped_values.update(
+            {
+                name: value
+                for name, value in direct_values.items()
+                if value is not _UNSET
+            }
+        )
+        for name, value in grouped_values.items():
+            setattr(self, name, value)
+
+        self.__post_init__()
+        self._sync_option_groups()
 
     def __post_init__(self) -> None:
         self.page_background_color = normalize_color(self.page_background_color) or "FFFFFF"
@@ -394,6 +730,66 @@ class Theme:
             value = getattr(self, field_name)
             if value not in {"left", "center", "right", "justify"}:
                 raise ValueError(f"Unsupported alignment for {field_name}: {value!r}")
+
+    def _sync_option_groups(self) -> None:
+        self.typography = TypographyOptions(
+            body_font_name=self.body_font_name,
+            monospace_font_name=self.monospace_font_name,
+            title_font_size=self.title_font_size,
+            body_font_size=self.body_font_size,
+            heading_sizes=self.heading_sizes,
+            caption_font_size=self.caption_font_size,
+        )
+        self.captions = CaptionOptions(
+            caption_alignment=self.caption_alignment,
+            table_caption_position=self.table_caption_position,
+            figure_caption_position=self.figure_caption_position,
+            table_label=self.table_label,
+            figure_label=self.figure_label,
+            table_caption_label=self.table_caption_label,
+            figure_caption_label=self.figure_caption_label,
+            table_reference_label=self.table_reference_label,
+            figure_reference_label=self.figure_reference_label,
+        )
+        self.generated_pages = GeneratedPageOptions(
+            list_of_tables_title=self.list_of_tables_title,
+            list_of_figures_title=self.list_of_figures_title,
+            comments_title=self.comments_title,
+            footnotes_title=self.footnotes_title,
+            references_title=self.references_title,
+            contents_title=self.contents_title,
+            generated_section_level=self.generated_section_level,
+            generated_page_breaks=self.generated_page_breaks,
+        )
+        self.page_numbers = PageNumberOptions(
+            show_page_numbers=self.show_page_numbers,
+            page_number_alignment=self.page_number_alignment,
+            page_number_format=self.page_number_format,
+            front_matter_page_number_format=self.front_matter_page_number_format,
+            main_matter_page_number_format=self.main_matter_page_number_format,
+            page_number_font_size=self.page_number_font_size,
+        )
+        self.title_matter = TitleMatterOptions(
+            title_alignment=self.title_alignment,
+            subtitle_alignment=self.subtitle_alignment,
+            author_alignment=self.author_alignment,
+            affiliation_alignment=self.affiliation_alignment,
+            author_detail_alignment=self.author_detail_alignment,
+        )
+        self.blocks = BlockOptions(
+            page_background_color=self.page_background_color,
+            paragraph_alignment=self.paragraph_alignment,
+            table_alignment=self.table_alignment,
+            figure_alignment=self.figure_alignment,
+            box_alignment=self.box_alignment,
+            part_label=self.part_label,
+            part_number_format=self.part_number_format,
+            footnote_placement=self.footnote_placement,
+            auto_footnotes_page=self.auto_footnotes_page,
+            heading_numbering=self.heading_numbering,
+            bullet_list_style=self.bullet_list_style,
+            numbered_list_style=self.numbered_list_style,
+        )
 
     def heading_size(self, level: int) -> float:
         """Return the configured font size for a heading level."""
@@ -484,11 +880,17 @@ class Theme:
 
 
 __all__ = [
+    "BlockOptions",
     "BoxStyle",
+    "CaptionOptions",
+    "GeneratedPageOptions",
     "HeadingNumbering",
     "ListStyle",
+    "PageNumberOptions",
     "ParagraphStyle",
     "TableStyle",
     "TextStyle",
+    "TitleMatterOptions",
+    "TypographyOptions",
     "Theme",
 ]

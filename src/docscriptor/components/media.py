@@ -17,7 +17,7 @@ from docscriptor.core import (
     normalize_text_alignment,
     normalize_vertical_alignment,
 )
-from docscriptor.layout.theme import TableStyle, TextStyle
+from docscriptor.layout.theme import TableStyle, TextStyle, table_style_with_overrides
 
 if TYPE_CHECKING:
     from docscriptor.components.inline import BlockReference, InlineInput
@@ -503,6 +503,16 @@ class Table(Block):
         unit: str | None = None,
         identifier: str | None = None,
         style: TableStyle | None = None,
+        header_background_color: str | None = None,
+        header_text_color: str | None = None,
+        border_color: str | None = None,
+        body_background_color: str | None = None,
+        alternate_row_background_color: str | None = None,
+        cell_horizontal_alignment: str | None = None,
+        cell_vertical_alignment: str | None = None,
+        header_horizontal_alignment: str | None = None,
+        header_vertical_alignment: str | None = None,
+        cell_padding: float | None = None,
         include_index: bool = False,
         split: TableSplit = False,
         placement: str | None = None,
@@ -533,7 +543,19 @@ class Table(Block):
         self.column_widths = list(column_widths) if column_widths is not None else None
         self.unit = normalize_length_unit(unit) if unit is not None else None
         self.identifier = identifier
-        self.style = style or TableStyle()
+        self.style = table_style_with_overrides(
+            style,
+            header_background_color=header_background_color,
+            header_text_color=header_text_color,
+            border_color=border_color,
+            body_background_color=body_background_color,
+            alternate_row_background_color=alternate_row_background_color,
+            cell_horizontal_alignment=cell_horizontal_alignment,
+            cell_vertical_alignment=cell_vertical_alignment,
+            header_horizontal_alignment=header_horizontal_alignment,
+            header_vertical_alignment=header_vertical_alignment,
+            cell_padding=cell_padding,
+        )
         self.include_index = include_index
         self.split = normalize_table_split(split)
         self.placement = normalize_media_placement(placement)
@@ -643,6 +665,16 @@ class Table(Block):
         unit: str | None = None,
         identifier: str | None = None,
         style: TableStyle | None = None,
+        header_background_color: str | None = None,
+        header_text_color: str | None = None,
+        border_color: str | None = None,
+        body_background_color: str | None = None,
+        alternate_row_background_color: str | None = None,
+        cell_horizontal_alignment: str | None = None,
+        cell_vertical_alignment: str | None = None,
+        header_horizontal_alignment: str | None = None,
+        header_vertical_alignment: str | None = None,
+        cell_padding: float | None = None,
         include_index: bool = False,
         split: TableSplit = False,
         placement: str | None = None,
@@ -660,6 +692,16 @@ class Table(Block):
             unit=unit,
             identifier=identifier,
             style=style,
+            header_background_color=header_background_color,
+            header_text_color=header_text_color,
+            border_color=border_color,
+            body_background_color=body_background_color,
+            alternate_row_background_color=alternate_row_background_color,
+            cell_horizontal_alignment=cell_horizontal_alignment,
+            cell_vertical_alignment=cell_vertical_alignment,
+            header_horizontal_alignment=header_horizontal_alignment,
+            header_vertical_alignment=header_vertical_alignment,
+            cell_padding=cell_padding,
             include_index=include_index,
             split=split,
             placement=placement,

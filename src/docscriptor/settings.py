@@ -19,11 +19,17 @@ from docscriptor.components.people import (
 )
 from docscriptor.layout.theme import (
     BoxStyle,
+    BlockOptions,
+    CaptionOptions,
+    GeneratedPageOptions,
     HeadingNumbering,
     ListStyle,
+    PageNumberOptions,
     ParagraphStyle,
     TableStyle,
     TextStyle,
+    TitleMatterOptions,
+    TypographyOptions,
     Theme,
 )
 
@@ -308,14 +314,20 @@ __all__ = [
     "Affiliation",
     "Author",
     "AuthorLayout",
+    "BlockOptions",
     "BoxStyle",
+    "CaptionOptions",
     "DocumentSettings",
+    "GeneratedPageOptions",
     "HeadingNumbering",
     "ListStyle",
+    "PageNumberOptions",
     "PageMargins",
     "PageSize",
     "ParagraphStyle",
     "TableStyle",
     "TextStyle",
+    "TitleMatterOptions",
+    "TypographyOptions",
     "Theme",
 ]

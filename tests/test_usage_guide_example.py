@@ -93,8 +93,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "4 Tables, Figures, and Cross-References" in paragraph_texts
     assert "5 Notes, Comments, and References" in paragraph_texts
     assert "6 Layout and Pagination" in paragraph_texts
-    assert "6.3.1 Subsection entries" in paragraph_texts
-    assert "6.3.1.1 Subsubsection entries" in paragraph_texts
+    assert "6.4.1 Subsection entries" in paragraph_texts
+    assert "6.4.1.1 Subsubsection entries" in paragraph_texts
     assert "7 Project Structure and Scaling Up" in paragraph_texts
     assert any("AuthorLayout(mode='stacked')" in text for text in paragraph_texts)
     assert any("Theme(footnote_placement='document')" in text for text in paragraph_texts)
@@ -119,6 +119,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("For authors coming from LaTeX" in text for text in paragraph_texts)
     assert any("Page layout controls shared across renderers." in text for text in paragraph_texts)
     assert any("Table-of-contents defaults and customization options." in text for text in paragraph_texts)
+    assert any("Document-level configuration options." in text for text in paragraph_texts)
+    assert any("Grouped Theme options" in text for text in paragraph_texts)
+    assert any("Block-level option scope" in text for text in paragraph_texts)
     assert any("Figure sizing patterns for width, height, and document-relative sizing." in text for text in paragraph_texts)
     assert any("Coordinate-based drawings can be page overlays or inline flow objects." in text for text in paragraph_texts)
     assert any("Advanced table and figure placement controls." in text for text in paragraph_texts)
@@ -128,7 +131,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("The journal example at examples/journal_paper_example/main.py" in text for text in paragraph_texts)
     assert "Docscriptor Contributor Certificate" in table_text
     assert "Footnotes" not in [text for text in paragraph_texts if text == "Footnotes"]
-    assert len(word_document.tables) == 14
+    assert len(word_document.tables) == 17
     assert len(word_document.inline_shapes) == 10
     assert len(word_document.comments) == 2
     assert next(paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text == "Comments") == "Heading 2"
@@ -171,8 +174,11 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "For authors coming from LaTeX" in pdf_text
     assert "Page layout controls shared across renderers." in pdf_text
     assert "Table-of-contents defaults and customization options." in pdf_text
-    assert "6.3.1 Subsection entries" in pdf_text
-    assert "6.3.1.1 Subsubsection entries" in pdf_text
+    assert "Document-level configuration options." in pdf_text
+    assert "Grouped Theme options" in pdf_text
+    assert "Block-level option scope" in pdf_text
+    assert "6.4.1 Subsection entries" in pdf_text
+    assert "6.4.1.1 Subsubsection entries" in pdf_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in pdf_text
     assert "Coordinate-based drawings can be page overlays or inline flow objects." in pdf_text
     assert "Advanced table and figure placement controls." in pdf_text
@@ -214,8 +220,11 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "For authors coming from LaTeX" in normalized_html_text
     assert "Page layout controls shared across renderers." in normalized_html_text
     assert "Table-of-contents defaults and customization options." in normalized_html_text
-    assert "6.3.1 Subsection entries" in normalized_html_text
-    assert "6.3.1.1 Subsubsection entries" in normalized_html_text
+    assert "Document-level configuration options." in normalized_html_text
+    assert "Grouped Theme options" in normalized_html_text
+    assert "Block-level option scope" in normalized_html_text
+    assert "6.4.1 Subsection entries" in normalized_html_text
+    assert "6.4.1.1 Subsubsection entries" in normalized_html_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in normalized_html_text
     assert "Coordinate-based drawings can be page overlays or inline flow objects." in normalized_html_text
     assert "Advanced table and figure placement controls." in normalized_html_text

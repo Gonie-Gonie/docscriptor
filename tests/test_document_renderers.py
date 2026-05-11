@@ -23,9 +23,11 @@ from docscriptor import (
     Affiliation,
     Author,
     AuthorLayout,
+    BlockOptions,
     Box,
     BoxStyle,
     BulletList,
+    CaptionOptions,
     CitationLibrary,
     CitationSource,
     Chapter,
@@ -38,6 +40,7 @@ from docscriptor import (
     Figure,
     FigureList,
     Footnote,
+    GeneratedPageOptions,
     HeadingNumbering,
     ImageBox,
     InlineChip,
@@ -45,6 +48,7 @@ from docscriptor import (
     ListStyle,
     Math,
     NumberedList,
+    PageNumberOptions,
     PageMargins,
     PageSize,
     PageBreak,
@@ -68,7 +72,9 @@ from docscriptor import (
     Text,
     TextBox,
     Theme,
+    TitleMatterOptions,
     TocLevelStyle,
+    TypographyOptions,
     badge,
     bold,
     code,
@@ -372,6 +378,79 @@ def test_theme_validates_page_number_configuration() -> None:
         assert "{page}" in str(exc)
     else:
         raise AssertionError("Expected page_number_format validation to fail")
+
+
+def test_theme_accepts_grouped_option_objects() -> None:
+    theme = Theme(
+        TypographyOptions(body_font_name="Arial", body_font_size=10.0),
+        CaptionOptions(figure_label="Fig.", table_caption_position="below"),
+        GeneratedPageOptions(contents_title="Outline"),
+        PageNumberOptions(show_page_numbers=True, page_number_format="p. {page}"),
+        TitleMatterOptions(title_alignment="left"),
+        BlockOptions(paragraph_alignment="left", table_alignment="right"),
+        body_font_name="Calibri",
+    )
+
+    assert theme.body_font_name == "Calibri"
+    assert theme.typography.body_font_name == "Calibri"
+    assert theme.body_font_size == 10.0
+    assert theme.figure_label == "Fig."
+    assert theme.table_caption_position == "below"
+    assert theme.contents_title == "Outline"
+    assert theme.show_page_numbers is True
+    assert theme.format_page_number(4) == "p. 4"
+    assert theme.title_alignment == "left"
+    assert theme.paragraph_alignment == "left"
+    assert theme.table_alignment == "right"
+
+    keyword_group = Theme(typography=TypographyOptions(body_font_name="Aptos"))
+    assert keyword_group.body_font_name == "Aptos"
+    keyword_group_override = Theme(
+        TypographyOptions(body_font_name="Arial"),
+        typography=TypographyOptions(body_font_name="Aptos"),
+    )
+    assert keyword_group_override.body_font_name == "Aptos"
+
+    try:
+        Theme(object())
+    except TypeError as exc:
+        assert "Theme positional options" in str(exc)
+    else:
+        raise AssertionError("Expected unknown Theme positional option to fail")
+
+
+def test_common_block_styles_accept_direct_kwargs() -> None:
+    paragraph = Paragraph("Right aligned", alignment="right", space_after=4)
+    code_block = CodeBlock("print('x')", language="python", left_indent=0.25)
+    equation = Equation("x=1", space_after=2)
+    bullet_list = BulletList("one", indent=0.4)
+    numbered_list = NumberedList("one", start=3, suffix=")")
+    box = Box(Paragraph("inside"), background_color="#FFFFFF", padding=8, width=3.0)
+    table = Table(
+        headers=["A"],
+        rows=[["B"]],
+        header_background_color="#AABBCC",
+        cell_horizontal_alignment="center",
+    )
+    contents = TableOfContents(level_styles={1: {"bold": False, "space_after": 1}})
+
+    assert paragraph.style.alignment == "right"
+    assert paragraph.style.space_after == 4
+    assert code_block.style.left_indent == 0.25
+    assert equation.style.space_after == 2
+    assert bullet_list.style is not None
+    assert bullet_list.style.marker_format == "bullet"
+    assert bullet_list.style.indent == 0.4
+    assert numbered_list.style is not None
+    assert numbered_list.style.start == 3
+    assert numbered_list.style.suffix == ")"
+    assert box.style.background_color == "FFFFFF"
+    assert box.style.padding == 8
+    assert box.style.width == 3.0
+    assert table.style.header_background_color == "AABBCC"
+    assert table.style.cell_horizontal_alignment == "center"
+    assert contents.style_for_level(1).bold is False
+    assert contents.style_for_level(1).space_after == 1
 
 
 def test_paragraph_style_defaults_to_justify_alignment() -> None:

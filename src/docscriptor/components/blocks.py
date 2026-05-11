@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from docscriptor.components.base import Block, BlockInput, coerce_blocks
 from docscriptor.components.equations import equation_plain_text
 from docscriptor.components.inline import InlineInput, Text, coerce_inlines
-from docscriptor.layout.theme import BoxStyle, ListStyle, ParagraphStyle
+from docscriptor.layout.theme import (
+    BoxStyle,
+    ListStyle,
+    ParagraphStyle,
+    box_style_with_overrides,
+    list_style_with_overrides,
+    paragraph_style_with_overrides,
+)
 
 if TYPE_CHECKING:
     from docscriptor.renderers.context import DocxRenderContext, HtmlRenderContext, PdfRenderContext
@@ -25,9 +32,25 @@ class Paragraph(Block):
         self,
         *content: InlineInput,
         style: ParagraphStyle | None = None,
+        alignment: str | None = None,
+        space_after: float | None = None,
+        leading: float | None = None,
+        left_indent: float | None = None,
+        right_indent: float | None = None,
+        first_line_indent: float | None = None,
+        unit: str | None = None,
     ) -> None:
         self.content = coerce_inlines(content)
-        self.style = style or ParagraphStyle()
+        self.style = paragraph_style_with_overrides(
+            style,
+            alignment=alignment,
+            space_after=space_after,
+            leading=leading,
+            left_indent=left_indent,
+            right_indent=right_indent,
+            first_line_indent=first_line_indent,
+            unit=unit,
+        )
 
     def plain_text(self) -> str:
         """Return the paragraph content without styling metadata."""
@@ -81,10 +104,27 @@ class ListBlock(Block):
         *items: ListInput,
         ordered: bool = False,
         style: ListStyle | None = None,
+        marker_format: str | None = None,
+        bullet: str | None = None,
+        prefix: str | None = None,
+        suffix: str | None = None,
+        start: int | None = None,
+        indent: float | None = None,
+        marker_gap: float | None = None,
     ) -> None:
         self.items = [coerce_list_item(item) for item in items if item is not None]
         self.ordered = ordered
-        self.style = style
+        self.style = list_style_with_overrides(
+            style,
+            ordered=ordered,
+            marker_format=marker_format,
+            bullet=bullet,
+            prefix=prefix,
+            suffix=suffix,
+            start=start,
+            indent=indent,
+            marker_gap=marker_gap,
+        )
 
     def render_to_docx(
         self,
@@ -112,26 +152,95 @@ class ListBlock(Block):
 class BulletList(ListBlock):
     """An unordered list of paragraph items."""
 
-    def __init__(self, *items: ListInput, style: ListStyle | None = None) -> None:
-        super().__init__(*items, ordered=False, style=style)
+    def __init__(
+        self,
+        *items: ListInput,
+        style: ListStyle | None = None,
+        marker_format: str | None = None,
+        bullet: str | None = None,
+        prefix: str | None = None,
+        suffix: str | None = None,
+        start: int | None = None,
+        indent: float | None = None,
+        marker_gap: float | None = None,
+    ) -> None:
+        super().__init__(
+            *items,
+            ordered=False,
+            style=style,
+            marker_format=marker_format,
+            bullet=bullet,
+            prefix=prefix,
+            suffix=suffix,
+            start=start,
+            indent=indent,
+            marker_gap=marker_gap,
+        )
 
 
 class NumberedList(ListBlock):
     """An ordered list of paragraph items."""
 
-    def __init__(self, *items: ListInput, style: ListStyle | None = None) -> None:
-        super().__init__(*items, ordered=True, style=style)
+    def __init__(
+        self,
+        *items: ListInput,
+        style: ListStyle | None = None,
+        marker_format: str | None = None,
+        bullet: str | None = None,
+        prefix: str | None = None,
+        suffix: str | None = None,
+        start: int | None = None,
+        indent: float | None = None,
+        marker_gap: float | None = None,
+    ) -> None:
+        super().__init__(
+            *items,
+            ordered=True,
+            style=style,
+            marker_format=marker_format,
+            bullet=bullet,
+            prefix=prefix,
+            suffix=suffix,
+            start=start,
+            indent=indent,
+            marker_gap=marker_gap,
+        )
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, init=False)
 class CodeBlock(Block):
     """A preformatted code snippet."""
 
     code: str
-    language: str | None = None
-    style: ParagraphStyle = field(
-        default_factory=lambda: ParagraphStyle(alignment="left", space_after=12.0)
-    )
+    language: str | None
+    style: ParagraphStyle
+
+    def __init__(
+        self,
+        code: str,
+        language: str | None = None,
+        *,
+        style: ParagraphStyle | None = None,
+        alignment: str | None = None,
+        space_after: float | None = None,
+        leading: float | None = None,
+        left_indent: float | None = None,
+        right_indent: float | None = None,
+        first_line_indent: float | None = None,
+        unit: str | None = None,
+    ) -> None:
+        self.code = code
+        self.language = language
+        self.style = paragraph_style_with_overrides(
+            style or ParagraphStyle(alignment="left", space_after=12.0),
+            alignment=alignment,
+            space_after=space_after,
+            leading=leading,
+            left_indent=left_indent,
+            right_indent=right_indent,
+            first_line_indent=first_line_indent,
+            unit=unit,
+        )
 
     def render_to_docx(
         self,
@@ -156,14 +265,37 @@ class CodeBlock(Block):
         return renderer.render_code_block(self, context)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, init=False)
 class Equation(Block):
     """A centered block equation written in lightweight LaTeX syntax."""
 
     expression: str
-    style: ParagraphStyle = field(
-        default_factory=lambda: ParagraphStyle(alignment="center", space_after=12.0)
-    )
+    style: ParagraphStyle
+
+    def __init__(
+        self,
+        expression: str,
+        *,
+        style: ParagraphStyle | None = None,
+        alignment: str | None = None,
+        space_after: float | None = None,
+        leading: float | None = None,
+        left_indent: float | None = None,
+        right_indent: float | None = None,
+        first_line_indent: float | None = None,
+        unit: str | None = None,
+    ) -> None:
+        self.expression = expression
+        self.style = paragraph_style_with_overrides(
+            style or ParagraphStyle(alignment="center", space_after=12.0),
+            alignment=alignment,
+            space_after=space_after,
+            leading=leading,
+            left_indent=left_indent,
+            right_indent=right_indent,
+            first_line_indent=first_line_indent,
+            unit=unit,
+        )
 
     def plain_text(self) -> str:
         """Return a readable plain-text equation approximation."""
@@ -284,10 +416,40 @@ class Box(Block):
         *children: BlockInput,
         title: InlineInput | None = None,
         style: BoxStyle | None = None,
+        border_color: str | None = None,
+        background_color: str | None = None,
+        title_background_color: str | None = None,
+        title_text_color: str | None = None,
+        border_width: float | None = None,
+        padding: float | None = None,
+        padding_top: float | None = None,
+        padding_right: float | None = None,
+        padding_bottom: float | None = None,
+        padding_left: float | None = None,
+        space_after: float | None = None,
+        width: float | None = None,
+        unit: str | None = None,
+        alignment: str | None = None,
     ) -> None:
         self.children = coerce_blocks(children)
         self.title = coerce_inlines((title,)) if title is not None else None
-        self.style = style or BoxStyle()
+        self.style = box_style_with_overrides(
+            style,
+            border_color=border_color,
+            background_color=background_color,
+            title_background_color=title_background_color,
+            title_text_color=title_text_color,
+            border_width=border_width,
+            padding=padding,
+            padding_top=padding_top,
+            padding_right=padding_right,
+            padding_bottom=padding_bottom,
+            padding_left=padding_left,
+            space_after=space_after,
+            width=width,
+            unit=unit,
+            alignment=alignment,
+        )
 
     def render_to_docx(
         self,
