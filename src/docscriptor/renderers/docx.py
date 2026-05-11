@@ -20,6 +20,7 @@ from docx.oxml.parser import parse_xml
 from docx.parts.story import StoryPart
 from docx.shared import Inches, Pt, RGBColor
 from docx.text.paragraph import Paragraph as DocxParagraph
+from PIL import Image, ImageDraw, ImageFont
 
 from docscriptor.components.blocks import (
     Box,
@@ -47,6 +48,7 @@ from docscriptor.components.inline import (
     Comment,
     Footnote,
     Hyperlink,
+    InlineChip,
     LineBreak,
     Math,
     Text,
@@ -667,6 +669,15 @@ class DocxRenderer:
                     default_size=font_size,
                 )
                 continue
+            if isinstance(fragment, InlineChip):
+                self._append_inline_chip_image(
+                    paragraph,
+                    fragment,
+                    style=style,
+                    default_size=font_size,
+                    theme=Theme(),
+                )
+                continue
             run = paragraph.add_run(self._resolve_fragment_text(fragment, None, None))
             self._apply_run_style(run, style, default_size=font_size)
         if anchor is not None:
@@ -920,6 +931,15 @@ class DocxRenderer:
                 )
                 continue
             fragment_style = default_style.merged(fragment.style) if default_style is not None else fragment.style
+            if isinstance(fragment, InlineChip):
+                self._append_inline_chip_image(
+                    paragraph,
+                    fragment,
+                    style=fragment_style,
+                    default_size=default_size,
+                    theme=theme or Theme(),
+                )
+                continue
             if isinstance(fragment, LineBreak):
                 paragraph.add_run().add_break()
                 continue
@@ -1014,6 +1034,145 @@ class DocxRenderer:
                 absolute=False,
             )
         paragraph.add_run()._r.append(pict)
+
+    def _append_inline_chip_image(
+        self,
+        paragraph: object,
+        fragment: InlineChip,
+        *,
+        style: TextStyle,
+        default_size: float | None,
+        theme: Theme,
+    ) -> None:
+        image, width_inches, height_inches = self._inline_chip_image(
+            fragment,
+            style=style,
+            default_size=default_size,
+            theme=theme,
+        )
+        paragraph.add_run().add_picture(
+            image,
+            width=Inches(width_inches),
+            height=Inches(height_inches),
+        )
+
+    def _inline_chip_image(
+        self,
+        fragment: InlineChip,
+        *,
+        style: TextStyle,
+        default_size: float | None,
+        theme: Theme,
+    ) -> tuple[BytesIO, float, float]:
+        dpi = 192
+        chip_style = fragment.chip_style
+        base_size = style.font_size or default_size or theme.body_font_size
+        font_size = max(base_size + chip_style.font_size_delta, 6.0)
+        font_px = max(int(round(font_size * dpi / 72)), 8)
+        font = self._inline_chip_font(
+            chip_style.font_name or style.font_name or theme.body_font_name,
+            chip_style.bold,
+            chip_style.italic,
+            font_px,
+        )
+        text = fragment.display_text()
+        sample = Image.new("RGBA", (1, 1), (255, 255, 255, 0))
+        draw = ImageDraw.Draw(sample)
+        text_bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = max(text_bbox[2] - text_bbox[0], 1)
+        text_height = max(text_bbox[3] - text_bbox[1], 1)
+        border_px = max(int(round(chip_style.border_width * dpi / 72)), 0)
+        padding_x = max(int(round(font_px * chip_style.padding_x)), 0)
+        padding_y = max(int(round(font_px * chip_style.padding_y)), 0)
+        width = text_width + padding_x * 2 + border_px * 2 + 2
+        height = text_height + padding_y * 2 + border_px * 2 + 2
+        radius = max(int(round(font_px * chip_style.radius)), 0)
+        image = Image.new("RGBA", (width, height), (255, 255, 255, 0))
+        draw = ImageDraw.Draw(image)
+        rectangle = (0, 0, width - 1, height - 1)
+        outline = self._inline_chip_rgba(chip_style.border_color) if border_px and chip_style.border_color else None
+        draw.rounded_rectangle(
+            rectangle,
+            radius=radius,
+            fill=self._inline_chip_rgba(chip_style.background_color),
+            outline=outline,
+            width=border_px or 1,
+        )
+        text_x = padding_x + border_px + 1 - text_bbox[0]
+        text_y = padding_y + border_px + 1 - text_bbox[1]
+        draw.text(
+            (text_x, text_y),
+            text,
+            font=font,
+            fill=self._inline_chip_rgba(chip_style.text_color),
+        )
+        buffer = BytesIO()
+        image.save(buffer, format="PNG", dpi=(dpi, dpi))
+        buffer.seek(0)
+        return buffer, width / dpi, height / dpi
+
+    def _inline_chip_font(
+        self,
+        font_name: str,
+        bold: bool,
+        italic: bool,
+        font_px: int,
+    ) -> object:
+        candidates = self._inline_chip_font_candidates(font_name, bold, italic)
+        for candidate in candidates:
+            try:
+                return ImageFont.truetype(candidate, font_px)
+            except OSError:
+                continue
+        try:
+            return ImageFont.truetype(font_name, font_px)
+        except OSError:
+            return ImageFont.load_default()
+
+    def _inline_chip_font_candidates(self, font_name: str, bold: bool, italic: bool) -> list[str]:
+        key = font_name.lower()
+        windows_fonts = Path("C:/Windows/Fonts")
+        font_files = {
+            "arial": {
+                (False, False): "arial.ttf",
+                (True, False): "arialbd.ttf",
+                (False, True): "ariali.ttf",
+                (True, True): "arialbi.ttf",
+            },
+            "courier new": {
+                (False, False): "cour.ttf",
+                (True, False): "courbd.ttf",
+                (False, True): "couri.ttf",
+                (True, True): "courbi.ttf",
+            },
+            "times new roman": {
+                (False, False): "times.ttf",
+                (True, False): "timesbd.ttf",
+                (False, True): "timesi.ttf",
+                (True, True): "timesbi.ttf",
+            },
+        }
+        candidates: list[str] = []
+        if key in font_files:
+            candidates.append(str(windows_fonts / font_files[key][(bold, italic)]))
+        candidates.extend(
+            [
+                font_name,
+                "DejaVuSans-BoldOblique.ttf" if bold and italic else "",
+                "DejaVuSans-Bold.ttf" if bold else "",
+                "DejaVuSans-Oblique.ttf" if italic else "",
+                "DejaVuSans.ttf",
+            ]
+        )
+        return [candidate for candidate in candidates if candidate]
+
+    def _inline_chip_rgba(self, color: str) -> tuple[int, int, int, int]:
+        return (
+            int(color[0:2], 16),
+            int(color[2:4], 16),
+            int(color[4:6], 16),
+            255,
+        )
 
     def _append_hyperlink_runs(
         self,
@@ -2032,6 +2191,8 @@ class DocxRenderer:
             return f"[{render_index.citation_number(fragment.target)}]"
         if isinstance(fragment, Hyperlink):
             return fragment.plain_text()
+        if isinstance(fragment, InlineChip):
+            return fragment.display_text()
         if isinstance(fragment, Comment):
             return fragment.value
         if isinstance(fragment, Footnote):

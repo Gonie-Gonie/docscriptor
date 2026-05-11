@@ -34,6 +34,7 @@ from docscriptor.components.inline import (
     Comment,
     Footnote,
     Hyperlink,
+    InlineChip,
     Math,
     Text,
 )
@@ -1206,6 +1207,12 @@ class HtmlRenderer:
                 ),
                 internal=fragment.internal,
             )
+        if isinstance(fragment, InlineChip):
+            return self._inline_chip_html(
+                fragment,
+                theme,
+                base_size=base_size,
+            )
         if isinstance(fragment, _BlockReference):
             return self._link_html(
                 self._block_reference_anchor(fragment.target, render_index),
@@ -1281,6 +1288,41 @@ class HtmlRenderer:
             base_italic=base_italic,
             base_size=base_size,
         )
+
+    def _inline_chip_html(
+        self,
+        fragment: InlineChip,
+        theme: Theme,
+        *,
+        base_size: float | None,
+    ) -> str:
+        chip_style = fragment.chip_style
+        text = escape(fragment.display_text()).replace("\n", " ")
+        base_size = fragment.style.font_size or base_size or theme.body_font_size
+        font_size = max(base_size + chip_style.font_size_delta, 6.0)
+        styles = [
+            "display: inline-block",
+            f"padding: {chip_style.padding_y:.2f}em {chip_style.padding_x:.2f}em",
+            f"border-radius: {chip_style.radius:.2f}em",
+            f"background-color: #{chip_style.background_color}",
+            f"color: #{chip_style.text_color}",
+            f"font-size: {font_size:.1f}pt",
+            f"font-weight: {'700' if chip_style.bold else '400'}",
+            f"font-style: {'italic' if chip_style.italic else 'normal'}",
+            "line-height: 1",
+            "vertical-align: baseline",
+            "white-space: nowrap",
+            "box-decoration-break: clone",
+        ]
+        font_name = chip_style.font_name or fragment.style.font_name
+        if font_name is not None:
+            styles.append(f"font-family: {self._css_font_family(font_name)}")
+        if chip_style.border_color is not None and chip_style.border_width > 0:
+            styles.append(
+                f"border: {chip_style.border_width:.1f}pt solid #{chip_style.border_color}"
+            )
+        class_name = f"docscriptor-inline-chip docscriptor-inline-chip-{fragment.kind}"
+        return f'<span class="{class_name}" style="{"; ".join(styles)}">{text}</span>'
 
     def _styled_text_html(
         self,

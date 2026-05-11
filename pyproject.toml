@@ -25,6 +25,7 @@ classifiers = [
   "Topic :: Text Processing",
 ]
 dependencies = [
+  "Pillow>=10.0.0",
   "python-docx>=1.1.2",
   "reportlab>=4.2.5",
 ]

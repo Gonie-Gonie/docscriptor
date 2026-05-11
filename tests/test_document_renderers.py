@@ -40,6 +40,8 @@ from docscriptor import (
     Footnote,
     HeadingNumbering,
     ImageBox,
+    InlineChip,
+    InlineChipStyle,
     ListStyle,
     Math,
     NumberedList,
@@ -67,6 +69,7 @@ from docscriptor import (
     TextBox,
     Theme,
     TocLevelStyle,
+    badge,
     bold,
     code,
     color,
@@ -75,13 +78,16 @@ from docscriptor import (
     footnote,
     highlight,
     italic,
+    keyboard,
     link,
     line_break,
     math,
     markup,
+    status,
     strike,
     strikethrough,
     styled,
+    tag,
 )
 from docscriptor.settings import TextStyle
 
@@ -337,6 +343,20 @@ def test_method_style_inline_actions_create_renderable_fragments() -> None:
     assert Comment.annotated("term", "Expanded note").plain_text() == "term[?]"
     assert Footnote.annotated("term", "Portable footnote note").plain_text() == "term[?]"
     assert Math.inline(r"\alpha^2").plain_text() == "alpha2"
+    assert InlineChip("base").kind == "chip"
+    assert tag("api", background_color="#EEF2FF").chip_style.background_color == "EEF2FF"
+    assert badge(3).plain_text() == "3"
+    assert status("ready", state="success").plain_text() == "READY"
+    assert keyboard("Ctrl+Enter").kind == "keyboard"
+    assert isinstance(tag("api"), InlineChip)
+    assert isinstance(InlineChipStyle(text_color="#111827"), InlineChipStyle)
+
+    try:
+        status("ready", state="unknown")
+    except ValueError as exc:
+        assert "Unsupported status state" in str(exc)
+    else:
+        raise AssertionError("Expected invalid status state validation to fail")
 
 
 def test_theme_validates_page_number_configuration() -> None:
@@ -804,6 +824,8 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Footnote")
     assert hasattr(docscriptor, "Equation")
     assert hasattr(docscriptor, "Math")
+    assert hasattr(docscriptor, "InlineChip")
+    assert hasattr(docscriptor, "InlineChipStyle")
     assert hasattr(docscriptor, "TextStyle")
     assert hasattr(docscriptor, "TextBox")
     assert hasattr(docscriptor, "LineBreak")
@@ -838,6 +860,16 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "line_break")
     assert hasattr(docscriptor, "strike")
     assert hasattr(docscriptor, "strikethrough")
+    assert hasattr(docscriptor, "tag")
+    assert hasattr(docscriptor, "badge")
+    assert hasattr(docscriptor, "status")
+    assert hasattr(docscriptor, "keyboard")
+    assert hasattr(inline_components, "InlineChip")
+    assert hasattr(inline_components, "InlineChipStyle")
+    assert hasattr(inline_components, "tag")
+    assert hasattr(inline_components, "badge")
+    assert hasattr(inline_components, "status")
+    assert hasattr(inline_components, "keyboard")
 
     for removed_name in (
         "document",
@@ -1130,6 +1162,49 @@ def test_inline_highlight_strike_and_line_break_render_to_all_outputs(tmp_path: 
     assert "background-color: #FFF2CC" in html_text
     assert "line-through" in html_text
     assert "<br/>" in html_text
+
+
+def test_inline_chips_render_to_all_outputs(tmp_path: Path) -> None:
+    document = Document(
+        "Inline Chips",
+        Paragraph(
+            "Route ",
+            tag("api"),
+            " with ",
+            status("ready", state="success"),
+            ", show ",
+            badge(3),
+            ", and press ",
+            keyboard("Ctrl+Enter"),
+            ".",
+        ),
+    )
+
+    docx_path = tmp_path / "inline-chips.docx"
+    pdf_path = tmp_path / "inline-chips.pdf"
+    html_path = tmp_path / "inline-chips.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_document = WordDocument(docx_path)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+    normalized_html = _normalized_html_text(html_path)
+
+    assert len(word_document.inline_shapes) == 4
+    assert "Route  with , show , and press ." in [paragraph.text for paragraph in word_document.paragraphs]
+    assert "api" in pdf_text
+    assert "READY" in pdf_text
+    assert "3" in pdf_text
+    assert "Ctrl+Enter" in pdf_text
+    assert "docscriptor-inline-chip-tag" in html_text
+    assert "docscriptor-inline-chip-badge" in html_text
+    assert "docscriptor-inline-chip-status" in html_text
+    assert "docscriptor-inline-chip-keyboard" in html_text
+    assert "api" in normalized_html
+    assert "READY" in normalized_html
+    assert "Ctrl+Enter" in normalized_html
 
 
 def test_paragraph_indents_render_to_all_outputs(tmp_path: Path) -> None:

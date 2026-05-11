@@ -103,6 +103,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("settings.get_text_width(0.75)" in text for text in paragraph_texts)
     assert any("placement='inline'" in text for text in paragraph_texts)
     assert any("Inline image example:" in text for text in paragraph_texts)
+    assert any("Compact inline chips cover categories" in text for text in paragraph_texts)
+    assert any("keyboard(\"Ctrl+Enter\")" in text for text in paragraph_texts)
     assert any("Table(split=False)" in text for text in paragraph_texts)
     assert any("Table(split=True)" in text for text in paragraph_texts)
     assert any("'tbp'" in text or 'placement="tbp"' in text for text in paragraph_texts)
@@ -123,7 +125,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Docscriptor Contributor Certificate" in table_text
     assert "Footnotes" not in [text for text in paragraph_texts if text == "Footnotes"]
     assert len(word_document.tables) == 14
-    assert len(word_document.inline_shapes) == 6
+    assert len(word_document.inline_shapes) == 10
     assert len(word_document.comments) == 2
     assert next(paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text == "Comments") == "Heading 2"
     assert next(paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text == "References") == "Heading 2"
@@ -148,6 +150,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "settings.get_text_width(0.75)" in pdf_text
     assert "placement='inline'" in pdf_text
     assert "Inline image example:" in pdf_text
+    assert "Compact inline chips cover categories" in pdf_text
+    assert "Ctrl+Enter" in pdf_text
+    assert "READY" in pdf_text
     assert "Table(split=False)" in pdf_text
     assert "Table(split=True)" in pdf_text
     assert ("'tbp'" in pdf_text) or ('placement="tbp"' in pdf_text)
@@ -184,6 +189,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "settings.get_text_width(0.75)" in normalized_html_text
     assert "placement='inline'" in normalized_html_text
     assert "Inline image example:" in normalized_html_text
+    assert "Compact inline chips cover categories" in normalized_html_text
+    assert "Ctrl+Enter" in normalized_html_text
+    assert "READY" in normalized_html_text
     assert "Table(split=False)" in normalized_html_text
     assert "Table(split=True)" in normalized_html_text
     assert ("'tbp'" in normalized_html_text) or ('placement="tbp"' in normalized_html_text)

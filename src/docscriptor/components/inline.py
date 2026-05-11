@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Iterable, Sequence, TYPE_CHECKING
 
 from docscriptor.components.equations import equation_plain_text
+from docscriptor.core import normalize_color
 from docscriptor.layout.theme import TextStyle
 
 if TYPE_CHECKING:
@@ -129,6 +130,161 @@ class Monospace(Text):
 Strong = Bold
 Emphasis = Italic
 Code = Monospace
+
+
+_INLINE_CHIP_STYLE_FIELDS = (
+    "background_color",
+    "text_color",
+    "border_color",
+    "border_width",
+    "padding_x",
+    "padding_y",
+    "radius",
+    "font_size_delta",
+    "font_name",
+    "bold",
+    "italic",
+    "uppercase",
+)
+
+
+@dataclass(slots=True)
+class InlineChipStyle:
+    """Visual style for compact inline label chips.
+
+    Padding and radius are expressed in em units so chips scale with the
+    surrounding font. Border width and font size delta are expressed in points.
+    """
+
+    background_color: str = "E8F1FF"
+    text_color: str = "1F3A5F"
+    border_color: str | None = "A7C7E7"
+    border_width: float = 0.5
+    padding_x: float = 0.38
+    padding_y: float = 0.12
+    radius: float = 0.5
+    font_size_delta: float = -0.5
+    font_name: str | None = None
+    bold: bool = True
+    italic: bool = False
+    uppercase: bool = False
+
+    def __post_init__(self) -> None:
+        self.background_color = normalize_color(self.background_color) or "E8F1FF"
+        self.text_color = normalize_color(self.text_color) or "1F3A5F"
+        self.border_color = normalize_color(self.border_color)
+        if self.border_width < 0:
+            raise ValueError("InlineChipStyle.border_width must be >= 0")
+        if self.padding_x < 0:
+            raise ValueError("InlineChipStyle.padding_x must be >= 0")
+        if self.padding_y < 0:
+            raise ValueError("InlineChipStyle.padding_y must be >= 0")
+        if self.radius < 0:
+            raise ValueError("InlineChipStyle.radius must be >= 0")
+
+    def merged(self, **overrides: object) -> InlineChipStyle:
+        values = {
+            field_name: getattr(self, field_name)
+            for field_name in _INLINE_CHIP_STYLE_FIELDS
+        }
+        for field_name, value in overrides.items():
+            if field_name not in values:
+                raise TypeError(f"Unsupported InlineChipStyle field: {field_name}")
+            values[field_name] = value
+        return InlineChipStyle(**values)
+
+
+_DEFAULT_CHIP_STYLES = {
+    "chip": InlineChipStyle(),
+    "tag": InlineChipStyle(
+        background_color="E8F1FF",
+        text_color="1F3A5F",
+        border_color="A7C7E7",
+    ),
+    "badge": InlineChipStyle(
+        background_color="F3F4F6",
+        text_color="1F2937",
+        border_color="D1D5DB",
+        padding_x=0.32,
+    ),
+    "status": InlineChipStyle(
+        background_color="F3F4F6",
+        text_color="374151",
+        border_color="D1D5DB",
+        uppercase=True,
+    ),
+    "keyboard": InlineChipStyle(
+        background_color="F8FAFC",
+        text_color="111827",
+        border_color="CBD5E1",
+        border_width=0.75,
+        padding_x=0.28,
+        padding_y=0.08,
+        radius=0.22,
+        font_size_delta=-0.5,
+        font_name="Courier New",
+        bold=False,
+    ),
+}
+
+_STATUS_CHIP_STYLES = {
+    "neutral": _DEFAULT_CHIP_STYLES["status"],
+    "success": InlineChipStyle(
+        background_color="ECFDF3",
+        text_color="166534",
+        border_color="BBF7D0",
+        uppercase=True,
+    ),
+    "info": InlineChipStyle(
+        background_color="E0F2FE",
+        text_color="075985",
+        border_color="BAE6FD",
+        uppercase=True,
+    ),
+    "warning": InlineChipStyle(
+        background_color="FEF3C7",
+        text_color="92400E",
+        border_color="FDE68A",
+        uppercase=True,
+    ),
+    "danger": InlineChipStyle(
+        background_color="FEE2E2",
+        text_color="991B1B",
+        border_color="FECACA",
+        uppercase=True,
+    ),
+    "muted": InlineChipStyle(
+        background_color="F3F4F6",
+        text_color="374151",
+        border_color="D1D5DB",
+        uppercase=True,
+    ),
+}
+
+
+class InlineChip(Text):
+    """Compact inline visual token for tags, badges, status, and key labels."""
+
+    __slots__ = ("chip_style", "kind")
+
+    def __init__(
+        self,
+        value: object,
+        *,
+        chip_style: InlineChipStyle | None = None,
+        kind: str = "chip",
+        style: TextStyle | None = None,
+    ) -> None:
+        normalized_kind = _normalize_chip_kind(kind)
+        super().__init__(value=str(value), style=style or TextStyle())
+        self.chip_style = chip_style or _default_chip_style(normalized_kind)
+        self.kind = normalized_kind
+
+    def display_text(self) -> str:
+        return self.value.upper() if self.chip_style.uppercase else self.value
+
+    def plain_text(self) -> str:
+        return self.display_text()
 
 
 class Highlight(Text):
@@ -416,6 +572,94 @@ def code(value: str, *, style: TextStyle | None = None) -> Monospace:
     return Text.code(value, style=style)
 
 
+def _normalize_chip_kind(kind: str) -> str:
+    normalized = kind.strip().lower().replace("_", "-")
+    if not normalized or any(not (char.isalnum() or char == "-") for char in normalized):
+        raise ValueError(f"Unsupported inline chip kind: {kind!r}")
+    return normalized
+
+
+def _default_chip_style(kind: str) -> InlineChipStyle:
+    normalized = _normalize_chip_kind(kind)
+    style = _DEFAULT_CHIP_STYLES.get(normalized, _DEFAULT_CHIP_STYLES["chip"])
+    return style.merged()
+
+
+def _default_status_chip_style(state: str) -> InlineChipStyle:
+    normalized = state.strip().lower().replace("_", "-")
+    style = _STATUS_CHIP_STYLES.get(normalized)
+    if style is None:
+        allowed = ", ".join(sorted(_STATUS_CHIP_STYLES))
+        raise ValueError(f"Unsupported status state: {state!r}; expected one of {allowed}")
+    return style.merged()
+
+
+def _chip(
+    value: object,
+    *,
+    kind: str,
+    chip_style: InlineChipStyle | None = None,
+    style: TextStyle | None = None,
+    **style_values: object,
+) -> InlineChip:
+    resolved_style = chip_style or _default_chip_style(kind)
+    if style_values:
+        resolved_style = resolved_style.merged(**style_values)
+    return InlineChip(value, chip_style=resolved_style, kind=kind, style=style)
+
+
+def tag(
+    value: object,
+    *,
+    chip_style: InlineChipStyle | None = None,
+    style: TextStyle | None = None,
+    **style_values: object,
+) -> InlineChip:
+    """Create a category or keyword chip."""
+
+    return _chip(value, kind="tag", chip_style=chip_style, style=style, **style_values)
+
+
+def badge(
+    value: object,
+    *,
+    chip_style: InlineChipStyle | None = None,
+    style: TextStyle | None = None,
+    **style_values: object,
+) -> InlineChip:
+    """Create a count, label, or small emphasis chip."""
+
+    return _chip(value, kind="badge", chip_style=chip_style, style=style, **style_values)
+
+
+def status(
+    value: object,
+    *,
+    state: str = "neutral",
+    chip_style: InlineChipStyle | None = None,
+    style: TextStyle | None = None,
+    **style_values: object,
+) -> InlineChip:
+    """Create a state indicator chip."""
+
+    resolved_style = chip_style or _default_status_chip_style(state)
+    if style_values:
+        resolved_style = resolved_style.merged(**style_values)
+    return InlineChip(value, chip_style=resolved_style, kind="status", style=style)
+
+
+def keyboard(
+    value: object,
+    *,
+    chip_style: InlineChipStyle | None = None,
+    style: TextStyle | None = None,
+    **style_values: object,
+) -> InlineChip:
+    """Create a keyboard key chip."""
+
+    return _chip(value, kind="keyboard", chip_style=chip_style, style=style, **style_values)
+
+
 def color(
     value: str,
     color: str,
@@ -518,6 +762,8 @@ __all__ = [
     "Footnote",
     "Highlight",
     "Hyperlink",
+    "InlineChip",
+    "InlineChipStyle",
     "Italic",
     "LineBreak",
     "Math",
@@ -526,6 +772,7 @@ __all__ = [
     "Strikethrough",
     "Text",
     "_BlockReference",
+    "badge",
     "bold",
     "code",
     "color",
@@ -535,10 +782,13 @@ __all__ = [
     "footnote",
     "highlight",
     "italic",
+    "keyboard",
     "link",
     "line_break",
     "math",
+    "status",
     "strike",
     "strikethrough",
     "styled",
+    "tag",
 ]

@@ -59,13 +59,17 @@ from docscriptor import (
     TextBox,
     Theme,
     TocLevelStyle,
+    badge,
     bold,
     code,
     color,
     highlight,
     link,
     line_break,
+    keyboard,
+    status,
     strike,
+    tag,
 )
 
 
@@ -302,6 +306,21 @@ Paragraph(
     strike("old value"),
     line_break(),
     "Continue in the same paragraph without adding paragraph spacing.",
+)
+"""
+
+INLINE_CHIPS_SNIPPET = """from docscriptor import Paragraph, badge, keyboard, status, tag
+
+Paragraph(
+    "Route ",
+    tag("api"),
+    " work with ",
+    status("ready", state="success"),
+    ", show ",
+    badge("3 notes"),
+    ", and name ",
+    keyboard("Ctrl+Enter"),
+    " without leaving the inline flow.",
 )
 """
 
@@ -990,6 +1009,18 @@ def build_usage_guide_document() -> Document:
                     " for a Shift+Enter-style break inside the same paragraph."
                 ),
                 CodeBlock(INLINE_WORD_FEATURES_SNIPPET, language="python"),
+                Paragraph(
+                    "Compact inline chips cover categories, counts, states, and keys: ",
+                    tag("api"),
+                    " ",
+                    badge("3 notes"),
+                    " ",
+                    status("ready", state="success"),
+                    " ",
+                    keyboard("Ctrl+Enter"),
+                    ". DOCX renders each chip as a small inline image while PDF and HTML keep text in styled spans."
+                ),
+                CodeBlock(INLINE_CHIPS_SNIPPET, language="python"),
                 Paragraph(
                     "Paragraph-level Word features are also part of the authored source. ",
                     code("ParagraphStyle"),

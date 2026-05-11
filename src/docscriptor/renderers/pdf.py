@@ -57,6 +57,7 @@ from docscriptor.components.inline import (
     Comment,
     Footnote,
     Hyperlink,
+    InlineChip,
     Math,
     Text,
 )
@@ -1881,6 +1882,13 @@ class PdfRenderer:
             )
         if isinstance(fragment, Shape):
             return ""
+        if isinstance(fragment, InlineChip):
+            return self._inline_chip_markup(
+                fragment,
+                theme,
+                base_font_name=base_font_name,
+                base_size=base_size,
+            )
         if isinstance(fragment, Hyperlink):
             return self._link_markup(
                 fragment.target,
@@ -1963,6 +1971,33 @@ class PdfRenderer:
             base_bold=base_bold,
             base_italic=base_italic,
         )
+
+    def _inline_chip_markup(
+        self,
+        fragment: InlineChip,
+        theme: Theme,
+        *,
+        base_font_name: str | None,
+        base_size: float | None,
+    ) -> str:
+        chip_style = fragment.chip_style
+        base_size = fragment.style.font_size or base_size or theme.body_font_size
+        size = max(base_size + chip_style.font_size_delta, 6.0)
+        font_name = self._resolve_font(
+            chip_style.font_name or fragment.style.font_name or theme.body_font_name,
+            chip_style.bold,
+            chip_style.italic,
+        )
+        text = escape(fragment.display_text()).replace("\n", " ")
+        font_attrs = [
+            f'face="{font_name}"',
+            f'size="{size}"',
+            f'color="#{chip_style.text_color}"',
+            f'backColor="#{chip_style.background_color}"',
+        ]
+        if base_font_name is not None and font_name == base_font_name:
+            font_attrs.pop(0)
+        return f"<font {' '.join(font_attrs)}>&#160;{text}&#160;</font>"
 
     def _styled_text_markup(
         self,
