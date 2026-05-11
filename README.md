@@ -89,6 +89,7 @@ Docscriptor is not trying to replace every LaTeX workflow. It is meant for docum
 
 Common translations:
 
+- LaTeX `\part` -> `Part(...)` separator pages above chapters
 - LaTeX `\section` / `\subsection` -> `Chapter(...)`, `Section(...)`, `Subsection(...)`
 - LaTeX `\textbf{...}` / `\emph{...}` / `\texttt{...}` -> `bold(...)`, `italic(...)`, `code(...)`
 - Word highlight / strikethrough / manual line break -> `highlight(...)`, `strike(...)`, `line_break()`
@@ -105,7 +106,7 @@ The main payoff is fewer manual handoffs: a benchmark CSV can become a table, a 
 
 Docscriptor tries to keep the source readable:
 
-- create objects with classes such as `Document`, `Chapter`, `Section`, `Paragraph`, `Table`, and `Figure`
+- create objects with classes such as `Document`, `Part`, `Chapter`, `Section`, `Paragraph`, `Table`, and `Figure`
 - apply inline actions with helpers such as `bold(...)`, `italic(...)`, `code(...)`, `Text.from_markup(...)`, `Comment.annotated(...)`, `Footnote.annotated(...)`, and `CitationSource.cite()`
 - keep the document tree explicit so the Python structure matches the final output structure
 - move document-wide metadata and theme options into `DocumentSettings(...)` when you want a single place to adjust title matter, cover pages, and renderer defaults
@@ -114,6 +115,7 @@ The default behavior is intentionally conventional:
 
 - paragraphs are justified by default
 - tables, figures, boxes, and their captions are centered by default
+- parts render on their own separator pages and do not reset chapter numbering
 - headings are numbered as `1`, `1.1`, `1.1.1`, and so on
 - ordered and bullet lists can be customized with `ListStyle(...)`
 - heading numbering can be customized with `HeadingNumbering(...)`
@@ -125,6 +127,7 @@ The default behavior is intentionally conventional:
 - Use `highlight(...)`, `strike(...)`, and `line_break()` for Word-style emphasis and manual line breaks inside one paragraph.
 - Use `Theme(paragraph_alignment=...)` for the document-wide paragraph default, and `ParagraphStyle(alignment=...)` when a specific paragraph should override it.
 - Use `ParagraphStyle(left_indent=..., right_indent=..., first_line_indent=..., unit=...)` or `ParagraphStyle.hanging(..., unit=...)` when you need Word-like first-line and hanging indents. If `unit` is omitted, indent values follow `DocumentSettings(unit=...)`.
+- Use `Part(...)` for book-like divisions above chapters; each part gets a separator page, while chapter numbers continue across parts by default.
 - Use `Chapter(...)`, `Section(...)`, `Subsection(...)`, and `Subsubsection(...)` for the visible outline. Their nesting in Python should match how you expect the final document to read.
 - Use `Table(...)` for small authored tables and `Table.from_dataframe(...)` when the data already lives in pandas.
 - Use `TableCell(horizontal_alignment=..., vertical_alignment=...)` or table-wide `TableStyle(cell_horizontal_alignment=..., cell_vertical_alignment=...)` when a table needs Word-like cell alignment. Use `TableCellStyle(...)` on a `TableCell`, `row_styles`, `header_row_styles`, or `column_styles` when cells, rows, or columns need background color, text color, bold, or italic formatting.

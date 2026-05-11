@@ -33,6 +33,7 @@ _EXPORTS = {
     "Monospace": "docscriptor.components.inline",
     "NumberedList": "docscriptor.components.blocks",
     "Paragraph": "docscriptor.components.blocks",
+    "Part": "docscriptor.components.blocks",
     "ReferencesPage": "docscriptor.components.generated",
     "Section": "docscriptor.components.blocks",
     "Shape": "docscriptor.components.positioning",

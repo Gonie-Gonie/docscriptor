@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Sequence
 
 from docscriptor.components.base import Block
-from docscriptor.components.blocks import Box, BulletList, Equation, NumberedList, Paragraph, Section
+from docscriptor.components.blocks import Box, BulletList, Equation, NumberedList, Paragraph, Part, Section
 from docscriptor.components.generated import (
     CommentsPage,
     FigureList,
@@ -130,7 +130,7 @@ class RenderIndex:
             raise DocscriptorError(f"Unknown footnote target: {target.value!r}")
         return self.footnote_numbers[id(target)]
 
-    def heading_number(self, target: Section) -> str | None:
+    def heading_number(self, target: object) -> str | None:
         """Return the numbering label assigned to a section heading."""
 
         return self.heading_numbers.get(id(target))
@@ -160,7 +160,7 @@ class RenderIndex:
 
         return f"citation_{self.citation_number(target)}"
 
-    def heading_anchor(self, target: Section) -> str | None:
+    def heading_anchor(self, target: object) -> str | None:
         """Return the bookmark name for a numbered heading."""
 
         return self.heading_anchors.get(id(target))
@@ -176,6 +176,7 @@ def build_render_index(document: Document) -> RenderIndex:
         document.citations,
         document.theme,
         heading_counters=[],
+        part_counter=[0],
     )
     return render_index
 
@@ -198,6 +199,7 @@ def _index_blocks(
     theme: Theme,
     *,
     heading_counters: list[int],
+    part_counter: list[int],
 ) -> None:
     for block in blocks:
         if isinstance(block, Paragraph):
@@ -218,6 +220,35 @@ def _index_blocks(
                 citations,
                 theme,
                 heading_counters=heading_counters,
+                part_counter=part_counter,
+            )
+            continue
+        if isinstance(block, Part):
+            _index_inlines(block.title, render_index, citations)
+            number_label: str | None = None
+            if block.numbered:
+                part_counter[0] += 1
+                number_label = theme.format_part_label(part_counter[0])
+                render_index.headings.append(
+                    HeadingEntry(
+                        level=block.level,
+                        title=block.title,
+                        number=number_label,
+                        anchor=f"heading_{len(render_index.headings) + 1}",
+                    )
+                )
+                render_index.heading_anchors[id(block)] = (
+                    render_index.headings[-1].anchor or ""
+                )
+                if number_label is not None:
+                    render_index.heading_numbers[id(block)] = number_label
+            _index_blocks(
+                block.children,
+                render_index,
+                citations,
+                theme,
+                heading_counters=heading_counters,
+                part_counter=part_counter,
             )
             continue
         if isinstance(block, Section):
@@ -251,6 +282,7 @@ def _index_blocks(
                 citations,
                 theme,
                 heading_counters=current_counters,
+                part_counter=part_counter,
             )
             continue
         if isinstance(

@@ -49,6 +49,7 @@ from docscriptor import (
     PageBreaker,
     Paragraph,
     ParagraphStyle,
+    Part,
     ReferencesPage,
     Section,
     Shape,
@@ -677,6 +678,55 @@ def test_sections_can_be_rendered_without_numbering() -> None:
     assert render_index.heading_number(numbered) == "1"
 
 
+def test_parts_use_dedicated_pages_without_resetting_chapters(tmp_path: Path) -> None:
+    first_part = Part(
+        "Foundations",
+        Chapter("Start", Section("Scope", Paragraph("Body one."))),
+    )
+    second_part = Part(
+        "Reference",
+        Chapter("Continue", Section("API", Paragraph("Body two."))),
+    )
+    document = Document("Part Test", TableOfContents(), first_part, second_part)
+
+    render_index = build_render_index(document)
+
+    assert render_index.heading_number(first_part) == "Part I"
+    assert render_index.heading_number(first_part.children[0]) == "1"
+    assert render_index.heading_number(second_part) == "Part II"
+    assert render_index.heading_number(second_part.children[0]) == "2"
+    assert [entry.level for entry in render_index.headings[:4]] == [0, 1, 2, 0]
+
+    docx_path = tmp_path / "parts.docx"
+    pdf_path = tmp_path / "parts.pdf"
+    html_path = tmp_path / "parts.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_document = WordDocument(docx_path)
+    paragraph_texts = [paragraph.text for paragraph in word_document.paragraphs]
+    assert "Part I" in paragraph_texts
+    assert "Foundations" in paragraph_texts
+    assert "1 Start" in paragraph_texts
+    assert "Part II" in paragraph_texts
+    assert "2 Continue" in paragraph_texts
+    assert _docx_document_xml(docx_path).count('<w:br w:type="page"/>') >= 2
+
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    assert "Part I" in pdf_text
+    assert "1 Start" in pdf_text
+    assert "Part II" in pdf_text
+    assert "2 Continue" in pdf_text
+
+    html_text = html_path.read_text(encoding="utf-8")
+    normalized_html_text = _normalized_html_text(html_path)
+    assert "Part I Foundations" in normalized_html_text
+    assert "2 Continue" in normalized_html_text
+    assert 'class="docscriptor-part-page docscriptor-page-break-before docscriptor-page-break-after"' in html_text
+    assert 'docscriptor-toc-entry-level-0' in html_text
+
+
 def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Document")
     assert hasattr(docscriptor, "DocumentSettings")
@@ -685,6 +735,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Section")
     assert hasattr(docscriptor, "Shape")
     assert hasattr(docscriptor, "Paragraph")
+    assert hasattr(docscriptor, "Part")
     assert hasattr(docscriptor, "BulletList")
     assert hasattr(docscriptor, "NumberedList")
     assert hasattr(docscriptor, "PageBreak")

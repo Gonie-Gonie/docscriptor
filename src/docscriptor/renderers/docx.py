@@ -29,6 +29,7 @@ from docscriptor.components.blocks import (
     NumberedList,
     PageBreak,
     Paragraph,
+    Part,
     Section,
 )
 from docscriptor.components.generated import (
@@ -207,6 +208,47 @@ class DocxRenderer:
             number_label=number_label,
             anchor=anchor,
         )
+
+    def render_part(
+        self,
+        container: object,
+        block: Part,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render a part separator page and its child blocks into DOCX."""
+
+        self._assert_document_container(container, "Part")
+        word_document = context.word_document
+        if word_document.paragraphs or word_document.tables:
+            self._ensure_page_break(word_document)
+
+        number_label = context.render_index.heading_number(block) if block.numbered else None
+        anchor = context.render_index.heading_anchor(block) if block.numbered else None
+        if number_label:
+            self._add_title_line(
+                word_document,
+                [Text(number_label)],
+                font_size=max(context.theme.body_font_size + 3, 14),
+                alignment="center",
+                bold=True,
+                space_after=18,
+                anchor=anchor,
+            )
+            anchor = None
+        self._add_title_line(
+            word_document,
+            block.title,
+            font_size=max(context.theme.title_font_size, context.theme.heading_size(1) + 2),
+            alignment="center",
+            bold=True,
+            space_after=0,
+            anchor=anchor,
+        )
+
+        if block.children:
+            self._ensure_page_break(word_document)
+            for child in block.children:
+                child.render_to_docx(self, word_document, context)
 
     def render_paragraph(
         self,
@@ -543,6 +585,8 @@ class DocxRenderer:
                     self._ensure_page_break(word_document)
                 continue
             child.render_to_docx(self, word_document, context)
+            if isinstance(child, Part) and not child.children and index < len(children) - 1:
+                self._ensure_page_break(word_document)
 
     def _render_title_matter(
         self,
@@ -587,6 +631,7 @@ class DocxRenderer:
         bold: bool = False,
         italic: bool = False,
         space_after: float = 0,
+        anchor: str | None = None,
     ) -> None:
         paragraph = self._add_paragraph(container)
         paragraph.alignment = ALIGNMENTS[alignment]
@@ -615,6 +660,8 @@ class DocxRenderer:
                 continue
             run = paragraph.add_run(self._resolve_fragment_text(fragment, None, None))
             self._apply_run_style(run, style, default_size=font_size)
+        if anchor is not None:
+            self._add_bookmark(paragraph, anchor)
 
     def _title_line_alignment(self, line: AuthorTitleLine, theme: Theme) -> str:
         if line.kind == "name":
@@ -750,7 +797,8 @@ class DocxRenderer:
     def _ends_with_page_break(self, word_document: WordDocument) -> bool:
         if not word_document.paragraphs:
             return False
-        return 'w:type="page"' in word_document.paragraphs[-1]._p.xml
+        last_paragraph_xml = word_document.paragraphs[-1]._p.xml
+        return 'w:type="page"' in last_paragraph_xml or "<w:sectPr" in last_paragraph_xml
 
     def _add_heading(
         self,
@@ -805,6 +853,7 @@ class DocxRenderer:
                 TableOfContents,
                 TableList,
                 FigureList,
+                Part,
             ),
         ):
             raise DocscriptorError(
@@ -2183,6 +2232,24 @@ class DocxRenderer:
                 self._append_pageref_field(paragraph, entry.anchor)
 
     def _toc_level_style(self, block: TableOfContents, level: int) -> TocLevelStyle:
+        if level == 0:
+            defaults = TocLevelStyle(
+                indent=0,
+                space_before=16,
+                space_after=8,
+                font_size_delta=1.2,
+                bold=True,
+                italic=False,
+            )
+            override = block.style_for_level(level)
+            return TocLevelStyle(
+                indent=defaults.indent if override.indent is None else override.indent,
+                space_before=defaults.space_before if override.space_before is None else override.space_before,
+                space_after=defaults.space_after if override.space_after is None else override.space_after,
+                font_size_delta=defaults.font_size_delta if override.font_size_delta is None else override.font_size_delta,
+                bold=defaults.bold if override.bold is None else override.bold,
+                italic=defaults.italic if override.italic is None else override.italic,
+            )
         defaults = TocLevelStyle(
             indent=0.24 * max(level - 1, 0),
             space_before=12 if level == 1 else (3 if level == 2 else 0),

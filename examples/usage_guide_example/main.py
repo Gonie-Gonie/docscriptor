@@ -1,8 +1,9 @@
 """Standalone usage guide example for docscriptor.
 
-The guide is written as a chapter-based reference document. Each chapter focuses on a
-specific authoring concern so a reader can jump directly to the page that matches the
-question they have in mind without the document feeling like a FAQ sheet.
+The guide is written as a part- and chapter-based reference document. Each chapter
+focuses on a specific authoring concern so a reader can jump directly to the page
+that matches the question they have in mind without the document feeling like a FAQ
+sheet.
 """
 
 from __future__ import annotations
@@ -41,6 +42,7 @@ from docscriptor import (
     PageSize,
     Paragraph,
     ParagraphStyle,
+    Part,
     ReferencesPage,
     Section,
     Shape,
@@ -113,6 +115,21 @@ report.save("artifacts/hello.html")
 
 # Or create the normal DOCX/PDF/HTML bundle in one call:
 report.save_all("artifacts", stem="hello")
+"""
+
+PART_STRUCTURE_SNIPPET = """from docscriptor import Chapter, Document, Paragraph, Part, Section
+
+handbook = Document(
+    "Implementation Handbook",
+    Part(
+        "Foundations",
+        Chapter("Getting Started", Section("Overview", Paragraph("Chapter 1."))),
+    ),
+    Part(
+        "Reference",
+        Chapter("Configuration", Section("Options", Paragraph("Chapter 2, not 1."))),
+    ),
+)
 """
 
 AUTHOR_LAYOUT_SNIPPET = """from docscriptor import Affiliation, Author, AuthorLayout, DocumentSettings
@@ -627,6 +644,7 @@ def build_usage_guide_document() -> Document:
     latex_transition_table = Table(
         headers=["If you reach for this in LaTeX", "Use this in docscriptor", "Why it is easier here"],
         rows=[
+            ["\\part", "Part(...)", "Parts render on their own separator pages and do not reset chapter numbering, matching the usual LaTeX book/report behavior."],
             ["\\section, \\subsection", "Chapter, Section, Subsection", "The Python object tree is also the document outline, so headings, contents, and anchors stay synchronized."],
             ["\\textbf, \\emph, \\texttt", "bold(...), italic(...), code(...)", "Inline styling stays attached to the words being styled and works in DOCX, PDF, and HTML."],
             ["\\includegraphics", "Figure(path_or_matplotlib_figure, caption=...)", "Static images and Python-generated figures use the same captioning and referencing model."],
@@ -685,7 +703,7 @@ def build_usage_guide_document() -> Document:
     renderer_rules_table = Table(
         headers=["Concern", "Shared behavior", "Important renderer detail"],
         rows=[
-            ["Heading numbering", "Document structure drives numbering in all outputs.", "The contents page reflects the authored hierarchy rather than a separate outline tool."],
+            ["Heading numbering", "Document structure drives numbering in all outputs.", "Part entries use independent Roman labels; chapter numbers continue across parts unless the author changes the structure."],
             ["Captions", "Tables and figures receive automatic numbers and can be referenced inline.", "Captions are kept visually closer to their table or figure to avoid page-break confusion."],
             ["Footnotes", "Footnotes are authored with the same inline API everywhere.", "DOCX uses native page footnotes; PDF and HTML fall back to generated note pages."],
             ["Hyperlinks", "External links and block anchors remain visible in all outputs.", "HTML makes them directly clickable while DOCX and PDF preserve them in exported files."],
@@ -708,6 +726,7 @@ def build_usage_guide_document() -> Document:
     contents_style_table = Table(
         headers=["Concern", "Default", "Customization path"],
         rows=[
+            ["Part entries", "Shown above chapters when authored.", "Use Part(...) for book-like divisions; set level_styles={0: TocLevelStyle(...)} to tune the part line."],
             ["Page numbers", "Shown by default with right-aligned page labels.", "Set TableOfContents(show_page_numbers=False) to hide them."],
             ["Leader dots", "Dotted leaders connect the heading text to the page number.", "Set leader='' for no leader or another short string for a different visual cue."],
             ["Heading depth", "All numbered headings are included.", "Set max_level=2 or max_level=3 for shorter contents pages."],
@@ -830,8 +849,10 @@ def build_usage_guide_document() -> Document:
         TableOfContents(),
         TableList(),
         FigureList(),
-        Chapter(
-            "Overview",
+        Part(
+            "Getting Oriented",
+            Chapter(
+                "Overview",
             Section(
                 "What docscriptor is trying to solve",
                 Paragraph(
@@ -866,7 +887,7 @@ def build_usage_guide_document() -> Document:
                     " to choose the base filename."
                 ),
                 NumberedList(
-                    "Author the structure with Document, Chapter, and Section objects.",
+                    "Author the structure with Document, Part, Chapter, and Section objects.",
                     "Write prose with Paragraph plus explicit inline helpers such as bold(...), code(...), and links.",
                     "Call document.save(...) with a .docx, .pdf, or .html path; use the explicit save_docx(...), save_pdf(...), and save_html(...) methods when that reads better.",
                 ),
@@ -919,6 +940,8 @@ def build_usage_guide_document() -> Document:
                 "Blocks define the visible structure",
                 Paragraph(
                     "A good rule is: use classes for visible structure and helpers for inline emphasis. Blocks such as ",
+                    code("Part"),
+                    ", ",
                     code("Chapter"),
                     ", ",
                     code("Section"),
@@ -931,6 +954,13 @@ def build_usage_guide_document() -> Document:
                 Paragraph(
                     "That explicitness matters most in large edits. During review, a collaborator can skim the object tree and understand where a figure belongs or where a generated page is inserted without first running the script."
                 ),
+                Paragraph(
+                    code("Part"),
+                    " is for book-like divisions above chapters. It gets its own separator page and a Roman label such as ",
+                    code("Part I"),
+                    ", while chapter numbering continues as 1, 2, 3 across later parts."
+                ),
+                CodeBlock(PART_STRUCTURE_SNIPPET, language="python"),
                 generated_pages_table,
             ),
             Section(
@@ -984,8 +1014,11 @@ def build_usage_guide_document() -> Document:
                 ),
             ),
         ),
-        Chapter(
-            "Tables, Figures, and Cross-References",
+        ),
+        Part(
+            "Authoring Reference",
+            Chapter(
+                "Tables, Figures, and Cross-References",
             Section(
                 "Media objects should stay attached to evidence",
                 Paragraph(
@@ -1218,6 +1251,7 @@ def build_usage_guide_document() -> Document:
                     " follows the same pattern with CSV-backed tables, generated figures, and a manuscript body authored from one readable script."
                 ),
             ),
+        ),
         ),
         CommentsPage(),
         ReferencesPage(),

@@ -203,8 +203,8 @@ class TableOfContents(Block):
         max_level: int | None = None,
         level_styles: dict[int, TocLevelStyle] | None = None,
     ) -> None:
-        if max_level is not None and max_level < 1:
-            raise ValueError("TableOfContents.max_level must be >= 1")
+        if max_level is not None and max_level < 0:
+            raise ValueError("TableOfContents.max_level must be >= 0")
         self.title = coerce_inlines((title,)) if title is not None else None
         self.show_page_numbers = show_page_numbers
         self.leader = leader

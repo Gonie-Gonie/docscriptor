@@ -224,6 +224,54 @@ PageBreaker = PageBreak
 
 
 @dataclass(slots=True, init=False)
+class Part(Block):
+    """Top-level document division rendered on its own separator page."""
+
+    title: list[Text]
+    children: list[Block]
+    numbered: bool
+    level: int
+
+    def __init__(
+        self,
+        title: InlineInput,
+        *children: BlockInput,
+        numbered: bool = True,
+    ) -> None:
+        self.title = coerce_inlines((title,))
+        self.children = coerce_blocks(children)
+        self.numbered = numbered
+        self.level = 0
+
+    def plain_title(self) -> str:
+        """Return the title without styling metadata."""
+
+        return "".join(fragment.plain_text() for fragment in self.title)
+
+    def render_to_docx(
+        self,
+        renderer: object,
+        container: object,
+        context: DocxRenderContext,
+    ) -> None:
+        renderer.render_part(container, self, context)
+
+    def render_to_pdf(
+        self,
+        renderer: object,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        return renderer.render_part(self, context)
+
+    def render_to_html(
+        self,
+        renderer: object,
+        context: HtmlRenderContext,
+    ) -> str:
+        return renderer.render_part(self, context)
+
+
+@dataclass(slots=True, init=False)
 class Box(Block):
     """Bordered container for grouped block content."""
 
@@ -393,6 +441,7 @@ __all__ = [
     "PageBreak",
     "PageBreaker",
     "Paragraph",
+    "Part",
     "Section",
     "Subsection",
     "Subsubsection",

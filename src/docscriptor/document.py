@@ -129,13 +129,13 @@ class Document:
         """Split top-level blocks into front matter and main matter.
 
         Front matter is defined as every top-level block that appears before the
-        first numbered level-1 heading.
+        first numbered part or level-1 heading.
         """
 
         for index, child in enumerate(self.body.children):
             level = getattr(child, "level", None)
             numbered = getattr(child, "numbered", False)
-            if level == 1 and numbered:
+            if level in {0, 1} and numbered:
                 return self.body.children[:index], self.body.children[index:]
         return list(self.body.children), []
 

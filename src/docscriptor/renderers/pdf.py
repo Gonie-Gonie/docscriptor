@@ -39,6 +39,7 @@ from docscriptor.components.blocks import (
     NumberedList,
     PageBreak as DocscriptorPageBreak,
     Paragraph,
+    Part,
     Section,
 )
 from docscriptor.components.generated import (
@@ -181,7 +182,7 @@ class FilteredTableOfContents(RLTableOfContents):
     def notify(self, kind: str, stuff: object) -> None:
         if kind == self._notifyKind and self.max_level is not None:
             level = stuff[0]  # type: ignore[index]
-            if level + 1 > self.max_level:
+            if level > self.max_level:
                 return
         super().notify(kind, stuff)
 
@@ -341,14 +342,32 @@ class PdfRenderer:
         if document.cover_page and front_children:
             story.append(RLPageBreak())
 
-        story.extend(self._render_top_level_children(front_children, context))
+        story.extend(
+            self._render_top_level_children(
+                front_children,
+                context,
+                follows_existing_content=not document.cover_page,
+            )
+        )
         if has_front_matter and main_children:
             story.append(PageNumberTransition("main"))
             if story and not isinstance(story[-2] if len(story) > 1 else None, RLPageBreak):
                 story.append(RLPageBreak())
-            story.extend(self._render_top_level_children(main_children, context))
+            story.extend(
+                self._render_top_level_children(
+                    main_children,
+                    context,
+                    follows_existing_content=False,
+                )
+            )
         elif not has_front_matter:
-            story.extend(self._render_top_level_children(main_children, context))
+            story.extend(
+                self._render_top_level_children(
+                    main_children,
+                    context,
+                    follows_existing_content=True,
+                )
+            )
 
         if self._should_auto_render_footnotes_page(document, render_index):
             story.extend(self.render_footnotes_page(FootnotesPage(), context))
@@ -388,8 +407,9 @@ class PdfRenderer:
             alignment=ALIGNMENTS[theme.heading_alignment(block.level)],
             textColor=colors.black,
         )
+        anchor = render_index.heading_anchor(block)
         paragraph = RLParagraph(
-            self._anchor_markup(render_index.heading_anchor(block))
+            self._anchor_markup(anchor)
             + self._inline_markup(
                 self._heading_fragments(
                     block.title,
@@ -404,15 +424,16 @@ class PdfRenderer:
             ),
             title_style,
         )
-        paragraph._docscriptor_toc_entry = (
-            block.level - 1,
-            self._flatten_fragments(
-                self._heading_fragments(block.title, render_index.heading_number(block)),
-                theme,
-                render_index,
-            ),
-            render_index.heading_anchor(block),
-        )
+        if block.numbered and anchor is not None:
+            paragraph._docscriptor_toc_entry = (
+                block.level,
+                self._flatten_fragments(
+                    self._heading_fragments(block.title, render_index.heading_number(block)),
+                    theme,
+                    render_index,
+                ),
+                anchor,
+            )
         return paragraph
 
     def render_paragraph(
@@ -440,6 +461,67 @@ class PdfRenderer:
                 paragraph_style,
             )
         ]
+
+    def render_part(
+        self,
+        block: Part,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render a part separator page and its child blocks into PDF flowables."""
+
+        theme = context.theme
+        render_index = context.render_index
+        number_label = render_index.heading_number(block) if block.numbered else None
+        anchor = render_index.heading_anchor(block) if block.numbered else None
+        story: list[object] = []
+
+        toc_flowable: object | None = None
+        if number_label:
+            label = self._part_paragraph(
+                [Text(number_label)],
+                context,
+                style_name="DocscriptorPartLabel",
+                font_size=max(theme.body_font_size + 3, 14),
+                bold=True,
+                space_after=18,
+                anchor=anchor,
+            )
+            story.append(label)
+            toc_flowable = label
+            anchor = None
+        title = self._part_paragraph(
+            block.title,
+            context,
+            style_name="DocscriptorPartTitle",
+            font_size=max(theme.title_font_size, theme.heading_size(1) + 2),
+            bold=True,
+            space_after=0,
+            anchor=anchor,
+        )
+        story.append(title)
+        if toc_flowable is None:
+            toc_flowable = title
+        if block.numbered and render_index.heading_anchor(block) is not None:
+            toc_flowable._docscriptor_toc_entry = (
+                block.level,
+                self._flatten_fragments(
+                    self._heading_fragments(block.title, render_index.heading_number(block)),
+                    theme,
+                    render_index,
+                ),
+                render_index.heading_anchor(block),
+            )
+
+        if block.children:
+            story.append(RLPageBreak())
+            story.extend(
+                self._render_top_level_children(
+                    block.children,
+                    context,
+                    follows_existing_content=False,
+                )
+            )
+        return story
 
     def render_list(
         self,
@@ -675,9 +757,20 @@ class PdfRenderer:
         self,
         children: list[object],
         context: PdfRenderContext,
+        *,
+        follows_existing_content: bool = False,
     ) -> list[object]:
         story: list[object] = []
         for index, child in enumerate(children):
+            if isinstance(child, Part):
+                if story and not isinstance(story[-1], RLPageBreak):
+                    story.append(RLPageBreak())
+                elif not story and follows_existing_content:
+                    story.append(RLPageBreak())
+                story.extend(child.render_to_pdf(self, context))
+                if not child.children and index < len(children) - 1:
+                    story.append(RLPageBreak())
+                continue
             if self._is_paginated_generated_page(child) and context.theme.generated_page_breaks:
                 if story and not isinstance(story[-1], RLPageBreak):
                     story.append(RLPageBreak())
@@ -781,6 +874,42 @@ class PdfRenderer:
                 base_size=paragraph_style.fontSize,
                 base_bold=bold,
                 base_italic=italic,
+            ),
+            paragraph_style,
+        )
+
+    def _part_paragraph(
+        self,
+        fragments: list[Text],
+        context: PdfRenderContext,
+        *,
+        style_name: str,
+        font_size: float,
+        bold: bool,
+        space_after: float,
+        anchor: str | None = None,
+    ) -> RLParagraph:
+        theme = context.theme
+        paragraph_style = RLParagraphStyle(
+            style_name,
+            parent=context.styles["BodyText"],
+            fontName=self._resolve_font(theme.body_font_name, bold, False),
+            fontSize=font_size,
+            leading=font_size * 1.2,
+            alignment=TA_CENTER,
+            spaceBefore=0,
+            spaceAfter=space_after,
+            textColor=colors.black,
+        )
+        return RLParagraph(
+            self._anchor_markup(anchor)
+            + self._inline_markup(
+                fragments,
+                theme,
+                context.render_index,
+                base_font_name=paragraph_style.fontName,
+                base_size=paragraph_style.fontSize,
+                base_bold=bold,
             ),
             paragraph_style,
         )
@@ -983,6 +1112,7 @@ class PdfRenderer:
                 TableOfContents,
                 TableList,
                 FigureList,
+                Part,
             ),
         ):
             raise DocscriptorError(
@@ -2223,14 +2353,14 @@ class PdfRenderer:
             )
             toc.levelStyles = [
                 self._pdf_toc_level_style(block, toc_level, theme, styles)
-                for toc_level in range(max((entry.level for entry in render_index.headings), default=1))
+                for toc_level in range(max((entry.level for entry in render_index.headings), default=1) + 1)
             ]
             story.append(toc)
         else:
             for entry in render_index.headings:
                 if not block.includes_level(entry.level):
                     continue
-                entry_style = self._pdf_toc_level_style(block, entry.level - 1, theme, styles)
+                entry_style = self._pdf_toc_level_style(block, entry.level, theme, styles)
                 story.append(
                     RLParagraph(
                         self._link_markup(
@@ -2257,7 +2387,7 @@ class PdfRenderer:
         theme: Theme,
         styles: object,
     ) -> RLParagraphStyle:
-        level = toc_level + 1
+        level = toc_level
         toc_style = self._toc_level_style(block, level)
         font_size = theme.body_font_size + toc_style.font_size_delta
         return RLParagraphStyle(
@@ -2277,6 +2407,24 @@ class PdfRenderer:
         )
 
     def _toc_level_style(self, block: TableOfContents, level: int) -> TocLevelStyle:
+        if level == 0:
+            defaults = TocLevelStyle(
+                indent=0,
+                space_before=16,
+                space_after=8,
+                font_size_delta=1.2,
+                bold=True,
+                italic=False,
+            )
+            override = block.style_for_level(level)
+            return TocLevelStyle(
+                indent=defaults.indent if override.indent is None else override.indent,
+                space_before=defaults.space_before if override.space_before is None else override.space_before,
+                space_after=defaults.space_after if override.space_after is None else override.space_after,
+                font_size_delta=defaults.font_size_delta if override.font_size_delta is None else override.font_size_delta,
+                bold=defaults.bold if override.bold is None else override.bold,
+                italic=defaults.italic if override.italic is None else override.italic,
+            )
         defaults = TocLevelStyle(
             indent=0.24 * max(level - 1, 0),
             space_before=12 if level == 1 else (3 if level == 2 else 0),

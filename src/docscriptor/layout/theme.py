@@ -311,6 +311,8 @@ class Theme:
     figure_caption_position: str = "below"
     table_label: str = "Table"
     figure_label: str = "Figure"
+    part_label: str = "Part"
+    part_number_format: str = "upper-roman"
     table_caption_label: str | None = None
     figure_caption_label: str | None = None
     table_reference_label: str | None = None
@@ -379,6 +381,7 @@ class Theme:
         self.main_matter_page_number_format = normalize_counter_format(
             self.main_matter_page_number_format
         )
+        self.part_number_format = normalize_counter_format(self.part_number_format)
         if "{page}" not in self.page_number_format:
             raise ValueError("page_number_format must contain a '{page}' placeholder")
         for field_name in (
@@ -465,6 +468,14 @@ class Theme:
         """Render a heading numbering label for nested section counters."""
 
         return self.heading_numbering.format_label(counters)
+
+    def format_part_label(self, value: int) -> str | None:
+        """Render a part label such as ``Part I`` from an independent counter."""
+
+        if not self.heading_numbering.enabled:
+            return None
+        marker = format_counter_value(value, self.part_number_format)
+        return f"{self.part_label} {marker}".strip()
 
     def list_style(self, *, ordered: bool) -> ListStyle:
         """Return the default style for bullet or ordered lists."""

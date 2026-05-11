@@ -16,6 +16,7 @@ from docscriptor.components.blocks import (
     NumberedList,
     PageBreak,
     Paragraph,
+    Part,
     Section,
 )
 from docscriptor.components.generated import (
@@ -143,6 +144,47 @@ class HtmlRenderer:
                 context.render_index,
             )
             + "</p>"
+        )
+
+    def render_part(self, block: Part, context: HtmlRenderContext) -> str:
+        """Render a part separator page and its child blocks into HTML."""
+
+        number_label = context.render_index.heading_number(block) if block.numbered else None
+        anchor = context.render_index.heading_anchor(block) if block.numbered else None
+        anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
+        label_html = (
+            '<p class="docscriptor-part-label">'
+            + self._inline_html(
+                [Text(number_label)],
+                context.theme,
+                context.render_index,
+                base_bold=True,
+                base_size=max(context.theme.body_font_size + 3, 14),
+            )
+            + "</p>"
+            if number_label
+            else ""
+        )
+        title_html = (
+            '<h1 class="docscriptor-part-title">'
+            + self._inline_html(
+                block.title,
+                context.theme,
+                context.render_index,
+                base_bold=True,
+                base_size=max(context.theme.title_font_size, context.theme.heading_size(1) + 2),
+            )
+            + "</h1>"
+        )
+        children_html = self._render_children(block.children, context)
+        return (
+            '<section class="docscriptor-part">'
+            f'<section{anchor_attr} class="docscriptor-part-page docscriptor-page-break-before docscriptor-page-break-after">'
+            + label_html
+            + title_html
+            + "</section>"
+            + children_html
+            + "</section>"
         )
 
     def render_list(
@@ -1424,6 +1466,24 @@ class HtmlRenderer:
         return "; ".join(styles)
 
     def _toc_level_style(self, block: TableOfContents, level: int) -> TocLevelStyle:
+        if level == 0:
+            defaults = TocLevelStyle(
+                indent=0,
+                space_before=16,
+                space_after=8,
+                font_size_delta=1.2,
+                bold=True,
+                italic=False,
+            )
+            override = block.style_for_level(level)
+            return TocLevelStyle(
+                indent=defaults.indent if override.indent is None else override.indent,
+                space_before=defaults.space_before if override.space_before is None else override.space_before,
+                space_after=defaults.space_after if override.space_after is None else override.space_after,
+                font_size_delta=defaults.font_size_delta if override.font_size_delta is None else override.font_size_delta,
+                bold=defaults.bold if override.bold is None else override.bold,
+                italic=defaults.italic if override.italic is None else override.italic,
+            )
         defaults = TocLevelStyle(
             indent=0.24 * max(level - 1, 0),
             space_before=12 if level == 1 else (3 if level == 2 else 0),
@@ -1563,6 +1623,7 @@ class HtmlRenderer:
             TableOfContents,
             TableList,
             FigureList,
+            Part,
         )
         for child in children:
             if isinstance(child, unsupported):
@@ -1640,6 +1701,7 @@ body {{
 .docscriptor-title-matter,
 .docscriptor-front-matter,
 .docscriptor-main-matter,
+.docscriptor-part-page,
 .docscriptor-generated-page,
 .docscriptor-box,
 .docscriptor-table-wrapper,
@@ -1651,6 +1713,7 @@ body {{
 .docscriptor-title-matter,
 .docscriptor-front-matter,
 .docscriptor-main-matter,
+.docscriptor-part-page,
 .docscriptor-generated-page {{
   padding: 24px 26px;
   margin-bottom: 18px;
@@ -1660,6 +1723,23 @@ body {{
   display: flex;
   flex-direction: column;
   justify-content: center;
+}}
+.docscriptor-part-page {{
+  min-height: 52vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}}
+.docscriptor-part-label {{
+  margin: 0 0 18pt;
+  font-size: {max(theme.body_font_size + 3, 14):.1f}pt;
+  font-weight: 700;
+}}
+.docscriptor-part-title {{
+  margin: 0;
+  font-size: {max(theme.title_font_size, theme.heading_size(1) + 2):.1f}pt;
+  font-weight: 700;
 }}
 .docscriptor-page-break-after {{
   break-after: page;
@@ -1799,6 +1879,7 @@ body {{
 .docscriptor-toc-page-number::after {{
   content: target-counter(attr(data-target), page);
 }}
+.docscriptor-toc-entry-level-0,
 .docscriptor-toc-entry-level-1 {{
   margin-top: 10pt;
   padding-top: 6pt;
@@ -1833,6 +1914,7 @@ a {{
   .docscriptor-title-matter,
   .docscriptor-front-matter,
   .docscriptor-main-matter,
+  .docscriptor-part-page,
   .docscriptor-generated-page,
   .docscriptor-table-wrapper,
   .docscriptor-figure {{
