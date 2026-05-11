@@ -464,20 +464,24 @@ class PdfRenderer:
             context.styles["BodyText"],
             default_unit=context.unit,
         )
-        return [
-            RLParagraph(
-                self._anchor_markup(context.render_index.block_anchor(block))
-                +
-                self._inline_markup(
-                    block.content,
-                    context.theme,
-                    context.render_index,
-                    base_font_name=paragraph_style.fontName,
-                    base_size=paragraph_style.fontSize,
-                ),
-                paragraph_style,
-            )
-        ]
+        paragraph = RLParagraph(
+            self._anchor_markup(context.render_index.block_anchor(block))
+            +
+            self._inline_markup(
+                block.content,
+                context.theme,
+                context.render_index,
+                base_font_name=paragraph_style.fontName,
+                base_size=paragraph_style.fontSize,
+            ),
+            paragraph_style,
+        )
+        flowables: list[object] = [paragraph]
+        if block.style.keep_together:
+            flowables = [KeepTogether(flowables)]
+        if block.style.page_break_before:
+            flowables.insert(0, RLPageBreak())
+        return flowables
 
     def render_part(
         self,
@@ -1174,18 +1178,20 @@ class PdfRenderer:
         first_line_indent = style.first_line_indent_in_inches(default_unit) or 0
         return RLParagraphStyle(
             (
-                f"Paragraph{alignment}{style.space_after}{style.leading}"
+                f"Paragraph{alignment}{style.space_before}{style.space_after}{style.leading}"
                 f"{left_indent}{right_indent}{first_line_indent}"
             ),
             parent=base_style,
             fontName=self._resolve_font(theme.body_font_name, False, False),
             fontSize=theme.body_font_size,
             leading=style.leading or theme.body_font_size * 1.35,
+            spaceBefore=style.space_before or 0,
             spaceAfter=style.space_after or 0,
             alignment=ALIGNMENTS[alignment],
             leftIndent=left_indent * inch,
             rightIndent=right_indent * inch,
             firstLineIndent=first_line_indent * inch,
+            keepWithNext=bool(style.keep_with_next),
             textColor=colors.black,
         )
 
@@ -1221,13 +1227,20 @@ class PdfRenderer:
         body_style = self._paragraph_style(ParagraphStyle(space_after=0), theme, styles["BodyText"])
         layout = build_table_layout(block.header_rows, block.rows)
         table_rows: list[list[object]] = [["" for _ in range(layout.column_count)] for _ in range(layout.row_count)]
+        top_padding, right_padding, bottom_padding, left_padding = block.style.resolved_cell_padding()
         style_commands: list[tuple[str, tuple[int, int], tuple[int, int], object]] = [
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor(f"#{block.style.border_color}")),
+            (
+                "GRID",
+                (0, 0),
+                (-1, -1),
+                block.style.border_width,
+                colors.HexColor(f"#{block.style.border_color}"),
+            ),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), block.style.cell_padding),
-            ("RIGHTPADDING", (0, 0), (-1, -1), block.style.cell_padding),
-            ("TOPPADDING", (0, 0), (-1, -1), block.style.cell_padding),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), block.style.cell_padding),
+            ("LEFTPADDING", (0, 0), (-1, -1), left_padding),
+            ("RIGHTPADDING", (0, 0), (-1, -1), right_padding),
+            ("TOPPADDING", (0, 0), (-1, -1), top_padding),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), bottom_padding),
         ]
         for placement in layout.placements:
             effective_style = block.effective_cell_style(placement)
@@ -1321,7 +1334,7 @@ class PdfRenderer:
             table_rows,
             colWidths=column_widths,
             hAlign=FLOWABLE_ALIGNMENTS[theme.table_alignment],
-            repeatRows=layout.header_row_count if split_table else 0,
+            repeatRows=layout.header_row_count if split_table or block.style.repeat_header_rows else 0,
         )
         table.splitByRow = 1
         table.setStyle(TableStyle(style_commands))
@@ -2063,7 +2076,8 @@ class PdfRenderer:
         base_bold: bool,
         base_italic: bool,
     ) -> str:
-        text = escape(text_value).replace("\n", "<br/>")
+        rendered_text = text_value.upper() if fragment.style.all_caps else text_value
+        text = escape(rendered_text).replace("\n", "<br/>")
         bold = base_bold if fragment.style.bold is None else fragment.style.bold
         italic = base_italic if fragment.style.italic is None else fragment.style.italic
         font_name = self._resolve_font(fragment.style.font_name or theme.body_font_name, bold, italic)
@@ -2083,6 +2097,10 @@ class PdfRenderer:
             wrapped = f"<u>{wrapped}</u>"
         if fragment.style.strikethrough:
             wrapped = f"<strike>{wrapped}</strike>"
+        if fragment.style.superscript:
+            wrapped = f"<super>{wrapped}</super>"
+        if fragment.style.subscript:
+            wrapped = f"<sub>{wrapped}</sub>"
         return wrapped
 
     def _math_markup(

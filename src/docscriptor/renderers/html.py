@@ -934,9 +934,12 @@ class HtmlRenderer:
         context: HtmlRenderContext,
     ) -> str:
         style_parts = [
-            f"border: 1px solid #{block.style.border_color}",
-            f"padding: {block.style.cell_padding:.1f}pt",
+            f"border: {block.style.border_width:.2f}pt solid #{block.style.border_color}",
         ]
+        top_padding, right_padding, bottom_padding, left_padding = block.style.resolved_cell_padding()
+        style_parts.append(
+            f"padding: {top_padding:.1f}pt {right_padding:.1f}pt {bottom_padding:.1f}pt {left_padding:.1f}pt"
+        )
         effective_style = block.effective_cell_style(placement)
         horizontal_alignment = self._table_cell_horizontal_alignment(placement, block)
         vertical_alignment = self._table_cell_vertical_alignment(placement, block)
@@ -1346,7 +1349,8 @@ class HtmlRenderer:
         base_italic: bool = False,
         base_size: float | None = None,
     ) -> str:
-        text = escape(text_value).replace("\n", "<br/>")
+        rendered_text = text_value.upper() if fragment.style.all_caps else text_value
+        text = escape(rendered_text).replace("\n", "<br/>")
         styles: list[str] = []
         effective_bold = base_bold if fragment.style.bold is None else fragment.style.bold
         effective_italic = base_italic if fragment.style.italic is None else fragment.style.italic
@@ -1369,6 +1373,16 @@ class HtmlRenderer:
             styles.append(f"color: #{fragment.style.color}")
         if fragment.style.highlight_color is not None:
             styles.append(f"background-color: #{fragment.style.highlight_color}")
+        if fragment.style.small_caps:
+            styles.append("font-variant: small-caps")
+        if fragment.style.all_caps:
+            styles.append("text-transform: uppercase")
+        if fragment.style.superscript:
+            styles.append("vertical-align: super")
+            styles.append("font-size: 75%")
+        if fragment.style.subscript:
+            styles.append("vertical-align: sub")
+            styles.append("font-size: 75%")
         if not styles:
             return text
         return f'<span style="{"; ".join(styles)}">{text}</span>'
@@ -1611,6 +1625,7 @@ class HtmlRenderer:
         default_unit: str = "in",
         alignment: str | None = None,
     ) -> str:
+        space_before = style.space_before or 0
         space_after = style.space_after
         if space_after is None:
             space_after = default_space_after if default_space_after is not None else 0
@@ -1634,13 +1649,24 @@ class HtmlRenderer:
             else ""
         )
         resolved_alignment = alignment or theme.resolve_paragraph_alignment(style)
+        pagination_styles: list[str] = []
+        if style.keep_together:
+            pagination_styles.extend([" break-inside: avoid;", " page-break-inside: avoid;"])
+        if style.keep_with_next:
+            pagination_styles.extend([" break-after: avoid;", " page-break-after: avoid;"])
+        if style.page_break_before:
+            pagination_styles.extend([" break-before: page;", " page-break-before: always;"])
+        if style.widow_control is not None:
+            widow_value = 2 if style.widow_control else 1
+            pagination_styles.extend([f" widows: {widow_value};", f" orphans: {widow_value};"])
         return (
             f"text-align: {resolved_alignment};"
-            f" margin: 0 0 {space_after:.1f}pt;"
+            f" margin: {space_before:.1f}pt 0 {space_after:.1f}pt;"
             f"{left_indent}"
             f"{right_indent}"
             f"{first_line_indent}"
             f" line-height: {line_height:.1f}pt;"
+            f"{''.join(pagination_styles)}"
         )
 
     def _box_css(self, block: Box, theme: Theme, unit: str) -> str:

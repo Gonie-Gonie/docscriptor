@@ -909,10 +909,20 @@ class DocxRenderer:
         default_unit: str,
     ) -> None:
         paragraph.alignment = ALIGNMENTS[theme.resolve_paragraph_alignment(style)]
+        if style.space_before is not None:
+            paragraph.paragraph_format.space_before = Pt(style.space_before)
         if style.space_after is not None:
             paragraph.paragraph_format.space_after = Pt(style.space_after)
         if style.leading is not None:
             paragraph.paragraph_format.line_spacing = Pt(style.leading)
+        if style.keep_together is not None:
+            paragraph.paragraph_format.keep_together = style.keep_together
+        if style.keep_with_next is not None:
+            paragraph.paragraph_format.keep_with_next = style.keep_with_next
+        if style.page_break_before is not None:
+            paragraph.paragraph_format.page_break_before = style.page_break_before
+        if style.widow_control is not None:
+            paragraph.paragraph_format.widow_control = style.widow_control
         left_indent = style.left_indent_in_inches(default_unit)
         right_indent = style.right_indent_in_inches(default_unit)
         first_line_indent = style.first_line_indent_in_inches(default_unit)
@@ -1259,6 +1269,24 @@ class DocxRenderer:
         if style.strikethrough:
             strike = OxmlElement("w:strike")
             run_properties.append(strike)
+        if style.small_caps is not None:
+            small_caps = OxmlElement("w:smallCaps")
+            if not style.small_caps:
+                small_caps.set(qn("w:val"), "0")
+            run_properties.append(small_caps)
+        if style.all_caps is not None:
+            caps = OxmlElement("w:caps")
+            if not style.all_caps:
+                caps.set(qn("w:val"), "0")
+            run_properties.append(caps)
+        if style.subscript:
+            vert_align = OxmlElement("w:vertAlign")
+            vert_align.set(qn("w:val"), "subscript")
+            run_properties.append(vert_align)
+        if style.superscript:
+            vert_align = OxmlElement("w:vertAlign")
+            vert_align.set(qn("w:val"), "superscript")
+            run_properties.append(vert_align)
         if style.highlight_color is not None:
             shading = OxmlElement("w:shd")
             shading.set(qn("w:val"), "clear")
@@ -1318,6 +1346,14 @@ class DocxRenderer:
             font.color.rgb = RGBColor.from_string(style.color)
         if style.strikethrough is not None:
             font.strike = style.strikethrough
+        if style.small_caps is not None:
+            font.small_caps = style.small_caps
+        if style.all_caps is not None:
+            font.all_caps = style.all_caps
+        if style.subscript is not None:
+            font.subscript = style.subscript
+        if style.superscript is not None:
+            font.superscript = style.superscript
         if style.highlight_color is not None:
             self._set_run_shading(run, style.highlight_color)
 
@@ -1942,7 +1978,7 @@ class DocxRenderer:
         table.style = "Table Grid"
         table.alignment = TABLE_ALIGNMENTS[theme.table_alignment]
         self._prevent_table_row_split(table)
-        if split_table:
+        if split_table or table_block.style.repeat_header_rows:
             self._repeat_table_header_rows(table, layout.header_row_count)
         else:
             self._keep_table_together(table)
@@ -1985,8 +2021,12 @@ class DocxRenderer:
             )
             if effective_style.background_color is not None:
                 self._set_cell_shading(target_cell, effective_style.background_color)
-            self._set_cell_borders(target_cell, table_block.style.border_color, 0.5)
-            self._set_cell_padding(target_cell, table_block.style.cell_padding)
+            self._set_cell_borders(
+                target_cell,
+                table_block.style.border_color,
+                table_block.style.border_width,
+            )
+            self._set_cell_margins(target_cell, *table_block.style.resolved_cell_padding())
 
         if table_block.caption is not None and theme.table_caption_position == "below":
             render_caption()

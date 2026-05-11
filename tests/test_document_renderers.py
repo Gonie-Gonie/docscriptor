@@ -96,6 +96,8 @@ from docscriptor import (
     styled,
     tag,
 )
+from docscriptor.presets.components import CalloutBox, KeyValueTable, PublicationTable
+from docscriptor.presets.templates import ElsevierArticle, ManuscriptSection, TaylorFrancisArticle
 from docscriptor.settings import TextStyle
 
 class HighlightedParagraph(Paragraph):
@@ -1246,6 +1248,42 @@ def test_inline_highlight_strike_and_line_break_render_to_all_outputs(tmp_path: 
     assert "<br/>" in html_text
 
 
+def test_inline_caps_and_vertical_align_render_to_all_outputs(tmp_path: Path) -> None:
+    document = Document(
+        "Inline Detail Features",
+        Paragraph(
+            Text.styled("small caps", small_caps=True),
+            " ",
+            Text.styled("upper", all_caps=True),
+            " H",
+            Text.styled("2", subscript=True),
+            " x",
+            Text.styled("2", superscript=True),
+        ),
+    )
+
+    docx_path = tmp_path / "inline-detail-features.docx"
+    pdf_path = tmp_path / "inline-detail-features.pdf"
+    html_path = tmp_path / "inline-detail-features.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert "<w:smallCaps" in docx_xml
+    assert "<w:caps" in docx_xml
+    assert 'w:val="subscript"' in docx_xml
+    assert 'w:val="superscript"' in docx_xml
+    assert "UPPER" in pdf_text
+    assert "font-variant: small-caps" in html_text
+    assert "text-transform: uppercase" in html_text
+    assert "vertical-align: sub" in html_text
+    assert "vertical-align: super" in html_text
+
+
 def test_inline_chips_render_to_all_outputs(tmp_path: Path) -> None:
     document = Document(
         "Inline Chips",
@@ -1328,6 +1366,45 @@ def test_paragraph_indents_render_to_all_outputs(tmp_path: Path) -> None:
     assert "margin-right: 0.20in" in html_text
     assert "text-indent: 0.25in" in html_text
     assert "text-indent: -0.25in" in html_text
+
+
+def test_paragraph_spacing_and_pagination_options_render_to_all_outputs(tmp_path: Path) -> None:
+    document = Document(
+        "Paragraph Detail Options",
+        Paragraph(
+            "Keep this with the next block.",
+            space_before=6,
+            space_after=3,
+            keep_together=True,
+            keep_with_next=True,
+            page_break_before=True,
+            widow_control=False,
+        ),
+        Paragraph("Next block."),
+    )
+
+    docx_path = tmp_path / "paragraph-details.docx"
+    pdf_path = tmp_path / "paragraph-details.pdf"
+    html_path = tmp_path / "paragraph-details.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert 'w:before="120"' in docx_xml
+    assert 'w:after="60"' in docx_xml
+    assert "<w:keepLines" in docx_xml
+    assert "<w:keepNext" in docx_xml
+    assert "<w:pageBreakBefore" in docx_xml
+    assert 'w:widowControl w:val="0"' in docx_xml
+    assert "Keep this with the next block." in pdf_text
+    assert "margin: 6.0pt 0 3.0pt" in html_text
+    assert "break-inside: avoid" in html_text
+    assert "page-break-before: always" in html_text
+    assert "widows: 1" in html_text
 
 
 def test_table_cell_alignment_renders_to_all_outputs(tmp_path: Path) -> None:
@@ -1439,6 +1516,99 @@ def test_table_cell_row_and_column_styles_render_to_all_outputs(tmp_path: Path) 
     assert "color: #7F1D1D" in html_text
     assert "font-weight: 700" in html_text
     assert "font-style: italic" in html_text
+
+
+def test_table_detail_style_options_render_to_all_outputs(tmp_path: Path) -> None:
+    table = Table(
+        headers=["Metric", "Value"],
+        rows=[["Latency", "14 ms"], ["Quality", "Stable"]],
+        caption="Detailed table.",
+        border_color="#334155",
+        border_width=1.25,
+        cell_padding_top=2,
+        cell_padding_right=3,
+        cell_padding_bottom=4,
+        cell_padding_left=5,
+        repeat_header_rows=True,
+    )
+    document = Document("Table Detail Test", table)
+
+    docx_path = tmp_path / "table-detail-style.docx"
+    pdf_path = tmp_path / "table-detail-style.pdf"
+    html_path = tmp_path / "table-detail-style.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert 'w:sz="10"' in docx_xml
+    assert 'w:color="334155"' in docx_xml
+    assert '<w:top w:w="40" w:type="dxa"/>' in docx_xml
+    assert '<w:right w:w="60" w:type="dxa"/>' in docx_xml
+    assert '<w:bottom w:w="80" w:type="dxa"/>' in docx_xml
+    assert '<w:left w:w="100" w:type="dxa"/>' in docx_xml
+    assert "<w:tblHeader" in docx_xml
+    assert "Detailed table." in pdf_text
+    assert "border: 1.25pt solid #334155" in html_text
+    assert "padding: 2.0pt 3.0pt 4.0pt 5.0pt" in html_text
+
+
+def test_component_and_template_presets_build_renderable_documents(tmp_path: Path) -> None:
+    callout = CalloutBox(
+        Paragraph("Check terminology before review."),
+        title="Review focus",
+        variant="warning",
+    )
+    metadata = KeyValueTable(
+        {"Preset namespace": "docscriptor.presets.components", "Output": "DOCX/PDF/HTML"},
+        caption="Preset metadata.",
+    )
+    results = PublicationTable(
+        headers=["Model", "Score"],
+        rows=[["Baseline", "0.81"], ["Docscriptor", "0.88"]],
+        caption="Preset result table.",
+    )
+    document = Document("Preset Components", callout, metadata, results)
+
+    docx_path = tmp_path / "preset-components.docx"
+    html_path = tmp_path / "preset-components.html"
+    document.save_docx(docx_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert "Review focus" in docx_xml
+    assert "Preset namespace" in docx_xml
+    assert "Preset result table" in docx_xml
+    assert "FFFBEB" in docx_xml
+    assert "Review focus" in html_text
+    assert "Preset metadata." in _normalized_html_text(html_path)
+
+    elsevier_document = ElsevierArticle().build(
+        "Readable manuscript generation",
+        authors=[Author("Research Lead", affiliations=["Example Lab"], corresponding=True)],
+        abstract="A concise abstract paragraph.",
+        keywords=["document generation", "python"],
+        sections=[
+            ManuscriptSection("Introduction", [Paragraph("Problem and contribution.")]),
+            ("Methods", [Paragraph("Data, model, and validation.")]),
+        ],
+        include_references=False,
+    )
+    taylor_document = TaylorFrancisArticle(include_contents=True, include_references=False).build(
+        "Template Variant",
+        abstract=Paragraph("Template abstract."),
+        sections=[ManuscriptSection("Results", [Paragraph("Template body.")])],
+    )
+
+    assert isinstance(elsevier_document, Document)
+    assert elsevier_document.theme.body_font_size == 10.0
+    assert taylor_document.theme.title_alignment == "left"
+    assert any(isinstance(child, TableOfContents) for child in taylor_document.body.children)
 
 
 def test_subfigure_group_renders_labels_and_references(tmp_path: Path) -> None:

@@ -96,10 +96,16 @@ class TextStyle:
     italic: bool | None = None
     underline: bool | None = None
     strikethrough: bool | None = None
+    small_caps: bool | None = None
+    all_caps: bool | None = None
+    subscript: bool | None = None
+    superscript: bool | None = None
 
     def __post_init__(self) -> None:
         self.color = normalize_color(self.color)
         self.highlight_color = normalize_color(self.highlight_color)
+        if self.subscript and self.superscript:
+            raise ValueError("TextStyle cannot set both subscript and superscript")
 
     def merged(self, *others: TextStyle | None) -> TextStyle:
         """Return a new style with later values overriding earlier ones."""
@@ -113,6 +119,10 @@ class TextStyle:
             italic=self.italic,
             underline=self.underline,
             strikethrough=self.strikethrough,
+            small_caps=self.small_caps,
+            all_caps=self.all_caps,
+            subscript=self.subscript,
+            superscript=self.superscript,
         )
         for other in others:
             if other is None:
@@ -126,10 +136,16 @@ class TextStyle:
                 "italic",
                 "underline",
                 "strikethrough",
+                "small_caps",
+                "all_caps",
+                "subscript",
+                "superscript",
             ):
                 value = getattr(other, field_name)
                 if value is not None:
                     setattr(merged, field_name, value)
+        if merged.subscript and merged.superscript:
+            raise ValueError("TextStyle cannot set both subscript and superscript")
         return merged
 
 
@@ -138,11 +154,16 @@ class ParagraphStyle:
     """Block-level paragraph spacing and alignment settings."""
 
     alignment: str | None = None
+    space_before: float | None = None
     space_after: float | None = 12.0
     leading: float | None = None
     left_indent: float | None = None
     right_indent: float | None = None
     first_line_indent: float | None = None
+    keep_together: bool | None = None
+    keep_with_next: bool | None = None
+    page_break_before: bool | None = None
+    widow_control: bool | None = None
     unit: str | None = None
 
     def __post_init__(self) -> None:
@@ -152,6 +173,12 @@ class ParagraphStyle:
             else None
         )
         self.unit = normalize_length_unit(self.unit) if self.unit is not None else None
+        if self.space_before is not None and self.space_before < 0:
+            raise ValueError("ParagraphStyle.space_before must be >= 0")
+        if self.space_after is not None and self.space_after < 0:
+            raise ValueError("ParagraphStyle.space_after must be >= 0")
+        if self.leading is not None and self.leading <= 0:
+            raise ValueError("ParagraphStyle.leading must be > 0")
         if self.left_indent is not None and self.left_indent < 0:
             raise ValueError("ParagraphStyle.left_indent must be >= 0")
         if self.right_indent is not None and self.right_indent < 0:
@@ -164,8 +191,13 @@ class ParagraphStyle:
         *,
         by: float | None = None,
         alignment: str | None = None,
+        space_before: float | None = None,
         space_after: float | None = 12.0,
         leading: float | None = None,
+        keep_together: bool | None = None,
+        keep_with_next: bool | None = None,
+        page_break_before: bool | None = None,
+        widow_control: bool | None = None,
         unit: str | None = None,
     ) -> ParagraphStyle:
         """Create a hanging-indent paragraph style."""
@@ -175,10 +207,15 @@ class ParagraphStyle:
             raise ValueError("ParagraphStyle.hanging by must be >= 0")
         return cls(
             alignment=alignment,
+            space_before=space_before,
             space_after=space_after,
             leading=leading,
             left_indent=left,
             first_line_indent=-hanging_by,
+            keep_together=keep_together,
+            keep_with_next=keep_with_next,
+            page_break_before=page_break_before,
+            widow_control=widow_control,
             unit=unit,
         )
 
@@ -325,6 +362,12 @@ class TableStyle:
     header_horizontal_alignment: str | None = None
     header_vertical_alignment: str | None = None
     cell_padding: float = 5.0
+    cell_padding_top: float | None = None
+    cell_padding_right: float | None = None
+    cell_padding_bottom: float | None = None
+    cell_padding_left: float | None = None
+    border_width: float = 0.5
+    repeat_header_rows: bool = False
 
     def __post_init__(self) -> None:
         self.header_background_color = normalize_color(self.header_background_color) or "E8EDF5"
@@ -354,6 +397,27 @@ class TableStyle:
         )
         if self.cell_padding < 0:
             raise ValueError("TableStyle.cell_padding must be >= 0")
+        for field_name in (
+            "cell_padding_top",
+            "cell_padding_right",
+            "cell_padding_bottom",
+            "cell_padding_left",
+        ):
+            value = getattr(self, field_name)
+            if value is not None and value < 0:
+                raise ValueError(f"TableStyle.{field_name} must be >= 0")
+        if self.border_width < 0:
+            raise ValueError("TableStyle.border_width must be >= 0")
+
+    def resolved_cell_padding(self) -> tuple[float, float, float, float]:
+        """Return top, right, bottom, and left cell padding in points."""
+
+        return (
+            self.cell_padding if self.cell_padding_top is None else self.cell_padding_top,
+            self.cell_padding if self.cell_padding_right is None else self.cell_padding_right,
+            self.cell_padding if self.cell_padding_bottom is None else self.cell_padding_bottom,
+            self.cell_padding if self.cell_padding_left is None else self.cell_padding_left,
+        )
 
 
 @dataclass(slots=True)

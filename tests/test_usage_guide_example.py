@@ -96,6 +96,10 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "6.4.1 Subsection entries" in paragraph_texts
     assert "6.4.1.1 Subsubsection entries" in paragraph_texts
     assert "7 Project Structure and Scaling Up" in paragraph_texts
+    assert "Part III" in paragraph_texts
+    assert "Presets and Templates" in paragraph_texts
+    assert "8 Component Presets" in paragraph_texts
+    assert "9 Template Presets" in paragraph_texts
     assert any("AuthorLayout(mode='stacked')" in text for text in paragraph_texts)
     assert any("Theme(footnote_placement='document')" in text for text in paragraph_texts)
     assert any("PageMargins" in text for text in paragraph_texts)
@@ -122,6 +126,11 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("Document-level configuration options." in text for text in paragraph_texts)
     assert any("Grouped Theme options" in text for text in paragraph_texts)
     assert any("Block-level option scope" in text for text in paragraph_texts)
+    assert any("Component presets wrap ordinary blocks" in text for text in paragraph_texts)
+    assert any("Template presets build full Document objects" in text for text in paragraph_texts)
+    assert any("docscriptor.presets.components" in text for text in paragraph_texts)
+    assert any("docscriptor.presets.templates" in text for text in paragraph_texts)
+    assert any("ElsevierArticle" in text for text in paragraph_texts)
     assert any("Figure sizing patterns for width, height, and document-relative sizing." in text for text in paragraph_texts)
     assert any("Coordinate-based drawings can be page overlays or inline flow objects." in text for text in paragraph_texts)
     assert any("Advanced table and figure placement controls." in text for text in paragraph_texts)
@@ -131,7 +140,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("The journal example at examples/journal_paper_example/main.py" in text for text in paragraph_texts)
     assert "Docscriptor Contributor Certificate" in table_text
     assert "Footnotes" not in [text for text in paragraph_texts if text == "Footnotes"]
-    assert len(word_document.tables) == 17
+    assert len(word_document.tables) == 22
     assert len(word_document.inline_shapes) == 10
     assert len(word_document.comments) == 2
     assert next(paragraph.style.name for paragraph in word_document.paragraphs if paragraph.text == "Comments") == "Heading 2"
@@ -177,6 +186,11 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Document-level configuration options." in pdf_text
     assert "Grouped Theme options" in pdf_text
     assert "Block-level option scope" in pdf_text
+    assert "Component presets wrap ordinary blocks" in pdf_text
+    assert "Template presets build full Document objects" in pdf_text
+    assert "docscriptor.presets.components" in pdf_text
+    assert "docscriptor.presets.templates" in pdf_text
+    assert "ElsevierArticle" in pdf_text
     assert "6.4.1 Subsection entries" in pdf_text
     assert "6.4.1.1 Subsubsection entries" in pdf_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in pdf_text
@@ -223,6 +237,11 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Document-level configuration options." in normalized_html_text
     assert "Grouped Theme options" in normalized_html_text
     assert "Block-level option scope" in normalized_html_text
+    assert "Component presets wrap ordinary blocks" in normalized_html_text
+    assert "Template presets build full Document objects" in normalized_html_text
+    assert "docscriptor.presets.components" in normalized_html_text
+    assert "docscriptor.presets.templates" in normalized_html_text
+    assert "ElsevierArticle" in normalized_html_text
     assert "6.4.1 Subsection entries" in normalized_html_text
     assert "6.4.1.1 Subsubsection entries" in normalized_html_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in normalized_html_text

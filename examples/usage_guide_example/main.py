@@ -77,6 +77,8 @@ from docscriptor import (
     strike,
     tag,
 )
+from docscriptor.presets.components import CalloutBox, KeyValueTable, PublicationTable
+from docscriptor.presets.templates import ElsevierArticle, ManuscriptSection, TaylorFrancisArticle
 
 
 OUTPUT_DIR = Path("artifacts") / "usage-guide"
@@ -288,11 +290,20 @@ settings = DocumentSettings(
 )
 
 paragraph = Paragraph("Right-aligned note.", alignment="right", space_after=6)
+kept_paragraph = Paragraph(
+    "Keep this paragraph with the following evidence table.",
+    space_before=6,
+    keep_with_next=True,
+)
 table = Table(
     headers=["Metric", "Value"],
     rows=[["Latency", "14 ms"]],
     header_background_color="#E8EDF5",
     cell_horizontal_alignment="center",
+    border_width=0.4,
+    cell_padding_top=3,
+    cell_padding_bottom=3,
+    repeat_header_rows=True,
 )
 """
 
@@ -327,7 +338,7 @@ summary = Box(
 Paragraph("See ", summary.reference(), " for the editable evidence package.")
 """
 
-INLINE_WORD_FEATURES_SNIPPET = """from docscriptor import Paragraph, highlight, line_break, strike
+INLINE_WORD_FEATURES_SNIPPET = """from docscriptor import Paragraph, Text, highlight, line_break, strike
 
 Paragraph(
     "Keep ",
@@ -335,7 +346,15 @@ Paragraph(
     ", remove ",
     strike("old value"),
     line_break(),
-    "Continue in the same paragraph without adding paragraph spacing.",
+    "Continue with ",
+    Text.styled("small caps", small_caps=True),
+    ", ",
+    Text.styled("uppercase", all_caps=True),
+    ", H",
+    Text.styled("2", subscript=True),
+    "O, and x",
+    Text.styled("2", superscript=True),
+    ".",
 )
 """
 
@@ -448,6 +467,48 @@ diagram = Figure(
     caption="Pipeline diagram.",
     placement="top", # Advanced placement hint for the renderer.
 )
+"""
+
+COMPONENT_PRESETS_SNIPPET = """from docscriptor import Paragraph
+from docscriptor.presets.components import CalloutBox, KeyValueTable, PublicationTable
+
+review_note = CalloutBox(
+    Paragraph("Check terminology before external review."),
+    title="Review focus",
+    variant="warning",
+    padding=8,
+)
+
+metadata = KeyValueTable(
+    {
+        "Manuscript type": "Research article",
+        "Output bundle": "DOCX, PDF, HTML",
+    },
+    caption="Submission metadata.",
+)
+
+results = PublicationTable(
+    headers=["Model", "Score"],
+    rows=[["Baseline", "0.81"], ["Docscriptor workflow", "0.88"]],
+    caption="Compact result table.",
+)
+"""
+
+TEMPLATE_PRESETS_SNIPPET = """from docscriptor import Author, Paragraph
+from docscriptor.presets.templates import ElsevierArticle, ManuscriptSection
+
+document = ElsevierArticle().build(
+    "Readable manuscript generation",
+    authors=[Author("Research Lead", affiliations=["Example Lab"], corresponding=True)],
+    abstract="A concise abstract paragraph.",
+    keywords=["document generation", "python"],
+    sections=[
+        ManuscriptSection("Introduction", [Paragraph("Problem and contribution.")]),
+        ManuscriptSection("Methods", [Paragraph("Data, model, and validation.")]),
+    ],
+)
+
+document.save_all("artifacts/manuscript", stem="elsevier-draft")
 """
 
 
@@ -708,6 +769,7 @@ def build_usage_guide_document() -> Document:
             ["Tables, figures, and references", "4. Tables, Figures, and Cross-References", "Caption numbering, block references, and data-backed media objects."],
             ["Notes and citations", "5. Notes, Comments, and References", "Footnotes, generated comments pages, citation libraries, and bibliography output."],
             ["Pagination and output differences", "6. Layout and Pagination", "Contents styling, caption cohesion, and renderer-specific note behavior."],
+            ["Reusable document shapes", "8. Component Presets", "Ready-made callouts, option tables, manuscript tables, and journal template entry points."],
         ],
         caption="A reading map for the guide.",
         column_widths=[2.0, 2.0, 2.6],
@@ -835,16 +897,39 @@ def build_usage_guide_document() -> Document:
     block_options_table = Table(
         headers=["Block", "Direct kwargs", "Style object when needed"],
         rows=[
-            ["Paragraph, CodeBlock, Equation", "alignment, space_after, leading, left_indent, right_indent, first_line_indent, unit", "ParagraphStyle for reusable paragraph rhythm."],
+            ["Text and styled(...)", "font_name, font_size, color, highlight_color, bold, italic, underline, strikethrough, small_caps, all_caps, subscript, superscript", "TextStyle for reusable inline styling."],
+            ["Paragraph, CodeBlock, Equation", "alignment, space_before, space_after, leading, left_indent, right_indent, first_line_indent, keep_together, keep_with_next, page_break_before, widow_control, unit", "ParagraphStyle for reusable paragraph rhythm and Word-native pagination controls."],
             ["BulletList, NumberedList", "marker_format, bullet, prefix, suffix, start, indent, marker_gap", "ListStyle for repeated list conventions."],
             ["Box", "border_color, background_color, title colors, border_width, padding, per-side padding, space_after, width, unit, alignment", "BoxStyle for shared callout or report-panel designs."],
-            ["Table", "header/body/alternate colors, border_color, cell/header alignment, cell_padding", "TableStyle plus row_styles, column_styles, header_row_styles."],
+            ["Table", "header/body/alternate colors, border_color, border_width, cell/header alignment, cell_padding, per-side cell padding, repeat_header_rows", "TableStyle plus row_styles, column_styles, header_row_styles."],
             ["TableCell", "colspan, rowspan, background_color, text_color, bold, italic, horizontal_alignment, vertical_alignment", "TableCellStyle for reusable row, column, or cell styling."],
             ["TableOfContents", "show_page_numbers, leader, max_level, level_styles", "TocLevelStyle per heading level; dictionaries are accepted for quick overrides."],
             ["Figure, SubFigure, SubFigureGroup", "width, height, unit, placement, dpi, columns, column_gap, label_format", "Use caption Paragraphs when caption text needs inline styling."],
         ],
         caption="Block-level option scope from quick kwargs to reusable style objects.",
         column_widths=[1.8, 3.6, 2.0],
+    )
+    component_presets_table = Table(
+        headers=["Preset", "What it builds", "Common customizations"],
+        rows=[
+            ["CalloutBox", "A styled Box with info, note, success, or warning variants.", "variant, title, padding, border/background colors, width, alignment."],
+            ["KeyValueTable", "A compact two-column Table for metadata and option lists.", "headers, caption, cell padding, border width, column widths."],
+            ["PublicationTable", "A manuscript-style Table with repeated headers and light row striping.", "caption, repeat_header_rows, colors, row/column/cell styles."],
+            ["CompactTable", "A denser Table baseline for small reports and appendices.", "Any normal Table kwarg plus TableStyle overrides."],
+        ],
+        caption="Component presets wrap ordinary blocks and still accept the same block/style options.",
+        column_widths=[1.5, 3.0, 2.6],
+    )
+    template_presets_table = Table(
+        headers=["Template", "Accepted structure", "Best first use"],
+        rows=[
+            ["ElsevierArticle", "title, authors, abstract, keywords, sections, citations, references flag.", "A compact journal manuscript draft with centered title matter."],
+            ["TaylorFrancisArticle", "The same JournalArticleTemplate.build(...) structure.", "A left-aligned manuscript draft with T&F-like title matter defaults."],
+            ["JournalArticleTemplate", "Custom theme, page geometry, author layout, and build(...) inputs.", "Your own institutional or lab manuscript preset."],
+            ["ManuscriptSection", "title, children, level, numbered.", "A small descriptor when users prefer data-like section lists over nested Section objects."],
+        ],
+        caption="Template presets build full Document objects from manuscript-shaped inputs.",
+        column_widths=[1.7, 3.4, 2.3],
     )
     figure_sizing_table = Table(
         headers=["Figure intent", "Pattern", "Renderer behavior"],
@@ -876,6 +961,35 @@ def build_usage_guide_document() -> Document:
         ],
         caption="How the source layout can grow without losing readability.",
         column_widths=[1.4, 2.3, 2.9],
+    )
+    preset_callout = CalloutBox(
+        Paragraph(
+            "Presets are ordinary docscriptor components with carefully chosen defaults. Use kwargs for quick local changes and pass the underlying style objects when a repeated house style needs to be named."
+        ),
+        title="Preset rule",
+        variant="info",
+        padding=8,
+        width=15.0,
+        unit="cm",
+    )
+    preset_metadata_table = KeyValueTable(
+        {
+            "Preset namespace": "docscriptor.presets.components",
+            "Customization surface": "Same kwargs and style objects as core components",
+            "Output formats": "DOCX, PDF, HTML",
+        },
+        caption="A KeyValueTable preset used as a live component example.",
+        column_widths=[2.4, 4.4],
+    )
+    preset_publication_table = PublicationTable(
+        headers=["Preset", "Default behavior"],
+        rows=[
+            ["CalloutBox", "Variant-driven Box colors with editable Word output."],
+            ["PublicationTable", "Light manuscript table styling and repeated headers."],
+            ["JournalArticleTemplate", "Builds a Document from title matter, abstract, sections, and references."],
+        ],
+        caption="A PublicationTable preset used as a live manuscript-style table example.",
+        column_widths=[2.3, 4.6],
     )
 
     cover_callout = Box(
@@ -1098,7 +1212,17 @@ def build_usage_guide_document() -> Document:
                     code("strike(...)"),
                     " for deleted or superseded language, and ",
                     code("line_break()"),
-                    " for a Shift+Enter-style break inside the same paragraph."
+                    " for a Shift+Enter-style break inside the same paragraph. ",
+                    code("Text.styled(...)"),
+                    " also accepts Word-native inline features such as ",
+                    code("small_caps"),
+                    ", ",
+                    code("all_caps"),
+                    ", ",
+                    code("subscript"),
+                    ", and ",
+                    code("superscript"),
+                    "."
                 ),
                 CodeBlock(INLINE_WORD_FEATURES_SNIPPET, language="python"),
                 Paragraph(
@@ -1122,7 +1246,7 @@ def build_usage_guide_document() -> Document:
                 Paragraph(
                     "Paragraph-level Word features are also part of the authored source. ",
                     code("ParagraphStyle"),
-                    " supports explicit alignment, left and right indents, first-line indents, and hanging indents for reference-like blocks that should not be simulated with spaces. Use ",
+                    " supports explicit alignment, spacing before and after, left and right indents, first-line indents, hanging indents, and keep/page-break controls for reference-like blocks that should not be simulated with spaces. Use ",
                     code("Theme(paragraph_alignment=...)"),
                     " for the document-wide default and per-paragraph ",
                     code("ParagraphStyle(alignment=...)"),
@@ -1134,7 +1258,7 @@ def build_usage_guide_document() -> Document:
                     code("TableCell"),
                     ", or use ",
                     code("TableStyle"),
-                    " to set table-wide body and header defaults. For more direct formatting, apply ",
+                    " to set table-wide body and header defaults including borders, per-side cell padding, repeated headers, and alignment. For more direct formatting, apply ",
                     code("TableCellStyle"),
                     " to individual cells, body rows, header rows, or expanded columns."
                 ),
@@ -1403,6 +1527,66 @@ def build_usage_guide_document() -> Document:
                 ),
             ),
         ),
+        ),
+        Part(
+            "Presets and Templates",
+            Chapter(
+                "Component Presets",
+                Section(
+                    "Reusable components keep the core API visible",
+                    Paragraph(
+                        "Component presets live under ",
+                        code("docscriptor.presets.components"),
+                        ". They are intentionally thin wrappers around ordinary blocks, so a user can start with ",
+                        code("CalloutBox"),
+                        ", ",
+                        code("KeyValueTable"),
+                        ", or ",
+                        code("PublicationTable"),
+                        " and still pass familiar kwargs such as ",
+                        code("padding"),
+                        ", ",
+                        code("cell_padding"),
+                        ", ",
+                        code("border_width"),
+                        ", and ",
+                        code("column_widths"),
+                        ".",
+                    ),
+                    component_presets_table,
+                    preset_callout,
+                    preset_metadata_table,
+                    preset_publication_table,
+                    CodeBlock(COMPONENT_PRESETS_SNIPPET, language="python"),
+                ),
+            ),
+            Chapter(
+                "Template Presets",
+                Section(
+                    "Templates build complete documents from manuscript-shaped input",
+                    Paragraph(
+                        "Template presets live under ",
+                        code("docscriptor.presets.templates"),
+                        ". They are classes because they own a document-level combination of theme, page geometry, author layout, generated pages, and references. The build input stays small: a title, optional authors, an abstract, keywords, a section list, and citation data."
+                    ),
+                    Paragraph(
+                        code("ElsevierArticle"),
+                        " and ",
+                        code("TaylorFrancisArticle"),
+                        " both inherit from ",
+                        code("JournalArticleTemplate"),
+                        ". Users can pass existing ",
+                        code("Section"),
+                        " blocks, compact ",
+                        code("ManuscriptSection"),
+                        " descriptors, or simple ",
+                        code("(title, children)"),
+                        " tuples for the body."
+                    ),
+                    template_presets_table,
+                    CodeBlock(TEMPLATE_PRESETS_SNIPPET, language="python"),
+                ),
+            ),
         ),
         CommentsPage(),
         ReferencesPage(),
