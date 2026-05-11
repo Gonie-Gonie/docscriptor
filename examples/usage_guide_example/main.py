@@ -768,8 +768,8 @@ def build_usage_guide_document() -> Document:
         headers=["Concern", "Default", "Customization path"],
         rows=[
             ["Part entries", "Shown above chapters when authored.", "Use Part(...) for book-like divisions; set level_styles={0: TocLevelStyle(...)} to tune the part line."],
-            ["Page numbers", "Shown by default with right-aligned page labels.", "Set TableOfContents(show_page_numbers=False) to hide them."],
-            ["Leader dots", "Dotted leaders connect the heading text to the page number.", "Set leader='' for no leader or another short string for a different visual cue."],
+            ["Page numbers", "Shown by default in paginated DOCX and PDF output.", "HTML keeps a clean navigation-only outline because browsers do not provide stable page labels."],
+            ["Leader dots", "Dotted leaders connect the heading text to the page number in paginated output.", "Set leader='' for no leader or another short string for a different visual cue."],
             ["Heading depth", "All numbered headings are included.", "Set max_level=2 or max_level=3 for shorter contents pages."],
             ["Hierarchy styling", "Top-level entries are bold; lower levels use normal weight by default.", "Pass level_styles={level: TocLevelStyle(...)} for per-level spacing, indentation, and emphasis."],
         ],
@@ -1214,7 +1214,7 @@ def build_usage_guide_document() -> Document:
             Section(
                 "Contents hierarchy and page labels",
                 Paragraph(
-                    "The generated contents page uses hierarchy-aware spacing and emphasis by default. It also renders page labels with dotted leaders, which is the common book/report convention where the entry text sits on the left and the page number aligns on the right."
+                    "The generated contents page uses hierarchy-aware spacing and emphasis by default. In paginated DOCX and PDF output it also renders page labels with dotted leaders, which is the common book/report convention where the entry text sits on the left and the page number aligns on the right. HTML keeps the same hierarchy as a clean navigation outline."
                 ),
                 Paragraph(
                     "Use ",

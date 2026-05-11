@@ -2651,26 +2651,50 @@ class DocxRenderer:
         page_number_type.set(qn("w:start"), str(start))
 
     def _append_page_number_field(self, paragraph: object) -> None:
-        field = OxmlElement("w:fldSimple")
-        field.set(qn("w:instr"), "PAGE")
-        field.set(qn("w:dirty"), "true")
-        run = OxmlElement("w:r")
-        text = OxmlElement("w:t")
-        text.text = "1"
-        run.append(text)
-        field.append(run)
-        paragraph._p.append(field)
+        self._append_field(paragraph, "PAGE", cached_result="1")
 
     def _append_pageref_field(self, paragraph: object, anchor: str) -> None:
-        field = OxmlElement("w:fldSimple")
-        field.set(qn("w:instr"), f"PAGEREF {anchor} \\h")
-        field.set(qn("w:dirty"), "true")
-        run = OxmlElement("w:r")
-        text = OxmlElement("w:t")
-        text.text = "1"
-        run.append(text)
-        field.append(run)
-        paragraph._p.append(field)
+        self._append_field(paragraph, f"PAGEREF {anchor} \\h")
+
+    def _append_field(
+        self,
+        paragraph: object,
+        instruction: str,
+        *,
+        cached_result: str = "",
+    ) -> None:
+        begin_run = OxmlElement("w:r")
+        begin = OxmlElement("w:fldChar")
+        begin.set(qn("w:fldCharType"), "begin")
+        begin.set(qn("w:dirty"), "true")
+        begin_run.append(begin)
+        paragraph._p.append(begin_run)
+
+        instruction_run = OxmlElement("w:r")
+        instruction_text = OxmlElement("w:instrText")
+        instruction_text.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+        instruction_text.text = f" {instruction} "
+        instruction_run.append(instruction_text)
+        paragraph._p.append(instruction_run)
+
+        separator_run = OxmlElement("w:r")
+        separator = OxmlElement("w:fldChar")
+        separator.set(qn("w:fldCharType"), "separate")
+        separator_run.append(separator)
+        paragraph._p.append(separator_run)
+
+        if cached_result:
+            result_run = OxmlElement("w:r")
+            result_text = OxmlElement("w:t")
+            result_text.text = cached_result
+            result_run.append(result_text)
+            paragraph._p.append(result_run)
+
+        end_run = OxmlElement("w:r")
+        end = OxmlElement("w:fldChar")
+        end.set(qn("w:fldCharType"), "end")
+        end_run.append(end)
+        paragraph._p.append(end_run)
 
     def _comment_marker(self, fragment: Comment, render_index: RenderIndex | None) -> str:
         if render_index is None:

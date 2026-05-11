@@ -705,7 +705,6 @@ class HtmlRenderer:
         context: HtmlRenderContext,
     ) -> str:
         toc_style = self._toc_level_style(block, entry.level)
-        anchor_href = f"#{entry.anchor}" if entry.anchor else ""
         label_html = self._link_html(
             entry.anchor,
             self._inline_html(
@@ -714,17 +713,6 @@ class HtmlRenderer:
                 context.render_index,
             ),
             internal=True,
-        )
-        page_number = (
-            '<span class="docscriptor-toc-page-number" '
-            f'data-target="{escape(anchor_href)}"></span>'
-            if block.show_page_numbers
-            else ""
-        )
-        leader = (
-            f'<span class="docscriptor-toc-leader">{escape(block.leader)}</span>'
-            if block.show_page_numbers and block.leader
-            else ""
         )
         styles = [
             f"margin-left: {toc_style.indent:.2f}in",
@@ -735,11 +723,9 @@ class HtmlRenderer:
             f"font-style: {'italic' if toc_style.italic else 'normal'}",
         ]
         return (
-            f'<div class="docscriptor-toc-entry docscriptor-toc-entry-level-{entry.level}" '
+            f'<div class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-{entry.level}" '
             f'style="{"; ".join(styles)};">'
             f'<span class="docscriptor-toc-label">{label_html}</span>'
-            + leader
-            + page_number
             + "</div>"
         )
 
@@ -1978,24 +1964,11 @@ body {{
   align-items: baseline;
   column-gap: 0.28em;
 }}
+.docscriptor-toc-entry-no-page {{
+  grid-template-columns: minmax(0, 1fr);
+}}
 .docscriptor-toc-label {{
   min-width: 0;
-}}
-.docscriptor-toc-leader {{
-  overflow: hidden;
-  white-space: nowrap;
-  color: #7f8b93;
-}}
-.docscriptor-toc-leader::before {{
-  content: "................................................................................................................................";
-  letter-spacing: 0.08em;
-}}
-.docscriptor-toc-page-number {{
-  min-width: 2ch;
-  text-align: right;
-}}
-.docscriptor-toc-page-number::after {{
-  content: target-counter(attr(data-target), page);
 }}
 .docscriptor-toc-entry-level-0,
 .docscriptor-toc-entry-level-1 {{

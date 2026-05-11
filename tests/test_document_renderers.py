@@ -1557,11 +1557,16 @@ def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Pa
     assert "PAGEREF heading_" in docx_xml
     assert 'w:updateFields w:val="true"' in docx_settings_xml
     assert 'w:dirty="true"' in docx_xml
+    assert "<w:fldSimple" not in docx_xml
+    first_pageref = docx_xml[docx_xml.find("PAGEREF heading_") : docx_xml.find("PAGEREF heading_") + 260]
+    assert "<w:t>1</w:t>" not in first_pageref
     assert 'w:leader="dot"' in docx_xml
     assert ".  .  ." in pdf_text
     assert "1 One" in pdf_text
-    assert 'class="docscriptor-toc-page-number"' in html_text
-    assert "target-counter(attr(data-target), page)" in html_text
+    assert 'class="docscriptor-toc-page-number"' not in html_text
+    assert "docscriptor-toc-leader" not in html_text
+    assert "target-counter(attr(data-target), page)" not in html_text
+    assert "docscriptor-toc-entry-no-page" in html_text
 
 
 def test_table_of_contents_options_can_hide_pages_and_limit_depth(tmp_path: Path) -> None:
@@ -1585,7 +1590,7 @@ def test_table_of_contents_options_can_hide_pages_and_limit_depth(tmp_path: Path
 
     assert "PAGEREF heading_" not in docx_xml
     assert 'class="docscriptor-toc-page-number"' not in html_text
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-1"' in html_text
+    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-1"' in html_text
     assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-2"' not in html_text
 
 
@@ -2126,7 +2131,8 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
         for paragraph in comment_item.paragraphs
     )
     footer_xml = word_document.sections[0].footer.paragraphs[0]._p.xml
-    assert 'w:instr="PAGE"' in footer_xml
+    assert "<w:instrText" in footer_xml
+    assert " PAGE " in footer_xml
     assert word_document.sections[0].footer.paragraphs[0].text.startswith("Page ")
     inline_math_paragraph = next(paragraph for paragraph in word_document.paragraphs if "Inline math such as" in paragraph.text)
     assert any(run.text == "2" and run.font.superscript for run in inline_math_paragraph.runs)

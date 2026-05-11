@@ -226,7 +226,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert html_text.count("data:image/png;base64,") == 6
     assert 'href="#table_1"' in html_text
     assert 'href="#figure_1"' in html_text
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-1"' in html_text
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-2"' in html_text
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-3"' in html_text
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-4"' in html_text
+    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-1"' in html_text
+    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-2"' in html_text
+    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-3"' in html_text
+    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-4"' in html_text
