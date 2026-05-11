@@ -519,6 +519,7 @@ class DocxRenderer:
             properties.author = document.author
         if document.summary:
             properties.subject = document.summary
+        self._enable_field_updates(word_document)
 
         normal_style = word_document.styles["Normal"]
         normal_style.font.name = document.theme.body_font_name
@@ -550,6 +551,14 @@ class DocxRenderer:
                 italic=italic,
             )
         self._set_page_background(word_document, document.theme.page_background_color)
+
+    def _enable_field_updates(self, word_document: WordDocument) -> None:
+        settings = word_document.settings.element
+        update_fields = settings.find(qn("w:updateFields"))
+        if update_fields is None:
+            update_fields = OxmlElement("w:updateFields")
+            settings.append(update_fields)
+        update_fields.set(qn("w:val"), "true")
 
     def _render_block(
         self,
@@ -2370,6 +2379,7 @@ class DocxRenderer:
     def _append_page_number_field(self, paragraph: object) -> None:
         field = OxmlElement("w:fldSimple")
         field.set(qn("w:instr"), "PAGE")
+        field.set(qn("w:dirty"), "true")
         run = OxmlElement("w:r")
         text = OxmlElement("w:t")
         text.text = "1"
@@ -2380,6 +2390,7 @@ class DocxRenderer:
     def _append_pageref_field(self, paragraph: object, anchor: str) -> None:
         field = OxmlElement("w:fldSimple")
         field.set(qn("w:instr"), f"PAGEREF {anchor} \\h")
+        field.set(qn("w:dirty"), "true")
         run = OxmlElement("w:r")
         text = OxmlElement("w:t")
         text.text = "1"

@@ -370,10 +370,7 @@ class Section(Block):
         renderer: object,
         context: PdfRenderContext,
     ) -> list[object]:
-        story = [renderer.make_section_heading(self, context)]
-        for child in self.children:
-            story.extend(child.render_to_pdf(renderer, context))
-        return story
+        return renderer.render_section(self, context)
 
     def render_to_html(
         self,

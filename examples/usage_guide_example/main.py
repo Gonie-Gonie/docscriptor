@@ -692,7 +692,7 @@ def build_usage_guide_document() -> Document:
     media_placement_table = Table(
         headers=["Option", "Default use", "Renderer effect"],
         rows=[
-            ["Table(split=False)", "Prefer an uncut table.", "Short tables stay together; very long tables become split tables with repeated headers."],
+            ["Table(split=False)", "Prefer an uncut floating table.", "Short tables stay together and may move after nearby prose; very long tables become split tables with repeated headers."],
             ["Table(split=True)", "Treat the table like LaTeX here placement.", "The table is rendered in source order and can break across pages."],
             ["placement='tbp'", "Advanced float-like preference.", "Renderers keep the object together when possible and may move it to a better page position."],
             ["placement='top' or 'page'", "Advanced forced placement.", "Renderers add page-break hints around the table or figure."],
@@ -796,6 +796,7 @@ def build_usage_guide_document() -> Document:
                 ["Figure", "Reviewable inserted media", "Same asset in every output"],
             ],
             column_widths=[3.6, 5.2, 6.2],
+            unit="cm",
             style=TableStyle(
                 header_background_color="#E7EEF7",
                 border_color="#B8C6D6",
@@ -1071,7 +1072,7 @@ def build_usage_guide_document() -> Document:
                 Paragraph(
                     "Authors normally decide whether a table may be split, not whether it is a normal table or a long table. With ",
                     code("Table(split=False)"),
-                    ", docscriptor keeps a short table together but automatically switches very long tables to repeated-header split rendering. With ",
+                    ", docscriptor keeps a short table together and lets PDF place following prose before the table when that avoids an awkward blank page. Very long tables automatically switch to repeated-header split rendering. With ",
                     code("Table(split=True)"),
                     ", the table behaves like a here-placed object that can break in source order."
                 ),

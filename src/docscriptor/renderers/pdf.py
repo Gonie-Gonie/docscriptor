@@ -257,6 +257,9 @@ class DocscriptorPdfTemplate(SimpleDocTemplate):
         super().__init__(*args, **kwargs)
         self.main_matter_start_page: int | None = None
 
+    def beforeDocument(self) -> None:
+        self.main_matter_start_page = None
+
     def build(
         self,
         flowables: list[object],
@@ -296,7 +299,14 @@ class DocscriptorPdfTemplate(SimpleDocTemplate):
         toc_entry = getattr(flowable, "_docscriptor_toc_entry", None)
         if toc_entry is not None:
             level, text, key = toc_entry
-            self.notify("TOCEntry", (level, text, self.page, key))
+            self.notify("TOCEntry", (level, text, self._logical_page(self.page), key))
+
+    def _logical_page(self, physical_page: int) -> int:
+        if self.main_matter_start_page is None:
+            return physical_page
+        if physical_page < self.main_matter_start_page:
+            return physical_page
+        return physical_page - self.main_matter_start_page + 1
 
 
 class PdfRenderer:
@@ -304,12 +314,14 @@ class PdfRenderer:
 
     def __init__(self) -> None:
         self._registered_system_fonts: dict[tuple[str, bool, bool], str] = {}
+        self._pending_float_flowables: list[object] = []
 
     def render(self, document: Document, output_path: PathLike) -> Path:
         """Render a docscriptor document to a PDF file."""
 
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
+        self._pending_float_flowables = []
 
         pdf = DocscriptorPdfTemplate(
             str(path),
@@ -522,6 +534,19 @@ class PdfRenderer:
                 )
             )
         return story
+
+    def render_section(
+        self,
+        block: Section,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render a section heading and body, allowing float blocks to move later."""
+
+        return [self.make_section_heading(block, context)] + self._render_flow_children(
+            block.children,
+            context,
+            flush_trailing_floats=False,
+        )
 
     def render_list(
         self,
@@ -763,6 +788,7 @@ class PdfRenderer:
         story: list[object] = []
         for index, child in enumerate(children):
             if isinstance(child, Part):
+                story.extend(self._pop_pending_float_flowables())
                 if story and not isinstance(story[-1], RLPageBreak):
                     story.append(RLPageBreak())
                 elif not story and follows_existing_content:
@@ -772,14 +798,60 @@ class PdfRenderer:
                     story.append(RLPageBreak())
                 continue
             if self._is_paginated_generated_page(child) and context.theme.generated_page_breaks:
+                story.extend(self._pop_pending_float_flowables())
                 if story and not isinstance(story[-1], RLPageBreak):
                     story.append(RLPageBreak())
                 story.extend(child.render_to_pdf(self, context))
                 if index < len(children) - 1:
                     story.append(RLPageBreak())
                 continue
-            story.extend(child.render_to_pdf(self, context))
+            pending_before_child = bool(self._pending_float_flowables)
+            child_story = child.render_to_pdf(self, context)
+            if self._is_float_story(child_story):
+                self._pending_float_flowables.extend(child_story)
+                continue
+            story.extend(child_story)
+            if pending_before_child:
+                story.extend(self._pop_pending_float_flowables())
+        story.extend(self._pop_pending_float_flowables())
         return story
+
+    def _render_flow_children(
+        self,
+        children: list[object],
+        context: PdfRenderContext,
+        *,
+        flush_trailing_floats: bool,
+    ) -> list[object]:
+        story: list[object] = []
+        for child in children:
+            pending_before_child = bool(self._pending_float_flowables)
+            child_story = child.render_to_pdf(self, context)
+            if self._is_float_story(child_story):
+                self._pending_float_flowables.extend(child_story)
+                continue
+            story.extend(child_story)
+            if pending_before_child:
+                story.extend(self._pop_pending_float_flowables())
+        if flush_trailing_floats:
+            story.extend(self._pop_pending_float_flowables())
+        return story
+
+    def _mark_float_story(self, story: list[object]) -> list[object]:
+        for flowable in story:
+            setattr(flowable, "_docscriptor_float", True)
+        return story
+
+    def _is_float_story(self, story: list[object]) -> bool:
+        return bool(story) and all(
+            bool(getattr(flowable, "_docscriptor_float", False))
+            for flowable in story
+        )
+
+    def _pop_pending_float_flowables(self) -> list[object]:
+        pending = self._pending_float_flowables
+        self._pending_float_flowables = []
+        return pending
 
     def _render_title_matter(
         self,
@@ -1130,7 +1202,7 @@ class PdfRenderer:
         in_box: bool = False,
     ) -> list[object]:
         split_table = block.resolved_split()
-        placement = block.resolved_placement()
+        media_placement = block.resolved_placement()
         body_style = self._paragraph_style(ParagraphStyle(space_after=0), theme, styles["BodyText"])
         layout = build_table_layout(block.header_rows, block.rows)
         table_rows: list[list[object]] = [["" for _ in range(layout.column_count)] for _ in range(layout.row_count)]
@@ -1293,7 +1365,7 @@ class PdfRenderer:
             story.append(Spacer(1, 12))
         if not split_table:
             story = [KeepTogether(story)]
-        return self._apply_pdf_media_placement(story, placement, in_box=in_box)
+        return self._apply_pdf_media_placement(story, media_placement, in_box=in_box)
 
     def _apply_pdf_media_placement(
         self,
@@ -1308,6 +1380,8 @@ class PdfRenderer:
             return [RLPageBreak(), *story, RLPageBreak()]
         if placement == "top":
             return [RLPageBreak(), *story]
+        if placement == "float":
+            return self._mark_float_story(story)
         return story
 
     def _table_cell_horizontal_alignment(

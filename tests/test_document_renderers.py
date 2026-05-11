@@ -249,6 +249,11 @@ def _docx_word_xml(docx_path: Path) -> str:
         )
 
 
+def _docx_settings_xml(docx_path: Path) -> str:
+    with zipfile.ZipFile(docx_path) as archive:
+        return archive.read("word/settings.xml").decode("utf-8")
+
+
 def _normalized_html_text(html_path: Path) -> str:
     html_text = html_path.read_text(encoding="utf-8")
     html_text = re.sub(r"<style.*?>.*?</style>", " ", html_text, flags=re.DOTALL)
@@ -647,6 +652,44 @@ def test_table_split_and_media_placement_options_render(tmp_path: Path) -> None:
     assert 'docscriptor-placement-here' in html_text
     assert 'docscriptor-placement-top' in html_text
     assert 'break-before: page' in html_text
+
+
+def test_pdf_float_tables_can_move_after_following_prose(tmp_path: Path) -> None:
+    floating_table = Table(
+        headers=["Metric", "Value"],
+        rows=[["Latency", "14 ms"], ["Quality", "stable"]],
+        caption="Deferred table.",
+        column_widths=[1.4, 1.4],
+    )
+    here_table = Table(
+        headers=["Metric", "Value"],
+        rows=[["Throughput", "ready"]],
+        caption="Here table.",
+        placement="here",
+        column_widths=[1.4, 1.4],
+    )
+    document = Document(
+        "Float Test",
+        Chapter(
+            "Main",
+            Section(
+                "Flow",
+                Paragraph("Before floating table."),
+                floating_table,
+                Paragraph("Following prose fills the available page before the float."),
+                Paragraph("Before here table."),
+                here_table,
+                Paragraph("After here table."),
+            ),
+        ),
+    )
+
+    pdf_path = tmp_path / "float.pdf"
+    document.save_pdf(pdf_path)
+
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    assert pdf_text.index("Following prose fills the available page before the float.") < pdf_text.index("Table 1. Deferred table.")
+    assert pdf_text.index("Table 2. Here table.") < pdf_text.index("After here table.")
 
 
 def test_heading_hierarchy_uses_latex_like_levels() -> None:
@@ -1364,12 +1407,16 @@ def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Pa
     document.save_html(html_path)
 
     docx_xml = _docx_document_xml(docx_path)
+    docx_settings_xml = _docx_settings_xml(docx_path)
     pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
     html_text = html_path.read_text(encoding="utf-8")
 
     assert "PAGEREF heading_" in docx_xml
+    assert 'w:updateFields w:val="true"' in docx_settings_xml
+    assert 'w:dirty="true"' in docx_xml
     assert 'w:leader="dot"' in docx_xml
     assert ".  .  ." in pdf_text
+    assert "1 One" in pdf_text
     assert 'class="docscriptor-toc-page-number"' in html_text
     assert "target-counter(attr(data-target), page)" in html_text
 
