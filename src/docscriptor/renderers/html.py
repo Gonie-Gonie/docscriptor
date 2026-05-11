@@ -54,6 +54,7 @@ from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex
 from docscriptor.layout.indexing import RenderIndex, build_render_index
 from docscriptor.layout.theme import ParagraphStyle, Theme
 from docscriptor.renderers.context import HtmlRenderContext
+from docscriptor.renderers.syntax import syntax_html
 
 
 class HtmlRenderer:
@@ -137,8 +138,10 @@ class HtmlRenderer:
     def render_paragraph(self, block: Paragraph, context: HtmlRenderContext) -> str:
         """Render a paragraph block into HTML."""
 
+        anchor = context.render_index.block_anchor(block)
+        anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
         return (
-            f'<p class="docscriptor-paragraph" style="{self._paragraph_style_css(block.style, context.theme, default_unit=context.unit)}">'
+            f'<p{anchor_attr} class="docscriptor-paragraph" style="{self._paragraph_style_css(block.style, context.theme, default_unit=context.unit)}">'
             + self._inline_html(
                 block.content,
                 context.theme,
@@ -201,13 +204,15 @@ class HtmlRenderer:
         items = []
         for index, item in enumerate(block.items):
             marker = escape(list_style.marker_for(index))
+            anchor = context.render_index.block_anchor(item)
+            anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
             items.append(
                 (
                     '<div class="docscriptor-list-item" '
                     f'style="column-gap: {list_style.marker_gap:.2f}in; padding-left: {list_style.indent:.2f}in;">'
                     f'<div class="docscriptor-list-marker">{marker}</div>'
                     '<div class="docscriptor-list-content">'
-                    f'<p class="docscriptor-paragraph" style="{self._paragraph_style_css(item.style, context.theme, default_space_after=3.0, default_unit=context.unit)}">'
+                    f'<p{anchor_attr} class="docscriptor-paragraph" style="{self._paragraph_style_css(item.style, context.theme, default_space_after=3.0, default_unit=context.unit)}">'
                     + self._inline_html(
                         item.content,
                         context.theme,
@@ -233,11 +238,13 @@ class HtmlRenderer:
             if block.language
             else ""
         )
+        anchor = context.render_index.block_anchor(block)
+        anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
         return (
-            '<section class="docscriptor-code-block">'
+            f'<section{anchor_attr} class="docscriptor-code-block">'
             + label
             + f'<pre class="docscriptor-code" style="margin-bottom: {(block.style.space_after or 0):.1f}pt;">'
-            + escape(block.code)
+            + syntax_html(block.code, block.language)
             + "</pre>"
             + "</section>"
         )
@@ -250,14 +257,19 @@ class HtmlRenderer:
         """Render a block equation into HTML."""
 
         line_height = block.style.leading or max(context.theme.body_font_size + 1, 12) * 1.3
+        anchor = context.render_index.block_anchor(block)
+        anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
+        number = context.render_index.equation_number(block)
+        number_html = f'<span class="docscriptor-equation-number">({number})</span>' if number is not None else ""
         return (
-            '<div class="docscriptor-equation" '
+            f'<div{anchor_attr} class="docscriptor-equation" '
             f'style="text-align: {context.theme.resolve_paragraph_alignment(block.style)}; margin: 0 0 {(block.style.space_after or 0):.1f}pt; line-height: {line_height:.1f}pt;">'
             + self._math_html(
                 Math(block.expression),
                 context.theme,
                 base_size=max(context.theme.body_font_size + 1, 12),
             )
+            + number_html
             + "</div>"
         )
 
@@ -300,8 +312,10 @@ class HtmlRenderer:
             )
             for child in block.children
         )
+        anchor = context.render_index.block_anchor(block)
+        anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
         return (
-            '<section class="docscriptor-box" '
+            f'<section{anchor_attr} class="docscriptor-box" '
             f'style="{self._box_css(block, context.theme, context.unit)}">'
             + title_html
             + children_html
@@ -1214,16 +1228,28 @@ class HtmlRenderer:
                 base_size=base_size,
             )
         if isinstance(fragment, _BlockReference):
-            return self._link_html(
-                self._block_reference_anchor(fragment.target, render_index),
-                self._styled_text_html(
+            label_html = (
+                self._inline_html(
+                    fragment.label,
+                    theme,
+                    render_index,
+                    base_bold=base_bold,
+                    base_italic=base_italic,
+                    base_size=base_size,
+                )
+                if fragment.label is not None
+                else self._styled_text_html(
                     self._resolve_block_reference(fragment.target, theme, render_index),
                     fragment,
                     theme,
                     base_bold=base_bold,
                     base_italic=base_italic,
                     base_size=base_size,
-                ),
+                )
+            )
+            return self._link_html(
+                self._block_reference_anchor(fragment.target, render_index),
+                label_html,
                 internal=True,
             )
         if isinstance(fragment, Citation):
@@ -1394,6 +1420,8 @@ class HtmlRenderer:
         render_index: RenderIndex,
     ) -> str:
         if isinstance(fragment, _BlockReference):
+            if fragment.label is not None:
+                return "".join(item.plain_text() for item in fragment.label)
             return self._resolve_block_reference(fragment.target, theme, render_index)
         if isinstance(fragment, Citation):
             return f"[{render_index.citation_number(fragment.target)}]"
@@ -1409,7 +1437,7 @@ class HtmlRenderer:
 
     def _resolve_block_reference(
         self,
-        target: Table | Figure | SubFigure | SubFigureGroup,
+        target: object,
         theme: Theme,
         render_index: RenderIndex,
     ) -> str:
@@ -1421,28 +1449,72 @@ class HtmlRenderer:
                 )
             return f"{theme.table_reference_label_text()} {number}"
 
-        number = render_index.figure_number(target)
-        if number is None:
-            raise DocscriptorError(
-                "Figure references require the target figure to have a caption and be included in the document"
-            )
-        if isinstance(target, SubFigure):
-            label = render_index.subfigure_label(target)
-            if label is None:
+        if isinstance(target, (Figure, SubFigure, SubFigureGroup)):
+            number = render_index.figure_number(target)
+            if number is None:
                 raise DocscriptorError(
-                    "Subfigure references require the target subfigure to belong to a captioned SubFigureGroup"
+                    "Figure references require the target figure to have a caption and be included in the document"
                 )
-            return f"{theme.figure_reference_label_text()} {number}({label})"
-        return f"{theme.figure_reference_label_text()} {number}"
+            if isinstance(target, SubFigure):
+                label = render_index.subfigure_label(target)
+                if label is None:
+                    raise DocscriptorError(
+                        "Subfigure references require the target subfigure to belong to a captioned SubFigureGroup"
+                    )
+                return f"{theme.figure_reference_label_text()} {number}({label})"
+            return f"{theme.figure_reference_label_text()} {number}"
+
+        if isinstance(target, Part):
+            number_label = render_index.heading_number(target)
+            if number_label is None:
+                raise DocscriptorError("Part references require the target part to be numbered and included in the document")
+            return number_label
+
+        if isinstance(target, Section):
+            number_label = render_index.heading_number(target)
+            if number_label is None:
+                raise DocscriptorError("Section references require the target section to be numbered and included in the document")
+            prefix = "Chapter" if target.level == 1 else "Section"
+            return f"{prefix} {number_label}"
+
+        if isinstance(target, Equation):
+            number = render_index.equation_number(target)
+            if number is None:
+                raise DocscriptorError("Equation references require the target equation to be included in the document")
+            return f"Equation {number}"
+
+        if isinstance(target, Paragraph):
+            number = render_index.paragraph_number(target)
+            if number is None:
+                raise DocscriptorError("Paragraph references require the target paragraph to be included in the document")
+            return f"Paragraph {number}"
+
+        if isinstance(target, CodeBlock):
+            number = render_index.code_block_number(target)
+            if number is None:
+                raise DocscriptorError("Code block references require the target code block to be included in the document")
+            return f"Code block {number}"
+
+        if isinstance(target, Box):
+            number = render_index.box_number(target)
+            if number is None:
+                raise DocscriptorError("Box references require the target box to be included in the document")
+            return f"Box {number}"
+
+        raise DocscriptorError(f"Unsupported reference target: {type(target)!r}")
 
     def _block_reference_anchor(
         self,
-        target: Table | Figure | SubFigure | SubFigureGroup,
+        target: object,
         render_index: RenderIndex,
     ) -> str | None:
         if isinstance(target, Table):
             return render_index.table_anchor(target)
-        return render_index.figure_anchor(target)
+        if isinstance(target, (Figure, SubFigure, SubFigureGroup)):
+            return render_index.figure_anchor(target)
+        if isinstance(target, (Part, Section)):
+            return render_index.heading_anchor(target)
+        return render_index.block_anchor(target)
 
     def _figure_src(self, figure: Figure | SubFigure) -> str:
         source = figure.image_source
@@ -1846,6 +1918,10 @@ body {{
 }}
 .docscriptor-equation {{
   font-size: {max(theme.body_font_size + 1, 12):.1f}pt;
+}}
+.docscriptor-equation-number {{
+  margin-left: 0.5em;
+  font-size: {theme.body_font_size:.1f}pt;
 }}
 .docscriptor-box {{
   overflow: hidden;

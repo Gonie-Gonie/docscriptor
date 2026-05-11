@@ -6,11 +6,22 @@ from dataclasses import dataclass
 from typing import Iterable, Sequence, TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from docscriptor.components.inline import BlockReference, InlineInput
     from docscriptor.renderers.context import DocxRenderContext, HtmlRenderContext, PdfRenderContext
 
 
 class Block:
     """Base class for block-level document objects."""
+
+    def reference(
+        self,
+        *label: InlineInput,
+    ) -> BlockReference:
+        """Create an explicit inline reference to this block."""
+
+        from docscriptor.components.inline import reference
+
+        return reference(self, *label)
 
     def render_to_docx(
         self,

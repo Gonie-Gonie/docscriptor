@@ -366,7 +366,7 @@ def build_journal_paper_document() -> Document:
                 "Evidence Traceability",
                 Paragraph(
                     "The study begins from a straightforward design requirement: every visible claim should remain traceable to either structured input data, a generated figure, or a cited source. ",
-                    traceability_figure,
+                    traceability_figure.reference(),
                     " summarizes the resulting workflow."
                 ),
                 Paragraph(
@@ -391,7 +391,7 @@ def build_journal_paper_document() -> Document:
             "Study Assets",
             Paragraph(
                 "The evaluation uses a small but realistic asset bundle: benchmark result CSV files, an ablation CSV, structured citation metadata, and an authored manuscript script. The corpus summary is shown in ",
-                dataset_table,
+                dataset_table.reference(),
                 "."
             ),
             dataset_table,
@@ -406,9 +406,9 @@ def build_journal_paper_document() -> Document:
                 "Benchmark Frontier",
                 Paragraph(
                     "The benchmark data in ",
-                    benchmark_table,
+                    benchmark_table.reference(),
                     " shows a steady quality gain as more structure is added to the workflow. The same CSV is also rendered into ",
-                    quality_latency_figure,
+                    quality_latency_figure.reference(),
                     ", which makes the trade-off between quality and latency easier to interpret during revision discussions."
                 ),
                 Paragraph(
@@ -422,7 +422,7 @@ def build_journal_paper_document() -> Document:
                 "Ablation Signals",
                 Paragraph(
                     "Ablation results are summarized in ",
-                    ablation_table,
+                    ablation_table.reference(),
                     ". Removing table automation, citation checks, or asset reuse each weakens the final result, which supports the claim that the workflow benefit comes from coordinated authoring behavior rather than from any single isolated feature."
                 ),
                 Paragraph(
@@ -435,7 +435,7 @@ def build_journal_paper_document() -> Document:
                 "Late-Revision Cost",
                 Paragraph(
                     "The workflow benefit becomes most visible late in the writing cycle. ",
-                    revision_effort_figure,
+                    revision_effort_figure.reference(),
                     " reports an estimated operational curve for repeated late updates. The estimate is intentionally approximate, but it captures a practical pattern: manual synchronization cost tends to rise more quickly than code-backed synchronization cost when the manuscript is revised several times close to submission."
                 ),
                 Paragraph(

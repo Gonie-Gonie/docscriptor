@@ -30,6 +30,7 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.doctemplate import _doNothing
 from reportlab.platypus.tableofcontents import TableOfContents as RLTableOfContents
+from reportlab.platypus.xpreformatted import XPreformatted
 
 from docscriptor.components.blocks import (
     Box,
@@ -77,6 +78,7 @@ from docscriptor.core import DocscriptorError, PathLike, length_to_inches
 from docscriptor.layout.indexing import RenderIndex, build_render_index
 from docscriptor.layout.theme import ParagraphStyle, Theme
 from docscriptor.renderers.context import PdfRenderContext
+from docscriptor.renderers.syntax import syntax_pdf_markup
 
 
 ALIGNMENTS = {
@@ -464,6 +466,8 @@ class PdfRenderer:
         )
         return [
             RLParagraph(
+                self._anchor_markup(context.render_index.block_anchor(block))
+                +
                 self._inline_markup(
                     block.content,
                     context.theme,
@@ -571,7 +575,12 @@ class PdfRenderer:
     ) -> list[object]:
         """Render a code block into PDF flowables."""
 
-        return self._render_code_block(block, context.theme, context.styles)
+        return self._render_code_block(
+            block,
+            context.theme,
+            context.styles,
+            context.render_index,
+        )
 
     def render_equation(
         self,
@@ -580,7 +589,12 @@ class PdfRenderer:
     ) -> list[object]:
         """Render a block equation into PDF flowables."""
 
-        return self._render_equation(block, context.theme, context.styles)
+        return self._render_equation(
+            block,
+            context.theme,
+            context.styles,
+            context.render_index,
+        )
 
     def render_page_break(
         self,
@@ -1427,7 +1441,8 @@ class PdfRenderer:
             marker_markup = escape(marker) if marker else "&nbsp;"
             marker_paragraph = RLParagraph(marker_markup, marker_style)
             content_paragraph = RLParagraph(
-                self._inline_markup(
+                self._anchor_markup(render_index.block_anchor(item))
+                + self._inline_markup(
                     item.content,
                     theme,
                     render_index,
@@ -1528,9 +1543,20 @@ class PdfRenderer:
         ]
         style_commands.extend(row_styles)
         table.setStyle(TableStyle(style_commands))
-        return [table, Spacer(1, block.style.space_after)]
+        elements: list[object] = []
+        anchor = render_index.block_anchor(block)
+        if anchor is not None:
+            elements.append(RLParagraph(self._anchor_markup(anchor), body_style))
+        elements.extend([table, Spacer(1, block.style.space_after)])
+        return elements
 
-    def _render_code_block(self, block: CodeBlock, theme: Theme, styles: object) -> list[object]:
+    def _render_code_block(
+        self,
+        block: CodeBlock,
+        theme: Theme,
+        styles: object,
+        render_index: RenderIndex,
+    ) -> list[object]:
         code_style = RLParagraphStyle(
             "CodeBlock",
             parent=styles["Code"],
@@ -1548,6 +1574,7 @@ class PdfRenderer:
         )
 
         elements: list[object] = []
+        anchor = render_index.block_anchor(block)
         if block.language:
             label_style = RLParagraphStyle(
                 "CodeBlockLabel",
@@ -1557,12 +1584,26 @@ class PdfRenderer:
                 alignment=TA_LEFT,
                 spaceAfter=2,
             )
-            elements.append(RLParagraph(escape(block.language.upper()), label_style))
+            elements.append(
+                RLParagraph(
+                    self._anchor_markup(anchor) + escape(block.language.upper()),
+                    label_style,
+                )
+            )
 
-        elements.append(Preformatted(block.code, code_style))
+        code_markup = syntax_pdf_markup(block.code, block.language)
+        if not block.language:
+            code_markup = self._anchor_markup(anchor) + code_markup
+        elements.append(XPreformatted(code_markup, code_style))
         return [KeepTogether(elements)]
 
-    def _render_equation(self, block: Equation, theme: Theme, styles: object) -> list[object]:
+    def _render_equation(
+        self,
+        block: Equation,
+        theme: Theme,
+        styles: object,
+        render_index: RenderIndex,
+    ) -> list[object]:
         equation_style = RLParagraphStyle(
             "EquationBlock",
             parent=styles["BodyText"],
@@ -1573,17 +1614,16 @@ class PdfRenderer:
             spaceAfter=block.style.space_after or 0,
             textColor=colors.black,
         )
-        return [
-            RLParagraph(
-                self._math_markup(
-                    Math(block.expression),
-                    theme,
-                    base_font_name=equation_style.fontName,
-                    base_size=equation_style.fontSize,
-                ),
-                equation_style,
-            )
-        ]
+        equation_markup = self._anchor_markup(render_index.block_anchor(block)) + self._math_markup(
+            Math(block.expression),
+            theme,
+            base_font_name=equation_style.fontName,
+            base_size=equation_style.fontSize,
+        )
+        number = render_index.equation_number(block)
+        if number is not None:
+            equation_markup += f" ({number})"
+        return [RLParagraph(equation_markup, equation_style)]
 
     def _render_figure(
         self,
@@ -1904,9 +1944,18 @@ class PdfRenderer:
                 internal=fragment.internal,
             )
         if isinstance(fragment, _BlockReference):
-            return self._link_markup(
-                self._block_reference_anchor(fragment.target, render_index),
-                self._styled_text_markup(
+            label_markup = (
+                self._inline_markup(
+                    fragment.label,
+                    theme,
+                    render_index,
+                    base_font_name=base_font_name,
+                    base_size=base_size,
+                    base_bold=base_bold,
+                    base_italic=base_italic,
+                )
+                if fragment.label is not None
+                else self._styled_text_markup(
                     self._resolve_block_reference(fragment.target, theme, render_index),
                     fragment,
                     theme,
@@ -1914,7 +1963,11 @@ class PdfRenderer:
                     base_size=base_size,
                     base_bold=base_bold,
                     base_italic=base_italic,
-                ),
+                )
+            )
+            return self._link_markup(
+                self._block_reference_anchor(fragment.target, render_index),
+                label_markup,
                 internal=True,
             )
         if isinstance(fragment, Citation):
@@ -2093,6 +2146,8 @@ class PdfRenderer:
 
     def _resolve_fragment_text(self, fragment: Text, theme: Theme, render_index: RenderIndex) -> str:
         if isinstance(fragment, _BlockReference):
+            if fragment.label is not None:
+                return "".join(item.plain_text() for item in fragment.label)
             return self._resolve_block_reference(fragment.target, theme, render_index)
         if isinstance(fragment, Citation):
             return f"[{render_index.citation_number(fragment.target)}]"
@@ -2136,16 +2191,20 @@ class PdfRenderer:
 
     def _block_reference_anchor(
         self,
-        target: Table | Figure | SubFigure | SubFigureGroup,
+        target: object,
         render_index: RenderIndex,
     ) -> str | None:
         if isinstance(target, Table):
             return render_index.table_anchor(target)
-        return render_index.figure_anchor(target)
+        if isinstance(target, (Figure, SubFigure, SubFigureGroup)):
+            return render_index.figure_anchor(target)
+        if isinstance(target, (Part, Section)):
+            return render_index.heading_anchor(target)
+        return render_index.block_anchor(target)
 
     def _resolve_block_reference(
         self,
-        target: Table | Figure | SubFigure | SubFigureGroup,
+        target: object,
         theme: Theme,
         render_index: RenderIndex,
     ) -> str:
@@ -2155,15 +2214,55 @@ class PdfRenderer:
                 raise DocscriptorError("Table references require the target table to have a caption and be included in the document")
             return f"{theme.table_reference_label_text()} {number}"
 
-        number = render_index.figure_number(target)
-        if number is None:
-            raise DocscriptorError("Figure references require the target figure to have a caption and be included in the document")
-        if isinstance(target, SubFigure):
-            label = render_index.subfigure_label(target)
-            if label is None:
-                raise DocscriptorError("Subfigure references require the target subfigure to belong to a captioned SubFigureGroup")
-            return f"{theme.figure_reference_label_text()} {number}({label})"
-        return f"{theme.figure_reference_label_text()} {number}"
+        if isinstance(target, (Figure, SubFigure, SubFigureGroup)):
+            number = render_index.figure_number(target)
+            if number is None:
+                raise DocscriptorError("Figure references require the target figure to have a caption and be included in the document")
+            if isinstance(target, SubFigure):
+                label = render_index.subfigure_label(target)
+                if label is None:
+                    raise DocscriptorError("Subfigure references require the target subfigure to belong to a captioned SubFigureGroup")
+                return f"{theme.figure_reference_label_text()} {number}({label})"
+            return f"{theme.figure_reference_label_text()} {number}"
+
+        if isinstance(target, Part):
+            number_label = render_index.heading_number(target)
+            if number_label is None:
+                raise DocscriptorError("Part references require the target part to be numbered and included in the document")
+            return number_label
+
+        if isinstance(target, Section):
+            number_label = render_index.heading_number(target)
+            if number_label is None:
+                raise DocscriptorError("Section references require the target section to be numbered and included in the document")
+            prefix = "Chapter" if target.level == 1 else "Section"
+            return f"{prefix} {number_label}"
+
+        if isinstance(target, Equation):
+            number = render_index.equation_number(target)
+            if number is None:
+                raise DocscriptorError("Equation references require the target equation to be included in the document")
+            return f"Equation {number}"
+
+        if isinstance(target, Paragraph):
+            number = render_index.paragraph_number(target)
+            if number is None:
+                raise DocscriptorError("Paragraph references require the target paragraph to be included in the document")
+            return f"Paragraph {number}"
+
+        if isinstance(target, CodeBlock):
+            number = render_index.code_block_number(target)
+            if number is None:
+                raise DocscriptorError("Code block references require the target code block to be included in the document")
+            return f"Code block {number}"
+
+        if isinstance(target, Box):
+            number = render_index.box_number(target)
+            if number is None:
+                raise DocscriptorError("Box references require the target box to be included in the document")
+            return f"Box {number}"
+
+        raise DocscriptorError(f"Unsupported reference target: {type(target)!r}")
 
     def _caption_fragments(self, label: str, number: int | None, caption: Paragraph) -> list[Text]:
         if number is None:

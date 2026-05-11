@@ -69,6 +69,7 @@ from docscriptor.core import DocscriptorError, PathLike, length_to_inches
 from docscriptor.layout.indexing import RenderIndex, build_render_index
 from docscriptor.layout.theme import ParagraphStyle, TextStyle, Theme
 from docscriptor.renderers.context import DocxRenderContext
+from docscriptor.renderers.syntax import SyntaxToken, syntax_tokens
 
 
 ALIGNMENTS = {
@@ -275,6 +276,9 @@ class DocxRenderer:
             word_document=context.word_document,
             unit=context.unit,
         )
+        anchor = context.render_index.block_anchor(paragraph_block)
+        if anchor is not None:
+            self._add_bookmark(paragraph, anchor)
 
     def render_list(
         self,
@@ -301,7 +305,13 @@ class DocxRenderer:
     ) -> None:
         """Render a code block into the current DOCX container."""
 
-        self._render_code_block(container, code_block, context.theme, context.unit)
+        self._render_code_block(
+            container,
+            code_block,
+            context.theme,
+            context.render_index,
+            context.unit,
+        )
 
     def render_equation(
         self,
@@ -311,7 +321,13 @@ class DocxRenderer:
     ) -> None:
         """Render a block equation into the current DOCX container."""
 
-        self._render_equation(container, equation, context.theme, context.unit)
+        self._render_equation(
+            container,
+            equation,
+            context.theme,
+            context.render_index,
+            context.unit,
+        )
 
     def render_page_break(
         self,
@@ -955,10 +971,16 @@ class DocxRenderer:
                 continue
             if isinstance(fragment, _BlockReference) and theme is not None and render_index is not None:
                 anchor = self._block_reference_anchor(fragment.target, render_index)
+                label_fragments = fragment.label or [
+                    Text(
+                        self._resolve_block_reference(fragment.target, theme, render_index),
+                        style=fragment_style,
+                    )
+                ]
                 self._append_hyperlink_runs(
                     paragraph,
                     anchor,
-                    [Text(self._resolve_block_reference(fragment.target, theme, render_index), style=fragment_style)],
+                    label_fragments,
                     internal=True,
                     style=fragment_style,
                     default_size=default_size,
@@ -1267,12 +1289,16 @@ class DocxRenderer:
 
     def _block_reference_anchor(
         self,
-        target: Table | Figure | SubFigure | SubFigureGroup,
+        target: object,
         render_index: RenderIndex,
     ) -> str | None:
         if isinstance(target, Table):
             return render_index.table_anchor(target)
-        return render_index.figure_anchor(target)
+        if isinstance(target, (Figure, SubFigure, SubFigureGroup)):
+            return render_index.figure_anchor(target)
+        if isinstance(target, (Part, Section)):
+            return render_index.heading_anchor(target)
+        return render_index.block_anchor(target)
 
     def _apply_run_style(self, run: object, style: object, *, default_size: float | None = None) -> None:
         font = run.font
@@ -1401,6 +1427,9 @@ class DocxRenderer:
             self._apply_paragraph_style(paragraph, item.style, theme, unit)
             paragraph.paragraph_format.left_indent = Inches(list_style.indent)
             paragraph.paragraph_format.first_line_indent = Inches(-list_style.indent)
+            anchor = render_index.block_anchor(item)
+            if anchor is not None:
+                self._add_bookmark(paragraph, anchor)
             marker = list_style.marker_for(index)
             if marker:
                 marker_run = paragraph.add_run(f"{marker} ")
@@ -1412,12 +1441,16 @@ class DocxRenderer:
         container: object,
         code_block: CodeBlock,
         theme: Theme,
+        render_index: RenderIndex,
         unit: str,
     ) -> None:
+        anchor = render_index.block_anchor(code_block)
         if code_block.language:
             label = self._add_paragraph(container)
             label.alignment = WD_ALIGN_PARAGRAPH.LEFT
             label.paragraph_format.space_after = Pt(2)
+            if anchor is not None:
+                self._add_bookmark(label, anchor)
             run = label.add_run(code_block.language.upper())
             run.font.name = theme.monospace_font_name
             run.font.size = Pt(theme.caption_size())
@@ -1430,32 +1463,64 @@ class DocxRenderer:
         paragraph.paragraph_format.right_indent = Inches(0.1)
         paragraph.paragraph_format.space_before = Pt(6)
         self._set_paragraph_shading(paragraph, "F5F7FA")
+        if anchor is not None and not code_block.language:
+            self._add_bookmark(paragraph, anchor)
 
-        run = paragraph.add_run()
-        run.font.name = theme.monospace_font_name
-        run.font.size = Pt(max(theme.body_font_size - 1, 8))
+        self._append_code_tokens(
+            paragraph,
+            syntax_tokens(code_block.code, code_block.language),
+            theme=theme,
+        )
 
-        for index, line in enumerate(code_block.code.replace("\r\n", "\n").replace("\r", "\n").split("\n")):
-            if index:
-                run.add_break()
-            run.add_text(line)
+    def _append_code_tokens(
+        self,
+        paragraph: object,
+        tokens: list[SyntaxToken],
+        *,
+        theme: Theme,
+    ) -> None:
+        default_size = max(theme.body_font_size - 1, 8)
+        for token in tokens:
+            parts = token.text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+            for index, part in enumerate(parts):
+                if index:
+                    paragraph.add_run().add_break()
+                if not part:
+                    continue
+                run = paragraph.add_run(part)
+                run.font.name = theme.monospace_font_name
+                run.font.size = Pt(default_size)
+                if token.color is not None:
+                    run.font.color.rgb = RGBColor.from_string(token.color.upper())
+                if token.bold:
+                    run.font.bold = True
+                if token.italic:
+                    run.font.italic = True
 
     def _render_equation(
         self,
         container: object,
         equation: Equation,
         theme: Theme,
+        render_index: RenderIndex,
         unit: str,
     ) -> None:
         paragraph = self._add_paragraph(container)
         self._apply_paragraph_style(paragraph, equation.style, theme, unit)
         if paragraph.alignment is None:
             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        anchor = render_index.block_anchor(equation)
+        if anchor is not None:
+            self._add_bookmark(paragraph, anchor)
         self._append_math_runs(
             paragraph,
             Math(equation.expression),
             default_size=max(theme.body_font_size + 1, 12),
         )
+        number = render_index.equation_number(equation)
+        if number is not None:
+            run = paragraph.add_run(f" ({number})")
+            self._apply_run_style(run, TextStyle(), default_size=theme.body_font_size)
 
     def _render_box(
         self,
@@ -1469,6 +1534,12 @@ class DocxRenderer:
         word_document: WordDocument,
     ) -> None:
         alignment = box.style.alignment or theme.box_alignment
+        anchor = render_index.block_anchor(box)
+        if anchor is not None:
+            anchor_paragraph = self._add_paragraph(container)
+            anchor_paragraph.paragraph_format.space_before = Pt(0)
+            anchor_paragraph.paragraph_format.space_after = Pt(0)
+            self._add_bookmark(anchor_paragraph, anchor)
         outer_table = container.add_table(rows=1, cols=1)
         outer_table.alignment = TABLE_ALIGNMENTS[alignment]
         if box.style.width is not None:
@@ -2182,6 +2253,8 @@ class DocxRenderer:
 
     def _resolve_fragment_text(self, fragment: Text, theme: Theme | None, render_index: RenderIndex | None) -> str:
         if isinstance(fragment, _BlockReference):
+            if fragment.label is not None:
+                return "".join(item.plain_text() for item in fragment.label)
             if theme is None or render_index is None:
                 return fragment.plain_text()
             return self._resolve_block_reference(fragment.target, theme, render_index)
@@ -2203,7 +2276,7 @@ class DocxRenderer:
 
     def _resolve_block_reference(
         self,
-        target: Table | Figure | SubFigure | SubFigureGroup,
+        target: object,
         theme: Theme,
         render_index: RenderIndex,
     ) -> str:
@@ -2213,15 +2286,55 @@ class DocxRenderer:
                 raise DocscriptorError("Table references require the target table to have a caption and be included in the document")
             return f"{theme.table_reference_label_text()} {number}"
 
-        number = render_index.figure_number(target)
-        if number is None:
-            raise DocscriptorError("Figure references require the target figure to have a caption and be included in the document")
-        if isinstance(target, SubFigure):
-            label = render_index.subfigure_label(target)
-            if label is None:
-                raise DocscriptorError("Subfigure references require the target subfigure to belong to a captioned SubFigureGroup")
-            return f"{theme.figure_reference_label_text()} {number}({label})"
-        return f"{theme.figure_reference_label_text()} {number}"
+        if isinstance(target, (Figure, SubFigure, SubFigureGroup)):
+            number = render_index.figure_number(target)
+            if number is None:
+                raise DocscriptorError("Figure references require the target figure to have a caption and be included in the document")
+            if isinstance(target, SubFigure):
+                label = render_index.subfigure_label(target)
+                if label is None:
+                    raise DocscriptorError("Subfigure references require the target subfigure to belong to a captioned SubFigureGroup")
+                return f"{theme.figure_reference_label_text()} {number}({label})"
+            return f"{theme.figure_reference_label_text()} {number}"
+
+        if isinstance(target, Part):
+            number_label = render_index.heading_number(target)
+            if number_label is None:
+                raise DocscriptorError("Part references require the target part to be numbered and included in the document")
+            return number_label
+
+        if isinstance(target, Section):
+            number_label = render_index.heading_number(target)
+            if number_label is None:
+                raise DocscriptorError("Section references require the target section to be numbered and included in the document")
+            prefix = "Chapter" if target.level == 1 else "Section"
+            return f"{prefix} {number_label}"
+
+        if isinstance(target, Equation):
+            number = render_index.equation_number(target)
+            if number is None:
+                raise DocscriptorError("Equation references require the target equation to be included in the document")
+            return f"Equation {number}"
+
+        if isinstance(target, Paragraph):
+            number = render_index.paragraph_number(target)
+            if number is None:
+                raise DocscriptorError("Paragraph references require the target paragraph to be included in the document")
+            return f"Paragraph {number}"
+
+        if isinstance(target, CodeBlock):
+            number = render_index.code_block_number(target)
+            if number is None:
+                raise DocscriptorError("Code block references require the target code block to be included in the document")
+            return f"Code block {number}"
+
+        if isinstance(target, Box):
+            number = render_index.box_number(target)
+            if number is None:
+                raise DocscriptorError("Box references require the target box to be included in the document")
+            return f"Box {number}"
+
+        raise DocscriptorError(f"Unsupported reference target: {type(target)!r}")
 
     def _caption_fragments(self, label: str, number: int | None, caption: Paragraph) -> list[Text]:
         if number is None:

@@ -20,6 +20,7 @@ from docscriptor.core import (
 from docscriptor.layout.theme import TableStyle, TextStyle
 
 if TYPE_CHECKING:
+    from docscriptor.components.inline import BlockReference, InlineInput
     from docscriptor.renderers.context import DocxRenderContext, HtmlRenderContext, PdfRenderContext
 
 
@@ -830,6 +831,16 @@ class SubFigure:
         if self.height is None:
             return None
         return length_to_inches(self.height, self.unit or default_unit)
+
+    def reference(
+        self,
+        *label: InlineInput,
+    ) -> BlockReference:
+        """Create an explicit inline reference to this subfigure."""
+
+        from docscriptor.components.inline import reference
+
+        return reference(self, *label)
 
 
 @dataclass(slots=True, init=False)

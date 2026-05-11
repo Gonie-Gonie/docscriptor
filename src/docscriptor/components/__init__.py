@@ -65,6 +65,7 @@ _EXPORTS = {
     "math": "docscriptor.components.inline",
     "md": "docscriptor.components.markup",
     "markup": "docscriptor.components.markup",
+    "reference": "docscriptor.components.inline",
     "status": "docscriptor.components.inline",
     "strike": "docscriptor.components.inline",
     "strikethrough": "docscriptor.components.inline",

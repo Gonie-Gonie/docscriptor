@@ -326,20 +326,59 @@ class LineBreak(Text):
 
 
 class BlockReference(Text):
-    """Inline reference to a numbered table or figure block."""
+    """Inline reference to a numbered or anchored document object."""
 
-    __slots__ = ("target",)
+    __slots__ = ("target", "label")
 
-    def __init__(self, target: object, style: TextStyle | None = None) -> None:
+    def __init__(
+        self,
+        target: object,
+        *label: InlineInput,
+        style: TextStyle | None = None,
+    ) -> None:
         super().__init__(value="", style=style or TextStyle())
         self.target = target
+        self.label = coerce_inlines(label) if label else None
 
     def plain_text(self) -> str:
         """Return a placeholder reference string before numbering is resolved."""
 
-        target_name = type(self.target).__name__
-        label = "Figure" if target_name in {"Figure", "SubFigure", "SubFigureGroup"} else "Table"
-        return f"{label} ?"
+        if self.label is not None:
+            return "".join(fragment.plain_text() for fragment in self.label)
+        return f"{_reference_label_prefix(self.target)} ?"
+
+
+def _reference_label_prefix(target: object) -> str:
+    target_name = type(target).__name__
+    if target_name == "Table":
+        return "Table"
+    if target_name in {"Figure", "SubFigure", "SubFigureGroup"}:
+        return "Figure"
+    if target_name == "Equation":
+        return "Equation"
+    if target_name == "Paragraph":
+        return "Paragraph"
+    if target_name == "CodeBlock":
+        return "Code block"
+    if target_name == "Box":
+        return "Box"
+    if target_name == "Part":
+        return "Part"
+    if target_name in {"Chapter", "Section", "Subsection", "Subsubsection"}:
+        return "Section"
+    return type(target).__name__
+
+
+def reference(
+    target: object,
+    *label: InlineInput,
+    style: TextStyle | None = None,
+) -> BlockReference:
+    """Create an explicit inline reference to a document object."""
+
+    if not _is_referenceable(target):
+        raise TypeError(f"Unsupported reference target: {type(target)!r}")
+    return BlockReference(target, *label, style=style)
 
 
 class Citation(Text):
@@ -726,9 +765,11 @@ def coerce_inlines(values: Iterable[InlineInput]) -> list[Text]:
         if _is_positioned_inline(value):
             normalized.append(value)  # type: ignore[arg-type]
             continue
-        if _is_block_reference(value):
-            normalized.append(BlockReference(value))
-            continue
+        if _is_referenceable(value):
+            raise TypeError(
+                "Document objects must be cited explicitly with reference(obj) "
+                "or obj.reference() before they are placed inside Paragraph(...)"
+            )
         if isinstance(value, str):
             normalized.append(Text(value))
             continue
@@ -739,9 +780,23 @@ def coerce_inlines(values: Iterable[InlineInput]) -> list[Text]:
     return normalized
 
 
-def _is_block_reference(value: object) -> bool:
+def _is_referenceable(value: object) -> bool:
     block_name = type(value).__name__
-    return block_name in {"Table", "Figure", "SubFigure", "SubFigureGroup"}
+    return block_name in {
+        "Box",
+        "Chapter",
+        "CodeBlock",
+        "Equation",
+        "Figure",
+        "Paragraph",
+        "Part",
+        "Section",
+        "SubFigure",
+        "SubFigureGroup",
+        "Subsection",
+        "Subsubsection",
+        "Table",
+    }
 
 
 def _is_positioned_inline(value: object) -> bool:
@@ -786,6 +841,7 @@ __all__ = [
     "link",
     "line_break",
     "math",
+    "reference",
     "status",
     "strike",
     "strikethrough",

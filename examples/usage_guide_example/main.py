@@ -196,7 +196,7 @@ comparison = SubFigureGroup(
     columns=2,
 )
 
-Paragraph("The post-calibration case is shown in ", after, ".")
+Paragraph("The post-calibration case is shown in ", after.reference(), ".")
 """
 
 POSITIONED_DRAWING_SNIPPET = """from docscriptor import Document, ImageBox, Paragraph, Shape, TextBox
@@ -294,7 +294,7 @@ summary = Box(
     style=BoxStyle(width=16, unit="cm", alignment="center"),
 )
 
-Paragraph("See ", summary, " for the editable evidence package.")
+Paragraph("See ", summary.reference(), " for the editable evidence package.")
 """
 
 INLINE_WORD_FEATURES_SNIPPET = """from docscriptor import Paragraph, highlight, line_break, strike
@@ -322,6 +322,28 @@ Paragraph(
     keyboard("Ctrl+Enter"),
     " without leaving the inline flow.",
 )
+"""
+
+JAVASCRIPT_SNIPPET = """export function summarize(rows) {
+  return rows
+    .filter((row) => row.ready)
+    .map((row) => `${row.name}: ${row.score.toFixed(2)}`);
+}
+"""
+
+SQL_SNIPPET = """SELECT project, AVG(score) AS mean_score
+FROM benchmark_runs
+WHERE status = 'accepted'
+GROUP BY project
+ORDER BY mean_score DESC;
+"""
+
+YAML_SNIPPET = """report:
+  title: Docscriptor User Guide
+  outputs:
+    - docx
+    - pdf
+    - html
 """
 
 PARAGRAPH_INDENT_SNIPPET = """from docscriptor import DocumentSettings, Paragraph, ParagraphStyle, Theme
@@ -668,7 +690,7 @@ def build_usage_guide_document() -> Document:
             ["\\textbf, \\emph, \\texttt", "bold(...), italic(...), code(...)", "Inline styling stays attached to the words being styled and works in DOCX, PDF, and HTML."],
             ["\\includegraphics", "Figure(path_or_matplotlib_figure, caption=...)", "Static images and Python-generated figures use the same captioning and referencing model."],
             ["tabular or booktabs", "Table(...), Table.from_dataframe(...)", "Tables can be created directly from Python data instead of being copied into markup."],
-            ["\\label and \\ref", "Put the captioned Table or Figure object inside Paragraph(...)", "References follow the indexed document order without hand-maintained labels."],
+            ["\\label and \\ref", "Call reference(figure_obj) or figure_obj.reference() inside Paragraph(...)", "References follow the indexed document order without hand-maintained labels."],
             ["tcolorbox", "Box(..., style=BoxStyle(...))", "Report panels remain editable in Word while keeping a similar grouped visual shape in PDF and HTML."],
             ["BibTeX plus \\cite", "CitationLibrary and CitationSource.cite(...)", "Citations are authored inline, and only cited sources appear on ReferencesPage()."],
         ],
@@ -702,7 +724,7 @@ def build_usage_guide_document() -> Document:
         rows=[
             ["Insert a benchmark table from code", "Table.from_dataframe(...)", "The rendered table stays attached to the data-processing step that created it."],
             ["Insert an architecture figure from disk", "Figure('assets/diagram.png')", "Static diagrams can stay under version control without manual copy-paste."],
-            ["Refer to a caption from prose", "Paragraph('See ', figure_obj, '.')", "Block references update automatically when figure order changes."],
+            ["Refer to a caption from prose", "Paragraph('See ', figure_obj.reference(), '.')", "Block references update automatically when figure order changes."],
             ["Keep a note near evidence", Footnote.annotated("page-footnote default", "DOCX uses page footnotes by default. PDF and HTML keep a generated notes page because their layout engines do not share Word's native footnote model."), "Footnotes stay authored inline instead of being managed in a separate editor pane."],
         ],
         caption="Working patterns for media objects and references.",
@@ -886,7 +908,7 @@ def build_usage_guide_document() -> Document:
                 pipeline_figure,
                 Paragraph(
                     "The pipeline shown in ",
-                    pipeline_figure,
+                    pipeline_figure.reference(),
                     " is the real payoff of the package. Data files, static assets, title metadata, generated pages, and renderer output all remain downstream of one explicit document tree."
                 ),
                 navigation_table,
@@ -1022,6 +1044,12 @@ def build_usage_guide_document() -> Document:
                 ),
                 CodeBlock(INLINE_CHIPS_SNIPPET, language="python"),
                 Paragraph(
+                    "Code blocks use Pygments highlighting, so the same renderer path can handle Python, JavaScript, SQL, YAML, shell snippets, and many other languages without adding language-specific document objects."
+                ),
+                CodeBlock(JAVASCRIPT_SNIPPET, language="javascript"),
+                CodeBlock(SQL_SNIPPET, language="sql"),
+                CodeBlock(YAML_SNIPPET, language="yaml"),
+                Paragraph(
                     "Paragraph-level Word features are also part of the authored source. ",
                     code("ParagraphStyle"),
                     " supports explicit alignment, left and right indents, first-line indents, and hanging indents for reference-like blocks that should not be simulated with spaces. Use ",
@@ -1086,15 +1114,15 @@ def build_usage_guide_document() -> Document:
                 "Use figures to explain the authoring model, not just decorate it",
                 Paragraph(
                     "The diagrams in this guide are intentionally explanatory. ",
-                    pipeline_figure,
+                    pipeline_figure.reference(),
                     " captures the project-level data flow, while ",
-                    author_layout_figure,
+                    author_layout_figure.reference(),
                     " explains how the same metadata can support multiple presentation styles."
                 ),
                 renderer_behavior_figure,
                 Paragraph(
                     "Likewise, ",
-                    renderer_behavior_figure,
+                    renderer_behavior_figure.reference(),
                     " is not decorative. It surfaces the concrete behavior differences a user needs to know before choosing which output to send to collaborators."
                 ),
             ),

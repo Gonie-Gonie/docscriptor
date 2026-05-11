@@ -97,7 +97,7 @@ Common translations:
 - LaTeX `\includegraphics` -> `Figure(path_or_matplotlib_figure, caption=...)`
 - LaTeX subfigures -> `SubFigure(...)` children inside a captioned `SubFigureGroup(...)`
 - LaTeX `tabular` or copied tables -> `Table(...)` or `Table.from_dataframe(...)`
-- LaTeX `\label` / `\ref` -> insert the captioned `Table` or `Figure` object directly inside `Paragraph(...)`
+- LaTeX `\label` / `\ref` -> use `reference(obj)` or `obj.reference()` inside `Paragraph(...)`
 - LaTeX `tcolorbox`-style report panels -> editable `Box(..., style=BoxStyle(...))`
 - BibTeX-style references -> `CitationLibrary`, `CitationSource.cite(...)`, and `ReferencesPage()`
 
@@ -131,6 +131,7 @@ The default behavior is intentionally conventional:
 - Use `ParagraphStyle(left_indent=..., right_indent=..., first_line_indent=..., unit=...)` or `ParagraphStyle.hanging(..., unit=...)` when you need Word-like first-line and hanging indents. If `unit` is omitted, indent values follow `DocumentSettings(unit=...)`.
 - Use `Part(...)` for book-like divisions above chapters; each part gets a separator page, while chapter numbers continue across parts by default.
 - Use `Chapter(...)`, `Section(...)`, `Subsection(...)`, and `Subsubsection(...)` for the visible outline. Their nesting in Python should match how you expect the final document to read.
+- Use `reference(obj)` or `obj.reference()` for cross-references to captioned media, headings, equations, paragraphs, code blocks, and boxes. Passing the raw object inside `Paragraph(...)` is rejected so insertion and citation are not confused.
 - Use `Table(...)` for small authored tables and `Table.from_dataframe(...)` when the data already lives in pandas.
 - Use `TableCell(horizontal_alignment=..., vertical_alignment=...)` or table-wide `TableStyle(cell_horizontal_alignment=..., cell_vertical_alignment=...)` when a table needs Word-like cell alignment. Use `TableCellStyle(...)` on a `TableCell`, `row_styles`, `header_row_styles`, or `column_styles` when cells, rows, or columns need background color, text color, bold, or italic formatting.
 - Use `Table(split=True)` when a table should render in source order and may break across pages. Leave `split=False` when the table should stay together when possible; very long tables are automatically rendered as split repeated-header tables.
@@ -147,6 +148,7 @@ The default behavior is intentionally conventional:
 
 - DOCX, PDF, and HTML rendering from the same document tree
 - block objects for paragraphs, lists, code blocks, equations, boxes, tables, figures, and generated pages
+- Pygments-backed syntax highlighting for code blocks across Python, JavaScript, SQL, YAML, shell, and other supported languages
 - editable report panels with `Box(...)` / `BoxStyle(...)` controls for width, alignment, title color, and per-side padding
 - portable comments and footnotes that stay stable across DOCX, PDF, and HTML
 - footnotes target page-bottom placement by default when the renderer supports it; `Theme(footnote_placement="document")` keeps the collected-notes pattern

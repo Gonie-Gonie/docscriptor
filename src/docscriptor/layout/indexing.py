@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Sequence
 
 from docscriptor.components.base import Block
-from docscriptor.components.blocks import Box, BulletList, Equation, NumberedList, Paragraph, Part, Section
+from docscriptor.components.blocks import Box, BulletList, CodeBlock, Equation, NumberedList, Paragraph, Part, Section
 from docscriptor.components.generated import (
     CommentsPage,
     FigureList,
@@ -15,7 +15,7 @@ from docscriptor.components.generated import (
     TableList,
     TableOfContents,
 )
-from docscriptor.components.inline import Citation, Comment, Footnote, Hyperlink, Text
+from docscriptor.components.inline import BlockReference, Citation, Comment, Footnote, Hyperlink, Text
 from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table
 from docscriptor.components.references import CitationLibrary, CitationSource
 from docscriptor.core import DocscriptorError
@@ -86,6 +86,11 @@ class RenderIndex:
     headings: list[HeadingEntry] = field(default_factory=list)
     heading_numbers: dict[int, str] = field(default_factory=dict)
     heading_anchors: dict[int, str] = field(default_factory=dict)
+    paragraph_numbers: dict[int, int] = field(default_factory=dict)
+    equation_numbers: dict[int, int] = field(default_factory=dict)
+    code_block_numbers: dict[int, int] = field(default_factory=dict)
+    box_numbers: dict[int, int] = field(default_factory=dict)
+    block_anchors: dict[int, str] = field(default_factory=dict)
 
     def table_number(self, table: Table) -> int | None:
         """Return the assigned table number for a captioned table."""
@@ -165,6 +170,31 @@ class RenderIndex:
 
         return self.heading_anchors.get(id(target))
 
+    def paragraph_number(self, target: Paragraph) -> int | None:
+        """Return the assigned paragraph reference number."""
+
+        return self.paragraph_numbers.get(id(target))
+
+    def equation_number(self, target: Equation) -> int | None:
+        """Return the assigned equation reference number."""
+
+        return self.equation_numbers.get(id(target))
+
+    def code_block_number(self, target: CodeBlock) -> int | None:
+        """Return the assigned code block reference number."""
+
+        return self.code_block_numbers.get(id(target))
+
+    def box_number(self, target: Box) -> int | None:
+        """Return the assigned box reference number."""
+
+        return self.box_numbers.get(id(target))
+
+    def block_anchor(self, target: object) -> str | None:
+        """Return the bookmark name for a generically anchored block."""
+
+        return self.block_anchors.get(id(target))
+
 
 def build_render_index(document: Document) -> RenderIndex:
     """Scan a document tree and assign render-time numbering."""
@@ -192,6 +222,15 @@ def _advance_heading_counters(counters: list[int], level: int) -> list[int]:
     return counters
 
 
+def _register_block_anchor(render_index: RenderIndex, block: object, prefix: str) -> str:
+    anchor = render_index.block_anchors.get(id(block))
+    if anchor is not None:
+        return anchor
+    anchor = f"{prefix}_{len(render_index.block_anchors) + 1}"
+    render_index.block_anchors[id(block)] = anchor
+    return anchor
+
+
 def _index_blocks(
     blocks: Sequence[Block],
     render_index: RenderIndex,
@@ -203,15 +242,32 @@ def _index_blocks(
 ) -> None:
     for block in blocks:
         if isinstance(block, Paragraph):
+            if id(block) not in render_index.paragraph_numbers:
+                render_index.paragraph_numbers[id(block)] = len(render_index.paragraph_numbers) + 1
+            _register_block_anchor(render_index, block, "paragraph")
             _index_inlines(block.content, render_index, citations)
             continue
         if isinstance(block, (BulletList, NumberedList)):
             for item in block.items:
+                if id(item) not in render_index.paragraph_numbers:
+                    render_index.paragraph_numbers[id(item)] = len(render_index.paragraph_numbers) + 1
+                _register_block_anchor(render_index, item, "paragraph")
                 _index_inlines(item.content, render_index, citations)
             continue
+        if isinstance(block, CodeBlock):
+            if id(block) not in render_index.code_block_numbers:
+                render_index.code_block_numbers[id(block)] = len(render_index.code_block_numbers) + 1
+            _register_block_anchor(render_index, block, "code")
+            continue
         if isinstance(block, Equation):
+            if id(block) not in render_index.equation_numbers:
+                render_index.equation_numbers[id(block)] = len(render_index.equation_numbers) + 1
+            _register_block_anchor(render_index, block, "equation")
             continue
         if isinstance(block, Box):
+            if id(block) not in render_index.box_numbers:
+                render_index.box_numbers[id(block)] = len(render_index.box_numbers) + 1
+            _register_block_anchor(render_index, block, "box")
             if block.title is not None:
                 _index_inlines(block.title, render_index, citations)
             _index_blocks(
@@ -358,6 +414,10 @@ def _index_inlines(
     citations: CitationLibrary,
 ) -> None:
     for fragment in fragments:
+        if isinstance(fragment, BlockReference):
+            if fragment.label is not None:
+                _index_inlines(fragment.label, render_index, citations)
+            continue
         if isinstance(fragment, Hyperlink):
             _index_inlines(fragment.label, render_index, citations)
             continue

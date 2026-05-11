@@ -83,6 +83,7 @@ from docscriptor import (
     line_break,
     math,
     markup,
+    reference,
     status,
     strike,
     strikethrough,
@@ -851,6 +852,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "comment")
     assert hasattr(docscriptor, "footnote")
     assert hasattr(docscriptor, "math")
+    assert hasattr(docscriptor, "reference")
     assert hasattr(docscriptor, "bold")
     assert hasattr(docscriptor, "italic")
     assert hasattr(docscriptor, "code")
@@ -870,6 +872,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(inline_components, "badge")
     assert hasattr(inline_components, "status")
     assert hasattr(inline_components, "keyboard")
+    assert hasattr(inline_components, "reference")
 
     for removed_name in (
         "document",
@@ -1373,7 +1376,7 @@ def test_subfigure_group_renders_labels_and_references(tmp_path: Path) -> None:
     )
     document = Document(
         "Subfigure Test",
-        Paragraph("Compare ", baseline, " with ", treatment, " in ", group, "."),
+        Paragraph("Compare ", baseline.reference(), " with ", treatment.reference(), " in ", group.reference(), "."),
         group,
     )
 
@@ -1429,7 +1432,7 @@ def test_caption_and_reference_labels_can_differ_by_theme(tmp_path: Path) -> Non
     figure = Figure(image_path, caption="Localized figure caption.", width=1.0)
     document = Document(
         "Caption Labels Test",
-        Paragraph("See ", table, " and ", figure, "."),
+        Paragraph("See ", table.reference(), " and ", figure.reference(), "."),
         table,
         figure,
         TableList(),
@@ -1465,6 +1468,71 @@ def test_caption_and_reference_labels_can_differ_by_theme(tmp_path: Path) -> Non
     assert "See Tbl. 1 and Fig. 1" in normalized_html_text
     assert "Table 1. Localized table caption." in normalized_html_text
     assert "Figure 1. Localized figure caption." in normalized_html_text
+
+
+def test_explicit_reference_api_covers_numbered_blocks(tmp_path: Path) -> None:
+    intro = Paragraph("Reusable paragraph target.")
+    equation = Equation(r"\alpha^2 + \beta^2 = \gamma^2")
+    snippet = CodeBlock("const ready = true;\nconsole.log(ready);", language="javascript")
+    detail_box = Box(Paragraph("Box body."), title="Referenceable Box")
+    section = Section("Reference Targets", intro)
+    section.children.append(Paragraph(
+        "Targets: ",
+        intro.reference(),
+        ", ",
+        reference(equation),
+        ", ",
+        snippet.reference(),
+        ", ",
+        detail_box.reference("the boxed note"),
+        ", and ",
+        section.reference(),
+        ".",
+    ))
+    document = Document(
+        "Explicit References",
+        section,
+        equation,
+        snippet,
+        detail_box,
+    )
+
+    docx_path = tmp_path / "explicit-references.docx"
+    pdf_path = tmp_path / "explicit-references.pdf"
+    html_path = tmp_path / "explicit-references.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_text = "\n".join(paragraph.text for paragraph in WordDocument(docx_path).paragraphs)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+    normalized_html_text = _normalized_html_text(html_path)
+
+    assert "Targets: Paragraph 1, Equation 1, Code block 1, the boxed note, and Section 1.1." in word_text
+    assert "alpha2 + beta2 = gamma2 (1)" in word_text
+    assert "const ready = true;" in word_text
+    assert "Targets: Paragraph 1, Equation 1, Code block 1, the boxed note, and Section 1.1." in pdf_text
+    assert "alpha2 + beta2 = gamma2 (1)" in pdf_text
+    assert "Targets:" in normalized_html_text
+    assert "Paragraph 1" in normalized_html_text
+    assert "Equation 1" in normalized_html_text
+    assert "Code block 1" in normalized_html_text
+    assert "the boxed note" in normalized_html_text
+    assert "Section 1.1" in normalized_html_text
+    assert 'href="#paragraph_' in html_text
+    assert 'href="#equation_' in html_text
+    assert 'href="#code_' in html_text
+    assert 'href="#box_' in html_text
+    assert 'href="#heading_' in html_text
+    assert "color: #" in html_text
+
+    try:
+        Paragraph("Ambiguous ", equation, ".")
+    except TypeError as exc:
+        assert "reference(obj)" in str(exc)
+    else:
+        raise AssertionError("Expected raw document object references in Paragraph to fail")
 
 
 def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Path) -> None:
@@ -1901,9 +1969,9 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
                 ),
                 Paragraph(
                     "See ",
-                    artifacts_table,
+                    reference(artifacts_table),
                     " and ",
-                    preview_figure,
+                    preview_figure.reference(),
                     " for the generated outputs.",
                 ),
                 Paragraph(
