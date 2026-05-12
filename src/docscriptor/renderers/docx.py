@@ -210,6 +210,7 @@ class DocxRenderer:
             context.theme,
             number_label=number_label,
             anchor=anchor,
+            render_index=context.render_index,
         )
 
     def render_part(
@@ -238,7 +239,7 @@ class DocxRenderer:
                 anchor=anchor,
             )
             anchor = None
-        self._add_title_line(
+        title_paragraph = self._add_title_line(
             word_document,
             block.title,
             font_size=max(context.theme.title_font_size, context.theme.heading_size(1) + 2),
@@ -247,6 +248,16 @@ class DocxRenderer:
             space_after=0,
             anchor=anchor,
         )
+        if number_label:
+            self._append_toc_entry_field(
+                title_paragraph,
+                self._flatten_fragments(
+                    self._heading_fragments(block.title, number_label),
+                    context.theme,
+                    context.render_index,
+                ),
+                level=block.level,
+            )
 
         if block.children:
             self._ensure_page_break(word_document)
@@ -659,7 +670,7 @@ class DocxRenderer:
         italic: bool = False,
         space_after: float = 0,
         anchor: str | None = None,
-    ) -> None:
+    ) -> object:
         paragraph = self._add_paragraph(container)
         paragraph.alignment = ALIGNMENTS[alignment]
         paragraph.paragraph_format.space_after = Pt(space_after)
@@ -698,6 +709,7 @@ class DocxRenderer:
             self._apply_run_style(run, style, default_size=font_size)
         if anchor is not None:
             self._add_bookmark(paragraph, anchor)
+        return paragraph
 
     def _title_line_alignment(self, line: AuthorTitleLine, theme: Theme) -> str:
         if line.kind == "name":
@@ -845,6 +857,7 @@ class DocxRenderer:
         *,
         number_label: str | None = None,
         anchor: str | None = None,
+        render_index: RenderIndex | None = None,
     ) -> None:
         paragraph = self._add_paragraph(container)
         paragraph.style = "Title" if level == 0 else f"Heading {min(level, 9)}"
@@ -854,14 +867,22 @@ class DocxRenderer:
             paragraph.alignment = ALIGNMENTS[theme.heading_alignment(level)]
             paragraph.paragraph_format.space_before = Pt(18 if level == 1 else 12)
             paragraph.paragraph_format.space_after = Pt(10 if level == 1 else 6)
+        heading_fragments = self._heading_fragments(title, number_label)
         self._append_runs(
             paragraph,
-            self._heading_fragments(title, number_label),
+            heading_fragments,
             default_size=theme.title_font_size if level == 0 else theme.heading_size(level),
             theme=theme,
+            render_index=render_index,
         )
         if anchor is not None:
             self._add_bookmark(paragraph, anchor)
+        if number_label is not None:
+            self._append_toc_entry_field(
+                paragraph,
+                self._flatten_fragments(heading_fragments, theme, render_index),
+                level=level,
+            )
 
     def _add_paragraph(self, container: object) -> object:
         if self._is_cell_container(container):
@@ -2537,7 +2558,16 @@ class DocxRenderer:
     ) -> None:
         theme = context.theme
         render_index = context.render_index
-        self._add_heading(word_document, block.title or [Text(theme.contents_title)], level=theme.generated_section_level, theme=theme, number_label=None)
+        self._add_generated_page_title(
+            word_document,
+            block.title or [Text(theme.contents_title)],
+            level=theme.generated_section_level,
+            theme=theme,
+        )
+        if block.show_page_numbers:
+            self._append_native_toc_field(word_document, block)
+            return
+
         for entry in render_index.headings:
             if not block.includes_level(entry.level):
                 continue
@@ -2567,6 +2597,46 @@ class DocxRenderer:
             if block.show_page_numbers and entry.anchor is not None:
                 paragraph.add_run("\t")
                 self._append_pageref_field(paragraph, entry.anchor)
+
+    def _add_generated_page_title(
+        self,
+        container: object,
+        title: list[Text],
+        *,
+        level: int,
+        theme: Theme,
+    ) -> None:
+        font_size = theme.title_font_size if level == 0 else theme.heading_size(level)
+        self._add_title_line(
+            container,
+            title,
+            font_size=font_size,
+            alignment=theme.title_alignment if level == 0 else theme.heading_alignment(level),
+            bold=theme.heading_emphasis(level)[0] if level > 0 else True,
+            italic=theme.heading_emphasis(level)[1] if level > 0 else False,
+            space_after=10 if level <= 1 else 6,
+        )
+
+    def _append_native_toc_field(
+        self,
+        word_document: WordDocument,
+        block: TableOfContents,
+    ) -> None:
+        max_level = max(block.max_level or 9, 1)
+        instruction = f'TOC \\f \\l "1-{max_level}" \\h \\z'
+        paragraph = word_document.add_paragraph()
+        self._append_field(paragraph, instruction)
+
+    def _append_toc_entry_field(
+        self,
+        paragraph: object,
+        text: str,
+        *,
+        level: int,
+    ) -> None:
+        toc_level = min(max(level, 1), 9)
+        safe_text = text.replace('"', "'")
+        self._append_field(paragraph, f'TC "{safe_text}" \\l {toc_level}')
 
     def _toc_level_style(self, block: TableOfContents, level: int) -> TocLevelStyle:
         if level == 0:

@@ -1867,13 +1867,13 @@ def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Pa
     pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
     html_text = html_path.read_text(encoding="utf-8")
 
-    assert "PAGEREF heading_" in docx_xml
+    assert " TOC \\f \\l \"1-9\" \\h \\z " in docx_xml
+    assert ' TC "1 One" \\l 1 ' in docx_xml
+    assert ' TC "1.1 Two" \\l 2 ' in docx_xml
+    assert "PAGEREF heading_" not in docx_xml
     assert 'w:updateFields w:val="true"' in docx_settings_xml
     assert 'w:dirty="true"' in docx_xml
     assert "<w:fldSimple" not in docx_xml
-    first_pageref = docx_xml[docx_xml.find("PAGEREF heading_") : docx_xml.find("PAGEREF heading_") + 260]
-    assert "<w:t>1</w:t>" not in first_pageref
-    assert 'w:leader="dot"' in docx_xml
     assert ".  .  ." in pdf_text
     assert "1 One" in pdf_text
     assert 'class="docscriptor-toc-page-number"' not in html_text
@@ -1919,10 +1919,10 @@ def test_table_of_contents_default_styles_emphasize_only_top_level(tmp_path: Pat
     document.save_html(html_path)
 
     docx_xml = _docx_document_xml(docx_path)
-    top_toc = docx_xml[docx_xml.find("<w:t>1 Top</w:t>") - 180 : docx_xml.find("<w:t>1 Top</w:t>") + 40]
-    second_toc = docx_xml[docx_xml.find("<w:t>1.1 Second</w:t>") - 180 : docx_xml.find("<w:t>1.1 Second</w:t>") + 40]
-    assert "<w:b/>" in top_toc
-    assert "<w:b/>" not in second_toc
+    assert ' TC "1 Top" \\l 1 ' in docx_xml
+    assert ' TC "1.1 Second" \\l 2 ' in docx_xml
+    assert ' TC "1.1.1 Third" \\l 3 ' in docx_xml
+    assert " TOC \\f \\l \"1-9\" \\h \\z " in docx_xml
     html_text = html_path.read_text(encoding="utf-8")
     assert 'docscriptor-toc-entry-level-1" style="margin-left: 0.00in; margin-top: 12.0pt; margin-bottom: 7.0pt' in html_text
     assert 'docscriptor-toc-entry-level-2" style="margin-left: 0.24in; margin-top: 3.0pt; margin-bottom: 3.0pt' in html_text
