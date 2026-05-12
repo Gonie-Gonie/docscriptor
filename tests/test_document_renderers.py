@@ -96,8 +96,8 @@ from docscriptor import (
     styled,
     tag,
 )
-from docscriptor.presets.components import CalloutBox, KeyValueTable, PublicationTable
-from docscriptor.presets.templates import ElsevierArticle, ManuscriptSection, TaylorFrancisArticle
+from docscriptor.presets.components import CalloutBox, KeyValueTable, Nomenclature
+from docscriptor.presets.templates import JournalArticleTemplate, ManuscriptSection
 from docscriptor.settings import TextStyle
 
 class HighlightedParagraph(Paragraph):
@@ -1579,12 +1579,17 @@ def test_component_and_template_presets_build_renderable_documents(tmp_path: Pat
         {"Preset namespace": "docscriptor.presets.components", "Output": "DOCX/PDF/HTML"},
         caption="Preset metadata.",
     )
-    results = PublicationTable(
-        headers=["Model", "Score"],
-        rows=[["Baseline", "0.81"], ["Docscriptor", "0.88"]],
-        caption="Preset result table.",
+    nomenclature = Nomenclature(
+        [
+            ("A", "area", "m2"),
+            ("E", "energy", "kWh"),
+            ("q", "heat flux", "W/m2"),
+            ("T", "temperature", "degC"),
+        ],
+        double_column=True,
+        title="Nomenclature",
     )
-    document = Document("Preset Components", callout, metadata, results)
+    document = Document("Preset Components", callout, metadata, nomenclature)
 
     docx_path = tmp_path / "preset-components.docx"
     html_path = tmp_path / "preset-components.html"
@@ -1596,12 +1601,13 @@ def test_component_and_template_presets_build_renderable_documents(tmp_path: Pat
 
     assert "Review focus" in docx_xml
     assert "Preset namespace" in docx_xml
-    assert "Preset result table" in docx_xml
+    assert "Nomenclature" in docx_xml
+    assert "heat flux" in docx_xml
     assert "FFFBEB" in docx_xml
     assert "Review focus" in html_text
     assert "Preset metadata." in _normalized_html_text(html_path)
 
-    elsevier_document = ElsevierArticle().build(
+    article_document = JournalArticleTemplate(include_contents=True, include_references=False).build(
         "Readable manuscript generation",
         authors=[Author("Research Lead", affiliations=["Example Lab"], corresponding=True)],
         abstract="A concise abstract paragraph.",
@@ -1610,18 +1616,21 @@ def test_component_and_template_presets_build_renderable_documents(tmp_path: Pat
             ManuscriptSection("Introduction", [Paragraph("Problem and contribution.")]),
             ("Methods", [Paragraph("Data, model, and validation.")]),
         ],
-        include_references=False,
-    )
-    taylor_document = TaylorFrancisArticle(include_contents=True, include_references=False).build(
-        "Template Variant",
-        abstract=Paragraph("Template abstract."),
-        sections=[ManuscriptSection("Results", [Paragraph("Template body.")])],
     )
 
-    assert isinstance(elsevier_document, Document)
-    assert elsevier_document.theme.body_font_size == 10.0
-    assert taylor_document.theme.title_alignment == "left"
-    assert any(isinstance(child, TableOfContents) for child in taylor_document.body.children)
+    assert isinstance(article_document, Document)
+    assert any(isinstance(child, TableOfContents) for child in article_document.body.children)
+
+    unitless = Nomenclature([("x", "value"), ("y", "other value")], double_column=True)
+    assert unitless.children[0].header_rows[0][0].content.content[0].value == "Symbol"
+    assert len(unitless.children[0].header_rows[0]) == 4
+
+    try:
+        Nomenclature([("x", "value", "-", "extra")])  # type: ignore[list-item]
+    except ValueError as exc:
+        assert "entries" in str(exc)
+    else:
+        raise AssertionError("Expected invalid Nomenclature entry shape to fail")
 
 
 def test_subfigure_group_renders_labels_and_references(tmp_path: Path) -> None:

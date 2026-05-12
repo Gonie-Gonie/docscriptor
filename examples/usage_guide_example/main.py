@@ -73,8 +73,8 @@ from docscriptor import (
     strike,
     tag,
 )
-from docscriptor.presets.components import CalloutBox, KeyValueTable, PublicationTable
-from docscriptor.presets.templates import ElsevierArticle, ManuscriptSection, TaylorFrancisArticle
+from docscriptor.presets.components import CalloutBox, KeyValueTable, Nomenclature
+from docscriptor.presets.templates import JournalArticleTemplate, ManuscriptSection
 
 
 OUTPUT_DIR = Path("artifacts") / "usage-guide"
@@ -99,6 +99,30 @@ RELATED_WORK = CitationLibrary(
             publisher="GitHub repository",
             year="2026",
             url="https://github.com/Gonie-Gonie/docscriptor",
+        ),
+        CitationSource(
+            "Elsevier Your Paper Your Way Guide for Authors",
+            key="elsevier-your-paper-your-way",
+            organization="Elsevier",
+            publisher="Guide for authors",
+            year="2026",
+            url="https://www.elsevier.com/en-gb/subject/next/guide-for-authors",
+        ),
+        CitationSource(
+            "Taylor & Francis manuscript layout guide",
+            key="taylor-francis-layout-guide",
+            organization="Taylor & Francis Author Services",
+            publisher="Author Services",
+            year="2026",
+            url="https://authorservices.taylorandfrancis.com/publishing-your-research/writing-your-paper/journal-manuscript-layout-guide/",
+        ),
+        CitationSource(
+            "Taylor & Francis instructions for authors overview",
+            key="taylor-francis-instructions",
+            organization="Taylor & Francis Author Services",
+            publisher="Author Services",
+            year="2026",
+            url="https://authorservices.taylorandfrancis.com/publishing-your-research/making-your-submission/get-familiar-with-the-instructions-for-authors/",
         ),
     ]
 )
@@ -470,7 +494,7 @@ diagram = Figure(
 """
 
 COMPONENT_PRESETS_SNIPPET = """from docscriptor import Paragraph
-from docscriptor.presets.components import CalloutBox, KeyValueTable, PublicationTable
+from docscriptor.presets.components import CalloutBox, KeyValueTable, Nomenclature
 
 review_note = CalloutBox(
     Paragraph("Check terminology before external review."),
@@ -487,17 +511,21 @@ metadata = KeyValueTable(
     caption="Submission metadata.",
 )
 
-results = PublicationTable(
-    headers=["Model", "Score"],
-    rows=[["Baseline", "0.81"], ["Docscriptor workflow", "0.88"]],
-    caption="Compact result table.",
+nomenclature = Nomenclature(
+    [
+        ("A", "Floor area", "m2"),
+        ("E", "Annual energy use", "kWh"),
+        ("q", "Heat flux", "W/m2"),
+        ("T", "Air temperature", "degC"),
+    ],
+    double_column=True,
 )
 """
 
 TEMPLATE_PRESETS_SNIPPET = """from docscriptor import Author, Paragraph
-from docscriptor.presets.templates import ElsevierArticle, ManuscriptSection
+from docscriptor.presets.templates import JournalArticleTemplate, ManuscriptSection
 
-document = ElsevierArticle().build(
+document = JournalArticleTemplate(include_contents=True).build(
     "Readable manuscript generation",
     authors=[Author("Research Lead", affiliations=["Example Lab"], corresponding=True)],
     abstract="A concise abstract paragraph.",
@@ -508,7 +536,7 @@ document = ElsevierArticle().build(
     ],
 )
 
-document.save_all("artifacts/manuscript", stem="elsevier-draft")
+document.save_all("artifacts/manuscript", stem="article-draft")
 """
 
 
@@ -769,7 +797,7 @@ def build_usage_guide_document() -> Document:
             ["Tables, figures, and references", "4. Tables, Figures, and Cross-References", "Caption numbering, block references, and data-backed media objects."],
             ["Notes and citations", "5. Notes, Comments, and References", "Footnotes, generated comments pages, citation libraries, and bibliography output."],
             ["Pagination and output differences", "6. Layout and Pagination", "Contents styling, caption cohesion, and renderer-specific note behavior."],
-            ["Reusable document shapes", "8. Component Presets", "Ready-made callouts, option tables, manuscript tables, and journal template entry points."],
+            ["Reusable document shapes", "8. Component Presets", "Ready-made callouts, option tables, nomenclature boxes, and journal template entry points."],
         ],
         caption="A reading map for the guide.",
         column_widths=[2.0, 2.0, 2.6],
@@ -914,7 +942,7 @@ def build_usage_guide_document() -> Document:
         rows=[
             ["CalloutBox", "A styled Box with info, note, success, or warning variants.", "variant, title, padding, border/background colors, width, alignment."],
             ["KeyValueTable", "A compact two-column Table for metadata and option lists.", "headers, caption, cell padding, border width, column widths."],
-            ["PublicationTable", "A manuscript-style Table with repeated headers and light row striping.", "caption, repeat_header_rows, colors, row/column/cell styles."],
+            ["Nomenclature", "A heavy-outlined Box containing a symbol, meaning, and optional unit table with no internal rules.", "double_column, headers, padding, border width, title."],
             ["CompactTable", "A denser Table baseline for small reports and appendices.", "Any normal Table kwarg, with style objects still available for reusable designs."],
         ],
         caption="Component presets wrap ordinary blocks and still accept the same block/style options.",
@@ -923,10 +951,9 @@ def build_usage_guide_document() -> Document:
     template_presets_table = Table(
         headers=["Template", "Accepted structure", "Best first use"],
         rows=[
-            ["ElsevierArticle", "title, authors, abstract, keywords, sections, citations, references flag.", "A compact journal manuscript draft with centered title matter."],
-            ["TaylorFrancisArticle", "The same JournalArticleTemplate.build(...) structure.", "A left-aligned manuscript draft with T&F-like title matter defaults."],
-            ["JournalArticleTemplate", "Custom theme, page geometry, author layout, and build(...) inputs.", "Your own institutional or lab manuscript preset."],
+            ["JournalArticleTemplate", "title, authors, abstract, keywords, sections, citations, references flag.", "A generic manuscript-shaped document builder that can be configured for local or journal-specific needs."],
             ["ManuscriptSection", "title, children, level, numbered.", "A small descriptor when users prefer data-like section lists over nested Section objects."],
+            ["Theme and settings", "theme, page_size, page_margins, author_layout, include_contents.", "Use these inputs to make an institutional or lab manuscript preset."],
         ],
         caption="Template presets build full Document objects from manuscript-shaped inputs.",
         column_widths=[1.7, 3.4, 2.3],
@@ -981,15 +1008,17 @@ def build_usage_guide_document() -> Document:
         caption="A KeyValueTable preset used as a live component example.",
         column_widths=[2.4, 4.4],
     )
-    preset_publication_table = PublicationTable(
-        headers=["Preset", "Default behavior"],
-        rows=[
-            ["CalloutBox", "Variant-driven Box colors with editable Word output."],
-            ["PublicationTable", "Light manuscript table styling and repeated headers."],
-            ["JournalArticleTemplate", "Builds a Document from title matter, abstract, sections, and references."],
+    preset_nomenclature = Nomenclature(
+        [
+            ("A", "conditioned floor area", "m2"),
+            ("E", "annual energy use", "kWh"),
+            ("q", "heat flux", "W/m2"),
+            ("T", "air temperature", "degC"),
         ],
-        caption="A PublicationTable preset used as a live manuscript-style table example.",
-        column_widths=[2.3, 4.6],
+        double_column=True,
+        title="Nomenclature",
+        width=15.0,
+        unit="cm",
     )
 
     cover_callout = Box(
@@ -1542,7 +1571,7 @@ def build_usage_guide_document() -> Document:
                         ", ",
                         code("KeyValueTable"),
                         ", or ",
-                        code("PublicationTable"),
+                        code("Nomenclature"),
                         " and still pass familiar kwargs such as ",
                         code("padding"),
                         ", ",
@@ -1556,7 +1585,7 @@ def build_usage_guide_document() -> Document:
                     component_presets_table,
                     preset_callout,
                     preset_metadata_table,
-                    preset_publication_table,
+                    preset_nomenclature,
                     CodeBlock(COMPONENT_PRESETS_SNIPPET, language="python"),
                 ),
             ),
@@ -1567,15 +1596,17 @@ def build_usage_guide_document() -> Document:
                     Paragraph(
                         "Template presets live under ",
                         code("docscriptor.presets.templates"),
-                        ". They are classes because they own a document-level combination of theme, page geometry, author layout, generated pages, and references. The build input stays small: a title, optional authors, an abstract, keywords, a section list, and citation data."
+                        ". The generic template owns a document-level combination of theme, page geometry, author layout, generated pages, and references. The build input stays small: a title, optional authors, an abstract, keywords, a section list, and citation data. Publisher-specific presets are intentionally not included because broad public guidance is not the same thing as a journal-specific template. The included example uses common manuscript elements that appear in Elsevier's general Your Paper Your Way guidance ",
+                        RELATED_WORK.cite("elsevier-your-paper-your-way"),
+                        " and Taylor & Francis Author Services guidance ",
+                        RELATED_WORK.cite("taylor-francis-layout-guide"),
+                        ", while still treating the target journal's Instructions for Authors as authoritative ",
+                        RELATED_WORK.cite("taylor-francis-instructions"),
+                        "."
                     ),
                     Paragraph(
-                        code("ElsevierArticle"),
-                        " and ",
-                        code("TaylorFrancisArticle"),
-                        " both inherit from ",
                         code("JournalArticleTemplate"),
-                        ". Users can pass existing ",
+                        " accepts existing ",
                         code("Section"),
                         " blocks, compact ",
                         code("ManuscriptSection"),

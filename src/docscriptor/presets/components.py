@@ -10,6 +10,9 @@ from docscriptor.components.media import Table, TableCellInput
 from docscriptor.layout.theme import BoxStyle, TableStyle
 
 
+NomenclatureEntry = tuple[TableCellInput, TableCellInput] | tuple[TableCellInput, TableCellInput, TableCellInput]
+
+
 _CALLOUT_VARIANTS: dict[str, dict[str, str]] = {
     "info": {
         "border_color": "3B82F6",
@@ -110,33 +113,92 @@ class KeyValueTable(CompactTable):
         )
 
 
-class PublicationTable(Table):
-    """A manuscript-style table preset with light horizontal structure."""
+class Nomenclature(Box):
+    """A boxed symbol list with no internal table rules."""
 
     def __init__(
         self,
-        headers: Sequence[TableCellInput] | Sequence[Sequence[TableCellInput]] | object,
-        rows: Sequence[Sequence[TableCellInput]] | None = None,
+        entries: Sequence[NomenclatureEntry],
         *,
-        caption: CellInput | None = None,
-        style: TableStyle | None = None,
-        **table_options: object,
+        double_column: bool = False,
+        title: CellInput | None = None,
+        headers: tuple[str, str, str] = ("Symbol", "Meaning", "Unit"),
+        border_color: str = "111827",
+        border_width: float = 1.2,
+        padding: float = 6.0,
+        table_style: TableStyle | None = None,
+        **box_options: object,
     ) -> None:
-        super().__init__(
-            headers,
+        normalized_entries = self._entries(entries)
+        include_unit = any(unit is not None and unit != "" for _, _, unit in normalized_entries)
+        header_group = list(headers if include_unit else headers[:2])
+        rows = self._rows(
+            normalized_entries,
+            double_column=double_column,
+            include_unit=include_unit,
+        )
+        table_headers = header_group + header_group if double_column else header_group
+        table = Table(
+            table_headers,
             rows,
-            caption=caption,
-            style=style or TableStyle(
+            style=table_style or TableStyle(
                 header_background_color="FFFFFF",
-                header_text_color="111827",
-                border_color="6B7280",
-                alternate_row_background_color="F9FAFB",
-                cell_padding=4.0,
-                border_width=0.35,
+                border_color="FFFFFF",
+                border_width=0,
+                cell_padding=2.0,
                 repeat_header_rows=True,
             ),
-            **table_options,
         )
+        super().__init__(
+            table,
+            title=title,
+            border_color=border_color,
+            border_width=border_width,
+            padding=padding,
+            **box_options,
+        )
+
+    def _entries(
+        self,
+        entries: Sequence[NomenclatureEntry],
+    ) -> list[tuple[TableCellInput, TableCellInput, TableCellInput | None]]:
+        normalized: list[tuple[TableCellInput, TableCellInput, TableCellInput | None]] = []
+        for entry in entries:
+            if len(entry) == 2:
+                symbol, meaning = entry
+                normalized.append((symbol, meaning, None))
+                continue
+            if len(entry) == 3:
+                symbol, meaning, unit = entry
+                normalized.append((symbol, meaning, unit))
+                continue
+            raise ValueError("Nomenclature entries must be (symbol, meaning) or (symbol, meaning, unit)")
+        return normalized
+
+    def _rows(
+        self,
+        entries: Sequence[tuple[TableCellInput, TableCellInput, TableCellInput | None]],
+        *,
+        double_column: bool,
+        include_unit: bool,
+    ) -> list[list[TableCellInput]]:
+        def cells(entry: tuple[TableCellInput, TableCellInput, TableCellInput | None]) -> list[TableCellInput]:
+            symbol, meaning, unit = entry
+            if include_unit:
+                return [symbol, meaning, "" if unit is None else unit]
+            return [symbol, meaning]
+
+        if not double_column:
+            return [cells(entry) for entry in entries]
+
+        midpoint = (len(entries) + 1) // 2
+        left = list(entries[:midpoint])
+        right = list(entries[midpoint:])
+        rows: list[list[TableCellInput]] = []
+        for index, left_entry in enumerate(left):
+            right_cells = cells(right[index]) if index < len(right) else [""] * (3 if include_unit else 2)
+            rows.append([*cells(left_entry), *right_cells])
+        return rows
 
 
 def option_table(
@@ -160,7 +222,7 @@ __all__ = [
     "CalloutBox",
     "CompactTable",
     "KeyValueTable",
-    "PublicationTable",
+    "Nomenclature",
     "note_box",
     "option_table",
 ]

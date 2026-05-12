@@ -13,7 +13,7 @@ from docscriptor import (
     Table,
     code,
 )
-from docscriptor.presets.components import CalloutBox
+from docscriptor.presets.components import CalloutBox, Nomenclature
 from docscriptor.presets.templates import ManuscriptSection
 
 
@@ -65,6 +65,30 @@ def sample_citations() -> CitationLibrary:
                 year="2007",
                 url="https://doi.org/10.1198/106186007X178663",
             ),
+            CitationSource(
+                "Elsevier Your Paper Your Way Guide for Authors",
+                key="elsevier-your-paper-your-way",
+                organization="Elsevier",
+                publisher="Guide for authors",
+                year="2026",
+                url="https://www.elsevier.com/en-gb/subject/next/guide-for-authors",
+            ),
+            CitationSource(
+                "Taylor & Francis manuscript layout guide",
+                key="taylor-francis-layout-guide",
+                organization="Taylor & Francis Author Services",
+                publisher="Author Services",
+                year="2026",
+                url="https://authorservices.taylorandfrancis.com/publishing-your-research/writing-your-paper/journal-manuscript-layout-guide/",
+            ),
+            CitationSource(
+                "Taylor & Francis instructions for authors overview",
+                key="taylor-francis-instructions",
+                organization="Taylor & Francis Author Services",
+                publisher="Author Services",
+                year="2026",
+                url="https://authorservices.taylorandfrancis.com/publishing-your-research/making-your-submission/get-familiar-with-the-instructions-for-authors/",
+            ),
         ]
     )
 
@@ -93,12 +117,31 @@ def sample_sections(citations: CitationLibrary) -> list[ManuscriptSection]:
         variant="note",
         padding=7,
     )
+    nomenclature = Nomenclature(
+        [
+            ("A", "Article body assembled from blocks", "-"),
+            ("K", "Keyword count used for discoverability", "items"),
+            ("L", "Heading level included in the generated contents", "-"),
+            ("R", "Reference entries rendered from cited sources", "items"),
+        ],
+        double_column=True,
+        title="Nomenclature",
+    )
     return [
         ManuscriptSection(
             "Introduction",
             [
                 Paragraph(
                     "Template presets are useful when the same manuscript-shaped document is rendered repeatedly. The content can stay in ordinary Python blocks while the preset owns page geometry, title matter, and generated reference defaults."
+                ),
+                Paragraph(
+                    "This generic example uses common manuscript elements named in public author guidance: Elsevier's Your Paper Your Way guide notes that flexible submissions should still include elements such as abstract, keywords, clearly defined sections, artwork, tables with captions, and references ",
+                    citations.cite("elsevier-your-paper-your-way"),
+                    ". Taylor & Francis Author Services similarly describes abstract, keywords, heading levels, tables, and figures in its layout guide, while emphasizing that each journal's Instructions for Authors remain authoritative ",
+                    citations.cite("taylor-francis-layout-guide"),
+                    ", ",
+                    citations.cite("taylor-francis-instructions"),
+                    ".",
                 ),
                 Paragraph(
                     "The philosophy follows the traceability argument behind literate programming ",
@@ -122,6 +165,7 @@ def sample_sections(citations: CitationLibrary) -> list[ManuscriptSection]:
                     " tuples.",
                 ),
                 feature_table,
+                nomenclature,
                 note,
             ],
         ),

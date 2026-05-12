@@ -13,14 +13,7 @@ from docscriptor.components.people import AuthorInput, AuthorLayout
 from docscriptor.components.references import CitationLibrary, CitationSource
 from docscriptor.document import Document
 from docscriptor.layout.theme import (
-    BlockOptions,
-    CaptionOptions,
-    GeneratedPageOptions,
-    HeadingNumbering,
-    PageNumberOptions,
     Theme,
-    TitleMatterOptions,
-    TypographyOptions,
 )
 from docscriptor.settings import DocumentSettings, PageMargins, PageSize
 
@@ -140,123 +133,7 @@ class JournalArticleTemplate:
         return Chapter(title, *children)
 
 
-def _article_numbering() -> HeadingNumbering:
-    return HeadingNumbering(enabled=True, formats=("decimal", "decimal", "decimal"))
-
-
-def _elsevier_theme() -> Theme:
-    return Theme(
-        TypographyOptions(
-            body_font_name="Times New Roman",
-            monospace_font_name="Courier New",
-            title_font_size=18.0,
-            body_font_size=10.0,
-            heading_sizes=(14.0, 12.0, 11.0, 10.5),
-            caption_font_size=9.0,
-        ),
-        CaptionOptions(
-            caption_alignment="left",
-            table_caption_position="above",
-            figure_caption_position="below",
-        ),
-        GeneratedPageOptions(generated_section_level=1, generated_page_breaks=False),
-        PageNumberOptions(show_page_numbers=True, page_number_alignment="center"),
-        TitleMatterOptions(
-            title_alignment="center",
-            subtitle_alignment="center",
-            author_alignment="center",
-            affiliation_alignment="center",
-            author_detail_alignment="center",
-        ),
-        BlockOptions(
-            paragraph_alignment="justify",
-            table_alignment="center",
-            figure_alignment="center",
-            heading_numbering=_article_numbering(),
-        ),
-    )
-
-
-def _taylor_francis_theme() -> Theme:
-    return Theme(
-        TypographyOptions(
-            body_font_name="Times New Roman",
-            monospace_font_name="Courier New",
-            title_font_size=17.0,
-            body_font_size=10.5,
-            heading_sizes=(13.5, 12.0, 11.0, 10.5),
-            caption_font_size=9.5,
-        ),
-        CaptionOptions(
-            caption_alignment="left",
-            table_caption_position="above",
-            figure_caption_position="below",
-        ),
-        GeneratedPageOptions(generated_section_level=1, generated_page_breaks=False),
-        PageNumberOptions(show_page_numbers=True, page_number_alignment="center"),
-        TitleMatterOptions(
-            title_alignment="left",
-            subtitle_alignment="left",
-            author_alignment="left",
-            affiliation_alignment="left",
-            author_detail_alignment="left",
-        ),
-        BlockOptions(
-            paragraph_alignment="justify",
-            table_alignment="center",
-            figure_alignment="center",
-            heading_numbering=_article_numbering(),
-        ),
-    )
-
-
-class ElsevierArticle(JournalArticleTemplate):
-    """Article preset with Elsevier-like manuscript defaults."""
-
-    def __init__(
-        self,
-        *,
-        theme: Theme | None = None,
-        page_margins: PageMargins | None = None,
-        include_contents: bool = False,
-        include_references: bool = True,
-    ) -> None:
-        super().__init__(
-            name="Elsevier article",
-            theme=theme or _elsevier_theme(),
-            page_size=PageSize.a4(),
-            page_margins=page_margins or PageMargins.symmetric(vertical=2.5, horizontal=2.5, unit="cm"),
-            author_layout=AuthorLayout(mode="journal", show_details=False),
-            include_contents=include_contents,
-            include_references=include_references,
-        )
-
-
-class TaylorFrancisArticle(JournalArticleTemplate):
-    """Article preset with Taylor & Francis-like manuscript defaults."""
-
-    def __init__(
-        self,
-        *,
-        theme: Theme | None = None,
-        page_margins: PageMargins | None = None,
-        include_contents: bool = False,
-        include_references: bool = True,
-    ) -> None:
-        super().__init__(
-            name="Taylor & Francis article",
-            theme=theme or _taylor_francis_theme(),
-            page_size=PageSize.a4(),
-            page_margins=page_margins or PageMargins.symmetric(vertical=2.54, horizontal=2.54, unit="cm"),
-            author_layout=AuthorLayout(mode="journal", show_details=False),
-            include_contents=include_contents,
-            include_references=include_references,
-        )
-
-
 __all__ = [
-    "ElsevierArticle",
     "JournalArticleTemplate",
     "ManuscriptSection",
-    "TaylorFrancisArticle",
 ]

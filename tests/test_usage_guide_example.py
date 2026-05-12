@@ -130,7 +130,10 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("Template presets build full Document objects" in text for text in paragraph_texts)
     assert any("docscriptor.presets.components" in text for text in paragraph_texts)
     assert any("docscriptor.presets.templates" in text for text in paragraph_texts)
-    assert any("ElsevierArticle" in text for text in paragraph_texts)
+    assert any("JournalArticleTemplate" in text for text in paragraph_texts)
+    assert any("Your Paper Your Way" in text for text in paragraph_texts)
+    assert any("Instructions for Authors" in text for text in paragraph_texts)
+    assert "Nomenclature" in table_text
     assert any("Figure sizing patterns for width, height, and document-relative sizing." in text for text in paragraph_texts)
     assert any("Coordinate-based drawings can be page overlays or inline flow objects." in text for text in paragraph_texts)
     assert any("Advanced table and figure placement controls." in text for text in paragraph_texts)
@@ -190,7 +193,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Template presets build full Document objects" in pdf_text
     assert "docscriptor.presets.components" in pdf_text
     assert "docscriptor.presets.templates" in pdf_text
-    assert "ElsevierArticle" in pdf_text
+    assert "JournalArticleTemplate" in pdf_text
+    assert "Your Paper Your Way" in pdf_text
+    assert "Instructions for Authors" in pdf_text
     assert "6.4.1 Subsection entries" in pdf_text
     assert "6.4.1.1 Subsubsection entries" in pdf_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in pdf_text
@@ -241,7 +246,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Template presets build full Document objects" in normalized_html_text
     assert "docscriptor.presets.components" in normalized_html_text
     assert "docscriptor.presets.templates" in normalized_html_text
-    assert "ElsevierArticle" in normalized_html_text
+    assert "JournalArticleTemplate" in normalized_html_text
+    assert "Your Paper Your Way" in normalized_html_text
+    assert "Instructions for Authors" in normalized_html_text
     assert "6.4.1 Subsection entries" in normalized_html_text
     assert "6.4.1.1 Subsubsection entries" in normalized_html_text
     assert "Figure sizing patterns for width, height, and document-relative sizing." in normalized_html_text

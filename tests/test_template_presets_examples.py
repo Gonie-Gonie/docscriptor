@@ -38,14 +38,10 @@ def test_template_preset_examples_build_all_outputs(tmp_path: Path) -> None:
     outputs = build_all.build_all(tmp_path)
 
     assert set(outputs) == {
-        "elsevier_article",
-        "taylor_francis_article",
         "journal_article_template",
     }
 
     expected_titles = {
-        "elsevier-article": "Template Preset Example: Elsevier Article",
-        "taylor-francis-article": "Template Preset Example: Taylor & Francis Article",
         "journal-article-template": "Template Preset Example: Custom JournalArticleTemplate",
     }
     for stem, title in expected_titles.items():
@@ -58,6 +54,13 @@ def test_template_preset_examples_build_all_outputs(tmp_path: Path) -> None:
         assert html_path.exists()
 
         word_text = "\n".join(paragraph.text for paragraph in WordDocument(docx_path).paragraphs)
+        word_document = WordDocument(docx_path)
+        table_text = "\n".join(
+            cell.text
+            for table in word_document.tables
+            for row in table.rows
+            for cell in row.cells
+        )
         pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
         normalized_pdf_text = " ".join(pdf_text.split())
         html_text = _normalized_html_text(html_path)
@@ -65,6 +68,9 @@ def test_template_preset_examples_build_all_outputs(tmp_path: Path) -> None:
         assert title in word_text
         assert "Introduction" in word_text
         assert "Template presets keep common manuscript pieces close to the input data." in word_text
+        assert "Your Paper Your Way" in word_text
+        assert "Taylor & Francis" in word_text
+        assert "Nomenclature" in table_text
         assert "References" in word_text
         assert title in normalized_pdf_text
         assert "Template Surface" in normalized_pdf_text
