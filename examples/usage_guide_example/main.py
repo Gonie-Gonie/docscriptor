@@ -24,7 +24,6 @@ from docscriptor import (
     AuthorLayout,
     BlockOptions,
     Box,
-    BoxStyle,
     BulletList,
     CaptionOptions,
     Chapter,
@@ -45,7 +44,6 @@ from docscriptor import (
     PageMargins,
     PageSize,
     Paragraph,
-    ParagraphStyle,
     Part,
     ReferencesPage,
     Section,
@@ -55,8 +53,6 @@ from docscriptor import (
     Subsection,
     Subsubsection,
     Table,
-    TableCellStyle,
-    TableStyle,
     TableList,
     TableOfContents,
     Text,
@@ -233,7 +229,7 @@ document = Document(
 )
 """
 
-REPORT_PANEL_SNIPPET = """from docscriptor import Box, BoxStyle, Paragraph, Table
+REPORT_PANEL_SNIPPET = """from docscriptor import Box, Paragraph, Table
 
 panel = Box(
     Paragraph("Editable report content can stay grouped with its evidence."),
@@ -245,18 +241,16 @@ panel = Box(
         ],
     ),
     title="Report panel",
-    style=BoxStyle(
-        background_color="#FDFBF6",
-        title_background_color="#1058A3",
-        title_text_color="#FFFFFF",
-        padding_top=8,
-        padding_right=12,
-        padding_bottom=8,
-        padding_left=12,
-        width=18.0,
-        unit="cm",
-        alignment="center",
-    ),
+    background_color="#FDFBF6",
+    title_background_color="#1058A3",
+    title_text_color="#FFFFFF",
+    padding_top=8,
+    padding_right=12,
+    padding_bottom=8,
+    padding_left=12,
+    width=18.0,
+    unit="cm",
+    alignment="center",
 )
 """
 
@@ -321,7 +315,7 @@ PROJECT_LAYOUT_SNIPPET = """my-report/
     report.html
 """
 
-LATEX_COMPARISON_SNIPPET = """from docscriptor import Box, BoxStyle, Figure, Paragraph, Table, bold, code
+LATEX_COMPARISON_SNIPPET = """from docscriptor import Box, Figure, Paragraph, Table, bold, code
 
 summary = Box(
     Paragraph(bold("Takeaway. "), "The result table and figure are normal document blocks."),
@@ -332,7 +326,9 @@ summary = Box(
     ),
     Figure("assets/system-diagram.png", caption="Pipeline diagram.", width=12, unit="cm"),
     title="Report-ready evidence",
-    style=BoxStyle(width=16, unit="cm", alignment="center"),
+    width=16,
+    unit="cm",
+    alignment="center",
 )
 
 Paragraph("See ", summary.reference(), " for the editable evidence package.")
@@ -395,7 +391,7 @@ YAML_SNIPPET = """report:
     - html
 """
 
-PARAGRAPH_INDENT_SNIPPET = """from docscriptor import DocumentSettings, Paragraph, ParagraphStyle, Theme
+PARAGRAPH_INDENT_SNIPPET = """from docscriptor import DocumentSettings, Paragraph, Theme
 
 settings = DocumentSettings(theme=Theme(paragraph_alignment="left"))
 
@@ -405,21 +401,25 @@ Paragraph(
 
 Paragraph(
     "This one overrides the document-wide default.",
-    style=ParagraphStyle(alignment="right"),
+    alignment="right",
 )
 
 Paragraph(
     "First-line indents work like a normal word processor paragraph.",
-    style=ParagraphStyle(left_indent=1.0, first_line_indent=0.6, unit="cm"),
+    left_indent=1.0,
+    first_line_indent=0.6,
+    unit="cm",
 )
 
 Paragraph(
     "Hanging indents are useful for references, definitions, and glossary-like entries.",
-    style=ParagraphStyle.hanging(left=1.2, by=0.6, unit="cm"),
+    left_indent=1.2,
+    first_line_indent=-0.6,
+    unit="cm",
 )
 """
 
-TABLE_ALIGNMENT_SNIPPET = """from docscriptor import Table, TableCell, TableCellStyle, TableStyle
+TABLE_ALIGNMENT_SNIPPET = """from docscriptor import Table, TableCell
 
 Table(
     headers=[["Metric", "Value"]],
@@ -428,20 +428,20 @@ Table(
             "Latency",
             TableCell(
                 "14 ms",
-                style=TableCellStyle(background_color="#FFE699", text_color="#7F1D1D", bold=True),
+                background_color="#FFE699",
+                text_color="#7F1D1D",
+                bold=True,
                 horizontal_alignment="right",
                 vertical_alignment="middle",
             ),
         ],
         ["Quality", "Stable"],
     ],
-    row_styles={1: TableCellStyle(background_color="#E2F0D9", italic=True)},
-    column_styles={0: TableCellStyle(text_color="#1F4E79", bold=True)},
-    header_row_styles={0: TableCellStyle(background_color="#1F4E79", text_color="#FFFFFF")},
-    style=TableStyle(
-        header_horizontal_alignment="center",
-        cell_vertical_alignment="middle",
-    ),
+    row_styles={1: {"background_color": "#E2F0D9", "italic": True}},
+    column_styles={0: {"text_color": "#1F4E79", "bold": True}},
+    header_row_styles={0: {"background_color": "#1F4E79", "text_color": "#FFFFFF"}},
+    header_horizontal_alignment="center",
+    cell_vertical_alignment="middle",
 )
 """
 
@@ -783,7 +783,7 @@ def build_usage_guide_document() -> Document:
             ["\\includegraphics", "Figure(path_or_matplotlib_figure, caption=...)", "Static images and Python-generated figures use the same captioning and referencing model."],
             ["tabular or booktabs", "Table(...), Table.from_dataframe(...)", "Tables can be created directly from Python data instead of being copied into markup."],
             ["\\label and \\ref", "Call reference(figure_obj) or figure_obj.reference() inside Paragraph(...)", "References follow the indexed document order without hand-maintained labels."],
-            ["tcolorbox", "Box(..., style=BoxStyle(...))", "Report panels remain editable in Word while keeping a similar grouped visual shape in PDF and HTML."],
+            ["tcolorbox", "Box(..., background_color=..., padding=...)", "Report panels remain editable in Word while keeping a similar grouped visual shape in PDF and HTML."],
             ["BibTeX plus \\cite", "CitationLibrary and CitationSource.cite(...)", "Citations are authored inline, and only cited sources appear on ReferencesPage()."],
         ],
         caption="LaTeX habits translated into docscriptor's Python-first authoring model.",
@@ -897,12 +897,12 @@ def build_usage_guide_document() -> Document:
     block_options_table = Table(
         headers=["Block", "Direct kwargs", "Style object when needed"],
         rows=[
-            ["Text and styled(...)", "font_name, font_size, color, highlight_color, bold, italic, underline, strikethrough, small_caps, all_caps, subscript, superscript", "TextStyle for reusable inline styling."],
-            ["Paragraph, CodeBlock, Equation", "alignment, space_before, space_after, leading, left_indent, right_indent, first_line_indent, keep_together, keep_with_next, page_break_before, widow_control, unit", "ParagraphStyle for reusable paragraph rhythm and Word-native pagination controls."],
-            ["BulletList, NumberedList", "marker_format, bullet, prefix, suffix, start, indent, marker_gap", "ListStyle for repeated list conventions."],
-            ["Box", "border_color, background_color, title colors, border_width, padding, per-side padding, space_after, width, unit, alignment", "BoxStyle for shared callout or report-panel designs."],
-            ["Table", "header/body/alternate colors, border_color, border_width, cell/header alignment, cell_padding, per-side cell padding, repeat_header_rows", "TableStyle plus row_styles, column_styles, header_row_styles."],
-            ["TableCell", "colspan, rowspan, background_color, text_color, bold, italic, horizontal_alignment, vertical_alignment", "TableCellStyle for reusable row, column, or cell styling."],
+            ["Text and styled(...)", "font_name, font_size, color, highlight_color, bold, italic, underline, strikethrough, small_caps, all_caps, subscript, superscript", "Use TextStyle only when a reusable inline style needs a name."],
+            ["Paragraph, CodeBlock, Equation", "alignment, space_before, space_after, leading, left_indent, right_indent, first_line_indent, keep_together, keep_with_next, page_break_before, widow_control, unit", "Use ParagraphStyle only for shared paragraph rhythm."],
+            ["BulletList, NumberedList", "marker_format, bullet, prefix, suffix, start, indent, marker_gap", "Use ListStyle only for repeated list conventions."],
+            ["Box", "border_color, background_color, title colors, border_width, padding, per-side padding, space_after, width, unit, alignment", "Use BoxStyle only for named callout or report-panel designs."],
+            ["Table", "header/body/alternate colors, border_color, border_width, cell/header alignment, cell_padding, per-side cell padding, repeat_header_rows", "row_styles, column_styles, and header_row_styles accept dictionaries for quick overrides."],
+            ["TableCell", "colspan, rowspan, background_color, text_color, bold, italic, horizontal_alignment, vertical_alignment", "Use TableCellStyle only for reusable row, column, or cell styling."],
             ["TableOfContents", "show_page_numbers, leader, max_level, level_styles", "TocLevelStyle per heading level; dictionaries are accepted for quick overrides."],
             ["Figure, SubFigure, SubFigureGroup", "width, height, unit, placement, dpi, columns, column_gap, label_format", "Use caption Paragraphs when caption text needs inline styling."],
         ],
@@ -915,7 +915,7 @@ def build_usage_guide_document() -> Document:
             ["CalloutBox", "A styled Box with info, note, success, or warning variants.", "variant, title, padding, border/background colors, width, alignment."],
             ["KeyValueTable", "A compact two-column Table for metadata and option lists.", "headers, caption, cell padding, border width, column widths."],
             ["PublicationTable", "A manuscript-style Table with repeated headers and light row striping.", "caption, repeat_header_rows, colors, row/column/cell styles."],
-            ["CompactTable", "A denser Table baseline for small reports and appendices.", "Any normal Table kwarg plus TableStyle overrides."],
+            ["CompactTable", "A denser Table baseline for small reports and appendices.", "Any normal Table kwarg, with style objects still available for reusable designs."],
         ],
         caption="Component presets wrap ordinary blocks and still accept the same block/style options.",
         column_widths=[1.5, 3.0, 2.6],
@@ -964,7 +964,7 @@ def build_usage_guide_document() -> Document:
     )
     preset_callout = CalloutBox(
         Paragraph(
-            "Presets are ordinary docscriptor components with carefully chosen defaults. Use kwargs for quick local changes and pass the underlying style objects when a repeated house style needs to be named."
+            "Presets are ordinary docscriptor components with carefully chosen defaults. Use direct kwargs for quick local changes and reserve style objects for repeated house styles that need a name."
         ),
         title="Preset rule",
         variant="info",
@@ -975,7 +975,7 @@ def build_usage_guide_document() -> Document:
     preset_metadata_table = KeyValueTable(
         {
             "Preset namespace": "docscriptor.presets.components",
-            "Customization surface": "Same kwargs and style objects as core components",
+            "Customization surface": "Same direct kwargs as core components",
             "Output formats": "DOCX, PDF, HTML",
         },
         caption="A KeyValueTable preset used as a live component example.",
@@ -1002,16 +1002,15 @@ def build_usage_guide_document() -> Document:
             "Treat figures, tables, and notes as authored objects rather than pasted export artifacts.",
         ),
         title="Reading Principle",
-        style=BoxStyle(
-            border_color="#6E8497",
-            background_color="#F6F9FC",
-            title_background_color="#DCE8F4",
-        ),
+        border_color="#6E8497",
+        background_color="#F6F9FC",
+        title_background_color="#DCE8F4",
     )
     contributor_certificate = Box(
         Paragraph(
             "Awarded for keeping document structure readable across DOCX, PDF, and HTML.",
-            style=ParagraphStyle(alignment="center", space_after=8),
+            alignment="center",
+            space_after=8,
         ),
         Table(
             headers=["Authoring surface", "Word behavior", "Portable behavior"],
@@ -1022,32 +1021,29 @@ def build_usage_guide_document() -> Document:
             ],
             column_widths=[3.6, 5.2, 6.2],
             unit="cm",
-            style=TableStyle(
-                header_background_color="#E7EEF7",
-                border_color="#B8C6D6",
-                cell_padding=4,
-            ),
+            header_background_color="#E7EEF7",
+            border_color="#B8C6D6",
+            cell_padding=4,
         ),
         Figure(LOGO_PATH, width=3.2, unit="cm"),
         Paragraph(
             "Generated from the same Python document tree as this guide.",
-            style=ParagraphStyle(alignment="center", space_after=0),
+            alignment="center",
+            space_after=0,
         ),
         title="Docscriptor Contributor Certificate",
-        style=BoxStyle(
-            border_color="#D4B56A",
-            background_color="#FDFBF6",
-            title_background_color="#1058A3",
-            title_text_color="#FFFFFF",
-            border_width=1.0,
-            padding_top=8,
-            padding_right=12,
-            padding_bottom=8,
-            padding_left=12,
-            width=18.0,
-            unit="cm",
-            alignment="center",
-        ),
+        border_color="#D4B56A",
+        background_color="#FDFBF6",
+        title_background_color="#1058A3",
+        title_text_color="#FFFFFF",
+        border_width=1.0,
+        padding_top=8,
+        padding_right=12,
+        padding_bottom=8,
+        padding_left=12,
+        width=18.0,
+        unit="cm",
+        alignment="center",
     )
 
     return Document(
@@ -1245,22 +1241,26 @@ def build_usage_guide_document() -> Document:
                 CodeBlock(YAML_SNIPPET, language="yaml"),
                 Paragraph(
                     "Paragraph-level Word features are also part of the authored source. ",
-                    code("ParagraphStyle"),
-                    " supports explicit alignment, spacing before and after, left and right indents, first-line indents, hanging indents, and keep/page-break controls for reference-like blocks that should not be simulated with spaces. Use ",
+                    code("Paragraph(...)"),
+                    " accepts explicit alignment, spacing before and after, left and right indents, first-line indents, hanging indents, and keep/page-break controls for reference-like blocks that should not be simulated with spaces. Use ",
                     code("Theme(paragraph_alignment=...)"),
-                    " for the document-wide default and per-paragraph ",
-                    code("ParagraphStyle(alignment=...)"),
-                    " only where the text should diverge."
+                    " for the document-wide default and direct kwargs such as ",
+                    code("alignment='right'"),
+                    " only where one paragraph should diverge."
                 ),
                 CodeBlock(PARAGRAPH_INDENT_SNIPPET, language="python"),
                 Paragraph(
                     "Table cells can use the same sort of explicit alignment that authors expect from Word. Put one-off alignment on ",
                     code("TableCell"),
                     ", or use ",
-                    code("TableStyle"),
-                    " to set table-wide body and header defaults including borders, per-side cell padding, repeated headers, and alignment. For more direct formatting, apply ",
-                    code("TableCellStyle"),
-                    " to individual cells, body rows, header rows, or expanded columns."
+                    code("Table(...)"),
+                    " kwargs to set table-wide body and header defaults including borders, per-side cell padding, repeated headers, and alignment. For row, header-row, or column formatting, pass small dictionaries to ",
+                    code("row_styles"),
+                    ", ",
+                    code("header_row_styles"),
+                    ", or ",
+                    code("column_styles"),
+                    "."
                 ),
                 CodeBlock(TABLE_ALIGNMENT_SNIPPET, language="python"),
                 Paragraph(
@@ -1519,7 +1519,7 @@ def build_usage_guide_document() -> Document:
                 Paragraph(
                     "A healthy document repository keeps authored source, reusable assets, structured data, and generated artifacts separate. That keeps commits readable and makes it easier to review whether a table changed because the data changed or because the document layout changed."
                 ),
-                CodeBlock(PROJECT_LAYOUT_SNIPPET, language="text"),
+                CodeBlock(PROJECT_LAYOUT_SNIPPET, language="text", show_language=False),
                 Paragraph(
                     "The journal example at ",
                     code("examples/journal_paper_example/main.py"),
@@ -1632,13 +1632,8 @@ def build_usage_guide(output_dir: str | Path) -> tuple[Path, Path]:
     output_path.mkdir(parents=True, exist_ok=True)
 
     document = build_usage_guide_document()
-    docx_path = output_path / "docscriptor-user-guide.docx"
-    pdf_path = output_path / "docscriptor-user-guide.pdf"
-    html_path = output_path / "docscriptor-user-guide.html"
-    document.save_docx(docx_path)
-    document.save_pdf(pdf_path)
-    document.save_html(html_path)
-    return docx_path, pdf_path
+    outputs = document.save_all(output_path, stem="docscriptor-user-guide")
+    return outputs["docx"], outputs["pdf"]
 
 
 def main() -> None:

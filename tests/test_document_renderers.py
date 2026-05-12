@@ -439,6 +439,8 @@ def test_common_block_styles_accept_direct_kwargs() -> None:
     assert paragraph.style.alignment == "right"
     assert paragraph.style.space_after == 4
     assert code_block.style.left_indent == 0.25
+    assert code_block.show_language is True
+    assert code_block.language_position == "top-right"
     assert equation.style.space_after == 2
     assert bullet_list.style is not None
     assert bullet_list.style.marker_format == "bullet"
@@ -453,6 +455,17 @@ def test_common_block_styles_accept_direct_kwargs() -> None:
     assert table.style.cell_horizontal_alignment == "center"
     assert contents.style_for_level(1).bold is False
     assert contents.style_for_level(1).space_after == 1
+
+    hidden_label_block = CodeBlock("plain text", language="text", show_language=False, language_position="bottom-left")
+    assert hidden_label_block.show_language is False
+    assert hidden_label_block.language_position == "bottom-left"
+
+    try:
+        CodeBlock("x", language="python", language_position="middle")  # type: ignore[arg-type]
+    except ValueError as exc:
+        assert "language_position" in str(exc)
+    else:
+        raise AssertionError("Expected invalid CodeBlock language_position to fail")
 
 
 def test_paragraph_style_defaults_to_justify_alignment() -> None:
@@ -1782,6 +1795,34 @@ def test_explicit_reference_api_covers_numbered_blocks(tmp_path: Path) -> None:
         assert "reference(obj)" in str(exc)
     else:
         raise AssertionError("Expected raw document object references in Paragraph to fail")
+
+
+def test_code_block_language_label_can_move_or_hide(tmp_path: Path) -> None:
+    visible = CodeBlock("print('visible')", language="python", language_position="bottom-left")
+    hidden = CodeBlock("README.md\nsrc/docscriptor", language="text", show_language=False)
+    document = Document("Code Labels", visible, hidden)
+
+    docx_path = tmp_path / "code-labels.docx"
+    pdf_path = tmp_path / "code-labels.pdf"
+    html_path = tmp_path / "code-labels.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_text = "\n".join(paragraph.text for paragraph in WordDocument(docx_path).paragraphs)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert "PYTHON" in word_text
+    assert "PYTHON" in pdf_text
+    assert "docscriptor-code-language-bottom-left" in html_text
+    assert "docscriptor-code-has-label-bottom" in html_text
+    assert "TEXT" not in word_text
+    assert "TEXT" not in pdf_text
+    assert ">TEXT<" not in html_text
+    assert "README.md" in word_text
+    assert "README.md" in pdf_text
+    assert "README.md" in html_text
 
 
 def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Path) -> None:

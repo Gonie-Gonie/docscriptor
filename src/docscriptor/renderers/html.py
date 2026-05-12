@@ -233,17 +233,22 @@ class HtmlRenderer:
     ) -> str:
         """Render a code block into HTML."""
 
+        show_label = bool(block.language and block.show_language)
         label = (
-            f'<div class="docscriptor-code-language">{escape(block.language.upper())}</div>'
-            if block.language
+            f'<div class="docscriptor-code-language docscriptor-code-language-{escape(block.language_position)}">'
+            f"{escape(block.language.upper())}</div>"
+            if show_label
             else ""
         )
+        code_classes = ["docscriptor-code"]
+        if show_label:
+            code_classes.append(f"docscriptor-code-has-label-{block.language_position.split('-', 1)[0]}")
         anchor = context.render_index.block_anchor(block)
         anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
         return (
-            f'<section{anchor_attr} class="docscriptor-code-block">'
+            f'<section{anchor_attr} class="docscriptor-code-block docscriptor-code-label-{escape(block.language_position)}">'
             + label
-            + f'<pre class="docscriptor-code" style="margin-bottom: {(block.style.space_after or 0):.1f}pt;">'
+            + f'<pre class="{" ".join(code_classes)}" style="margin-bottom: {(block.style.space_after or 0):.1f}pt;">'
             + syntax_html(block.code, block.language)
             + "</pre>"
             + "</section>"
@@ -1909,13 +1914,37 @@ body {{
   margin-top: 0;
 }}
 .docscriptor-code-block {{
+  position: relative;
   margin: 0 0 12pt;
 }}
 .docscriptor-code-language {{
+  position: absolute;
+  z-index: 1;
   font-family: {self._css_font_family(theme.monospace_font_name)};
-  font-size: {theme.caption_size():.1f}pt;
-  font-weight: 700;
-  margin-bottom: 2pt;
+  font-size: {max(theme.caption_size() - 1, 7):.1f}pt;
+  font-weight: 600;
+  color: #6f7d90;
+  background: rgba(245, 247, 250, 0.9);
+  border: 0.5pt solid #d8e0eb;
+  border-radius: 4px;
+  padding: 1pt 4pt;
+  line-height: 1.2;
+}}
+.docscriptor-code-language-top-left {{
+  top: 6pt;
+  left: 8pt;
+}}
+.docscriptor-code-language-top-right {{
+  top: 6pt;
+  right: 8pt;
+}}
+.docscriptor-code-language-bottom-left {{
+  bottom: 18pt;
+  left: 8pt;
+}}
+.docscriptor-code-language-bottom-right {{
+  bottom: 18pt;
+  right: 8pt;
 }}
 .docscriptor-code {{
   margin-top: 0;
@@ -1927,6 +1956,12 @@ body {{
   font-family: {self._css_font_family(theme.monospace_font_name)};
   font-size: {max(theme.body_font_size - 1, 8):.1f}pt;
   line-height: {max(theme.body_font_size - 1, 8) * 1.35:.1f}pt;
+}}
+.docscriptor-code-has-label-top {{
+  padding-top: 24pt;
+}}
+.docscriptor-code-has-label-bottom {{
+  padding-bottom: 24pt;
 }}
 .docscriptor-equation {{
   font-size: {max(theme.body_font_size + 1, 12):.1f}pt;

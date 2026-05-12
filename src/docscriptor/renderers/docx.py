@@ -1481,17 +1481,7 @@ class DocxRenderer:
         unit: str,
     ) -> None:
         anchor = render_index.block_anchor(code_block)
-        if code_block.language:
-            label = self._add_paragraph(container)
-            label.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            label.paragraph_format.space_after = Pt(2)
-            if anchor is not None:
-                self._add_bookmark(label, anchor)
-            run = label.add_run(code_block.language.upper())
-            run.font.name = theme.monospace_font_name
-            run.font.size = Pt(theme.caption_size())
-            run.font.bold = True
-
+        show_label = bool(code_block.language and code_block.show_language)
         paragraph = self._add_paragraph(container)
         self._apply_paragraph_style(paragraph, code_block.style, theme, unit)
         paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1499,14 +1489,38 @@ class DocxRenderer:
         paragraph.paragraph_format.right_indent = Inches(0.1)
         paragraph.paragraph_format.space_before = Pt(6)
         self._set_paragraph_shading(paragraph, "F5F7FA")
-        if anchor is not None and not code_block.language:
+        if anchor is not None:
             self._add_bookmark(paragraph, anchor)
+        if show_label and code_block.language_position.startswith("top"):
+            self._append_code_language_label_run(paragraph, code_block, theme)
 
         self._append_code_tokens(
             paragraph,
             syntax_tokens(code_block.code, code_block.language),
             theme=theme,
         )
+        if show_label and code_block.language_position.startswith("bottom"):
+            paragraph.add_run().add_break()
+            self._append_code_language_label_run(paragraph, code_block, theme, trailing=True)
+
+    def _append_code_language_label_run(
+        self,
+        paragraph: object,
+        code_block: CodeBlock,
+        theme: Theme,
+        *,
+        trailing: bool = False,
+    ) -> None:
+        if code_block.language_position.endswith("right"):
+            paragraph.paragraph_format.tab_stops.add_tab_stop(Inches(6), WD_TAB_ALIGNMENT.RIGHT)
+            paragraph.add_run("\t")
+        run = paragraph.add_run(code_block.language.upper() if code_block.language else "")
+        run.font.name = theme.monospace_font_name
+        run.font.size = Pt(max(theme.caption_size() - 1, 7))
+        run.font.bold = False
+        run.font.color.rgb = RGBColor(0x6F, 0x7D, 0x90)
+        if not trailing:
+            paragraph.add_run().add_break()
 
     def _append_code_tokens(
         self,

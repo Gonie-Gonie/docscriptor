@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from docscriptor.components.base import Block, BlockInput, coerce_blocks
 from docscriptor.components.equations import equation_plain_text
@@ -19,6 +19,9 @@ from docscriptor.layout.theme import (
 
 if TYPE_CHECKING:
     from docscriptor.renderers.context import DocxRenderContext, HtmlRenderContext, PdfRenderContext
+
+
+CodeLanguagePosition = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
 
 
 @dataclass(slots=True, init=False)
@@ -223,6 +226,8 @@ class CodeBlock(Block):
 
     code: str
     language: str | None
+    show_language: bool
+    language_position: CodeLanguagePosition
     style: ParagraphStyle
 
     def __init__(
@@ -230,6 +235,8 @@ class CodeBlock(Block):
         code: str,
         language: str | None = None,
         *,
+        show_language: bool = True,
+        language_position: CodeLanguagePosition = "top-right",
         style: ParagraphStyle | None = None,
         alignment: str | None = None,
         space_before: float | None = None,
@@ -244,8 +251,12 @@ class CodeBlock(Block):
         widow_control: bool | None = None,
         unit: str | None = None,
     ) -> None:
+        if language_position not in {"top-left", "top-right", "bottom-left", "bottom-right"}:
+            raise ValueError("CodeBlock language_position must be top-left, top-right, bottom-left, or bottom-right")
         self.code = code
         self.language = language
+        self.show_language = show_language
+        self.language_position = language_position
         self.style = paragraph_style_with_overrides(
             style or ParagraphStyle(alignment="left", space_after=12.0),
             alignment=alignment,

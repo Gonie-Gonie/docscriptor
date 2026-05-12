@@ -26,7 +26,6 @@ from docscriptor import (
     ReferencesPage,
     Section,
     Table,
-    TableStyle,
     Theme,
     code,
     italic,
@@ -267,28 +266,22 @@ def build_journal_paper_document() -> Document:
         dataset_df,
         caption="Study corpus used to evaluate the manuscript workflow.",
         column_widths=[1.2, 1.2, 3.2],
-        style=TableStyle(
-            header_background_color="#E7EEF7",
-            alternate_row_background_color="#FAFCFE",
-        ),
+        header_background_color="#E7EEF7",
+        alternate_row_background_color="#FAFCFE",
     )
     benchmark_table = Table.from_dataframe(
         results_df[["Model", "Accuracy", "F1", "Latency_ms"]],
         caption="Benchmark results loaded directly from the experiment CSV file.",
         column_widths=[2.0, 1.0, 0.9, 1.3],
-        style=TableStyle(
-            header_background_color="#DCE8F4",
-            alternate_row_background_color="#F7FAFD",
-        ),
+        header_background_color="#DCE8F4",
+        alternate_row_background_color="#F7FAFD",
     )
     ablation_table = Table.from_dataframe(
         ablation_df,
         caption="Ablation results for the manuscript automation workflow.",
         column_widths=[2.9, 1.0, 1.2],
-        style=TableStyle(
-            header_background_color="#E3ECF6",
-            alternate_row_background_color="#F8FBFD",
-        ),
+        header_background_color="#E3ECF6",
+        alternate_row_background_color="#F8FBFD",
     )
 
     traceability_figure = Figure(
@@ -510,13 +503,8 @@ def build_journal_paper(output_dir: str | Path) -> tuple[Path, Path]:
     output_path.mkdir(parents=True, exist_ok=True)
 
     document = build_journal_paper_document()
-    docx_path = output_path / "docscriptor-development-philosophy.docx"
-    pdf_path = output_path / "docscriptor-development-philosophy.pdf"
-    html_path = output_path / "docscriptor-development-philosophy.html"
-    document.save_docx(docx_path)
-    document.save_pdf(pdf_path)
-    document.save_html(html_path)
-    return docx_path, pdf_path
+    outputs = document.save_all(output_path, stem="docscriptor-development-philosophy")
+    return outputs["docx"], outputs["pdf"]
 
 
 def main() -> None:

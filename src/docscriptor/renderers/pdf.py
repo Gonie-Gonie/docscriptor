@@ -1576,39 +1576,60 @@ class PdfRenderer:
             fontName=self._resolve_font(theme.monospace_font_name, False, False),
             fontSize=max(theme.body_font_size - 1, 8),
             leading=max(theme.body_font_size - 1, 8) * 1.35,
-            leftIndent=12,
-            rightIndent=6,
-            spaceBefore=6,
-            spaceAfter=block.style.space_after or 0,
-            borderPadding=8,
-            borderWidth=0.75,
-            borderColor=colors.HexColor("#D8E0EB"),
-            backColor=colors.HexColor("#F5F7FA"),
+            leftIndent=0,
+            rightIndent=0,
+            spaceBefore=0,
+            spaceAfter=0,
         )
 
-        elements: list[object] = []
         anchor = render_index.block_anchor(block)
-        if block.language:
+        show_label = bool(block.language and block.show_language)
+        cell_flowables: list[object] = []
+        if show_label:
             label_style = RLParagraphStyle(
                 "CodeBlockLabel",
                 parent=styles["BodyText"],
-                fontName=self._resolve_font(theme.monospace_font_name, True, False),
-                fontSize=theme.caption_size(),
-                alignment=TA_LEFT,
-                spaceAfter=2,
+                fontName=self._resolve_font(theme.monospace_font_name, False, False),
+                fontSize=max(theme.caption_size() - 1, 7),
+                leading=max(theme.caption_size() - 1, 7) * 1.2,
+                textColor=colors.HexColor("#6F7D90"),
+                alignment=TA_LEFT if block.language_position.endswith("left") else TA_RIGHT,
+                spaceBefore=0,
+                spaceAfter=4 if block.language_position.startswith("top") else 0,
             )
-            elements.append(
-                RLParagraph(
-                    self._anchor_markup(anchor) + escape(block.language.upper()),
-                    label_style,
-                )
-            )
+            label_markup = escape(block.language.upper())
+            if block.language_position.startswith("top"):
+                label_markup = self._anchor_markup(anchor) + label_markup
+                anchor = None
+                cell_flowables.append(RLParagraph(label_markup, label_style))
 
         code_markup = syntax_pdf_markup(block.code, block.language)
-        if not block.language:
+        if anchor is not None:
             code_markup = self._anchor_markup(anchor) + code_markup
-        elements.append(XPreformatted(code_markup, code_style))
-        return [KeepTogether(elements)]
+        cell_flowables.append(XPreformatted(code_markup, code_style))
+        if show_label and block.language_position.startswith("bottom"):
+            label_style.spaceBefore = 4
+            cell_flowables.append(RLParagraph(escape(block.language.upper()), label_style))
+
+        block_alignment = theme.resolve_paragraph_alignment(block.style)
+        table = RLTable(
+            [[cell_flowables]],
+            hAlign=FLOWABLE_ALIGNMENTS[block_alignment if block_alignment in FLOWABLE_ALIGNMENTS else "left"],
+            repeatRows=0,
+        )
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F5F7FA")),
+                    ("BOX", (0, 0), (-1, -1), 0.75, colors.HexColor("#D8E0EB")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                    ("TOPPADDING", (0, 0), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
+        return [KeepTogether([table, Spacer(1, block.style.space_after or 0)])]
 
     def _render_equation(
         self,
