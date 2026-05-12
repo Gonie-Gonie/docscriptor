@@ -71,8 +71,11 @@ from docscriptor import (
     link,
     line_break,
     keyboard,
+    prescript,
     status,
     strike,
+    subscript,
+    superscript,
     tag,
 )
 from docscriptor.presets.components import CalloutBox, KeyValueTable, Nomenclature
@@ -362,7 +365,7 @@ summary = Box(
 Paragraph("See ", summary.reference(), " for the editable evidence package.")
 """
 
-INLINE_WORD_FEATURES_SNIPPET = """from docscriptor import Paragraph, Text, highlight, line_break, strike
+INLINE_WORD_FEATURES_SNIPPET = """from docscriptor import Paragraph, Text, highlight, line_break, prescript, strike, subscript, superscript
 
 Paragraph(
     "Keep ",
@@ -378,6 +381,11 @@ Paragraph(
     Text.styled("2", subscript=True),
     "O, and x",
     Text.styled("2", superscript=True),
+    ". Front scripts work in prose too: ",
+    prescript("14", "6", "C"),
+    " and index ",
+    subscript("i"),
+    superscript("j"),
     ".",
 )
 """
@@ -1255,7 +1263,18 @@ def build_usage_guide_document() -> Document:
                     code("subscript"),
                     ", and ",
                     code("superscript"),
-                    "."
+                    ". For front scripts in ordinary prose, use ",
+                    code("prescript(...)"),
+                    " instead of wrapping the sentence in math."
+                ),
+                Paragraph(
+                    "Inline text can carry ordinary scripts such as H",
+                    subscript("2"),
+                    "O and x",
+                    superscript("2"),
+                    ", plus front scripts like ",
+                    prescript("14", "6", "C"),
+                    ".",
                 ),
                 CodeBlock(INLINE_WORD_FEATURES_SNIPPET, language="python"),
                 Paragraph(

@@ -52,11 +52,14 @@ from docscriptor.components.inline import (
     link,
     line_break,
     math,
+    prescript,
     reference,
     status,
     strike,
     strikethrough,
     styled,
+    subscript,
+    superscript,
     tag,
 )
 from docscriptor.settings import (
@@ -175,6 +178,7 @@ __all__ = [
     "link",
     "line_break",
     "math",
+    "prescript",
     "reference",
     "status",
     "strike",
@@ -182,6 +186,8 @@ __all__ = [
     "md",
     "markup",
     "styled",
+    "subscript",
+    "superscript",
     "tag",
     "vspace",
 ]

@@ -109,6 +109,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("Inline image example:" in text for text in paragraph_texts)
     assert any("Compact inline chips cover categories" in text for text in paragraph_texts)
     assert any("keyboard(\"Ctrl+Enter\")" in text for text in paragraph_texts)
+    assert any("prescript(...)" in text for text in paragraph_texts)
+    assert any("Inline text can carry ordinary scripts such as H2O and x2, plus front scripts like 146C." in text for text in paragraph_texts)
     assert any("Pygments highlighting" in text for text in paragraph_texts)
     assert any("JAVASCRIPT" in text for text in paragraph_texts)
     assert any("SQL" in text for text in paragraph_texts)
@@ -171,6 +173,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Inline image example:" in pdf_text
     assert "Compact inline chips cover categories" in pdf_text
     assert "Ctrl+Enter" in pdf_text
+    assert "prescript(...)" in pdf_text
+    assert "Inline text can carry ordinary scripts such as H2O and x2" in pdf_text
     assert "READY" in pdf_text
     assert "Pygments highlighting" in pdf_text
     assert "JAVASCRIPT" in pdf_text
@@ -224,6 +228,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Inline image example:" in normalized_html_text
     assert "Compact inline chips cover categories" in normalized_html_text
     assert "Ctrl+Enter" in normalized_html_text
+    assert "prescript(...)" in normalized_html_text
+    assert "Inline text can carry ordinary scripts such as H 2 O and x 2" in normalized_html_text
     assert "READY" in normalized_html_text
     assert "Pygments highlighting" in normalized_html_text
     assert "JAVASCRIPT" in normalized_html_text

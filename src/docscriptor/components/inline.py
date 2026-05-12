@@ -90,6 +90,26 @@ class Text:
         return Strikethrough(value, style=style)
 
     @classmethod
+    def superscript(
+        cls,
+        value: object,
+        style: TextStyle | None = None,
+    ) -> Text:
+        """Create superscript inline text."""
+
+        return cls(value=str(value), style=TextStyle(superscript=True).merged(style))
+
+    @classmethod
+    def subscript(
+        cls,
+        value: object,
+        style: TextStyle | None = None,
+    ) -> Text:
+        """Create subscript inline text."""
+
+        return cls(value=str(value), style=TextStyle(subscript=True).merged(style))
+
+    @classmethod
     def from_markup(
         cls,
         source: str,
@@ -611,6 +631,34 @@ def code(value: str, *, style: TextStyle | None = None) -> Monospace:
     return Text.code(value, style=style)
 
 
+def superscript(value: object, *, style: TextStyle | None = None) -> Text:
+    """Compatibility helper for superscript inline text."""
+
+    return Text.superscript(value, style=style)
+
+
+def subscript(value: object, *, style: TextStyle | None = None) -> Text:
+    """Compatibility helper for subscript inline text."""
+
+    return Text.subscript(value, style=style)
+
+
+def prescript(
+    superscript_value: object,
+    subscript_value: object,
+    body: InlineInput,
+    *,
+    style: TextStyle | None = None,
+) -> list[Text]:
+    """Create front superscript/subscript fragments before regular inline content."""
+
+    return [
+        superscript(superscript_value, style=style),
+        subscript(subscript_value, style=style),
+        *coerce_inlines((body,)),
+    ]
+
+
 def _normalize_chip_kind(kind: str) -> str:
     normalized = kind.strip().lower().replace("_", "-")
     if not normalized or any(not (char.isalnum() or char == "-") for char in normalized):
@@ -841,10 +889,13 @@ __all__ = [
     "link",
     "line_break",
     "math",
+    "prescript",
     "reference",
     "status",
     "strike",
     "strikethrough",
     "styled",
+    "subscript",
+    "superscript",
     "tag",
 ]

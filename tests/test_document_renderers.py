@@ -95,11 +95,14 @@ from docscriptor import (
     line_break,
     math,
     markup,
+    prescript,
     reference,
     status,
     strike,
     strikethrough,
     styled,
+    subscript,
+    superscript,
     tag,
     vspace,
 )
@@ -378,6 +381,8 @@ def test_method_style_inline_actions_create_renderable_fragments() -> None:
     assert Text.color("accent", "#0066AA").style.color == "0066AA"
     assert Text.highlight("marked", "#FFF2CC").style.highlight_color == "FFF2CC"
     assert Text.strikethrough("old").style.strikethrough is True
+    assert Text.superscript("2").style.superscript is True
+    assert Text.subscript("0").style.subscript is True
     assert [fragment.value for fragment in Text.from_markup("plain **bold**")] == [
         "plain ",
         "bold",
@@ -389,6 +394,9 @@ def test_method_style_inline_actions_create_renderable_fragments() -> None:
     assert highlight("marked", "#FFF2CC").style.highlight_color == "FFF2CC"
     assert strike("old").style.strikethrough is True
     assert strikethrough("old").style.strikethrough is True
+    assert superscript("2").style.superscript is True
+    assert subscript("0").style.subscript is True
+    assert [fragment.plain_text() for fragment in prescript("14", "6", "C")] == ["14", "6", "C"]
     assert line_break().plain_text() == "\n"
     external_link = link("https://example.com", "Example")
     assert isinstance(external_link, inline_components.Hyperlink)
@@ -997,6 +1005,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "comment")
     assert hasattr(docscriptor, "footnote")
     assert hasattr(docscriptor, "math")
+    assert hasattr(docscriptor, "prescript")
     assert hasattr(docscriptor, "reference")
     assert hasattr(docscriptor, "bold")
     assert hasattr(docscriptor, "italic")
@@ -1013,6 +1022,8 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "badge")
     assert hasattr(docscriptor, "status")
     assert hasattr(docscriptor, "keyboard")
+    assert hasattr(docscriptor, "subscript")
+    assert hasattr(docscriptor, "superscript")
     assert hasattr(inline_components, "InlineChip")
     assert hasattr(inline_components, "InlineChipStyle")
     assert hasattr(inline_components, "tag")
@@ -1325,6 +1336,11 @@ def test_inline_caps_and_vertical_align_render_to_all_outputs(tmp_path: Path) ->
             Text.styled("2", subscript=True),
             " x",
             Text.styled("2", superscript=True),
+            " isotope ",
+            prescript("14", "6", "C"),
+            " index ",
+            subscript("i"),
+            superscript("j"),
         ),
     )
 
@@ -1343,7 +1359,13 @@ def test_inline_caps_and_vertical_align_render_to_all_outputs(tmp_path: Path) ->
     assert "<w:caps" in docx_xml
     assert 'w:val="subscript"' in docx_xml
     assert 'w:val="superscript"' in docx_xml
+    word_paragraph = next(paragraph for paragraph in WordDocument(docx_path).paragraphs if "isotope 146C" in paragraph.text)
+    assert any(run.text == "14" and run.font.superscript for run in word_paragraph.runs)
+    assert any(run.text == "6" and run.font.subscript for run in word_paragraph.runs)
+    assert any(run.text == "i" and run.font.subscript for run in word_paragraph.runs)
+    assert any(run.text == "j" and run.font.superscript for run in word_paragraph.runs)
     assert "UPPER" in pdf_text
+    assert "146C" in pdf_text
     assert "font-variant: small-caps" in html_text
     assert "text-transform: uppercase" in html_text
     assert "vertical-align: sub" in html_text
