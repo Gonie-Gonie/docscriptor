@@ -8,6 +8,12 @@ from typing import TYPE_CHECKING, Literal
 from docscriptor.components.base import Block, BlockInput, coerce_blocks
 from docscriptor.components.equations import equation_plain_text
 from docscriptor.components.inline import InlineInput, Text, coerce_inlines
+from docscriptor.core import (
+    length_to_inches,
+    normalize_color,
+    normalize_length_unit,
+    normalize_text_alignment,
+)
 from docscriptor.layout.theme import (
     BoxStyle,
     ListStyle,
@@ -397,6 +403,137 @@ PageBreaker = PageBreak
 
 
 @dataclass(slots=True, init=False)
+class VerticalSpace(Block):
+    """A LaTeX-like vertical spacer in the document flow."""
+
+    height: float
+    unit: str
+
+    def __init__(self, height: float = 12.0, *, unit: str = "pt") -> None:
+        if height < 0:
+            raise ValueError("VerticalSpace height must be >= 0")
+        self.height = float(height)
+        self.unit = normalize_length_unit(unit)
+
+    def height_in_points(self) -> float:
+        """Return the spacer height in typographic points."""
+
+        return length_to_inches(self.height, self.unit) * 72.0
+
+    def render_to_docx(
+        self,
+        renderer: object,
+        container: object,
+        context: DocxRenderContext,
+    ) -> None:
+        renderer.render_vertical_space(container, self, context)
+
+    def render_to_pdf(
+        self,
+        renderer: object,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        return renderer.render_vertical_space(self, context)
+
+    def render_to_html(
+        self,
+        renderer: object,
+        context: HtmlRenderContext,
+    ) -> str:
+        return renderer.render_vertical_space(self, context)
+
+
+VSpace = VerticalSpace
+
+
+def vspace(height: float = 12.0, *, unit: str = "pt") -> VerticalSpace:
+    """Create a LaTeX-like vertical spacer block."""
+
+    return VerticalSpace(height, unit=unit)
+
+
+@dataclass(slots=True, init=False)
+class Divider(Block):
+    """A horizontal divider similar to Notion's separator block."""
+
+    color: str
+    thickness: float
+    space_before: float
+    space_after: float
+    width: float | None
+    alignment: str
+    unit: str | None
+
+    def __init__(
+        self,
+        *,
+        color: str = "DADDE3",
+        thickness: float = 0.75,
+        space_before: float = 8.0,
+        space_after: float = 8.0,
+        width: float | None = None,
+        alignment: str = "center",
+        unit: str | None = None,
+    ) -> None:
+        if thickness <= 0:
+            raise ValueError("Divider thickness must be > 0")
+        if space_before < 0:
+            raise ValueError("Divider space_before must be >= 0")
+        if space_after < 0:
+            raise ValueError("Divider space_after must be >= 0")
+        if width is not None and width < 0:
+            raise ValueError("Divider width must be >= 0")
+        normalized_alignment = normalize_text_alignment(alignment)
+        if normalized_alignment == "justify":
+            raise ValueError("Divider alignment must be left, center, or right")
+        self.color = normalize_color(color) or "DADDE3"
+        self.thickness = float(thickness)
+        self.space_before = float(space_before)
+        self.space_after = float(space_after)
+        self.width = float(width) if width is not None else None
+        self.alignment = normalized_alignment
+        self.unit = normalize_length_unit(unit) if unit is not None else None
+
+    def width_in_inches(self, default_unit: str) -> float | None:
+        """Return the optional rule width in inches."""
+
+        if self.width is None:
+            return None
+        return length_to_inches(self.width, self.unit or default_unit)
+
+    def render_to_docx(
+        self,
+        renderer: object,
+        container: object,
+        context: DocxRenderContext,
+    ) -> None:
+        renderer.render_divider(container, self, context)
+
+    def render_to_pdf(
+        self,
+        renderer: object,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        return renderer.render_divider(self, context)
+
+    def render_to_html(
+        self,
+        renderer: object,
+        context: HtmlRenderContext,
+    ) -> str:
+        return renderer.render_divider(self, context)
+
+
+HorizontalRule = Divider
+
+
+def hrule(**kwargs: object) -> Divider:
+    """Create a horizontal divider block."""
+
+    return Divider(**kwargs)
+
+
+@dataclass(slots=True, init=False)
 class Part(Block):
     """Top-level document division rendered on its own separator page."""
 
@@ -636,7 +773,9 @@ __all__ = [
     "Chapter",
     "CellInput",
     "CodeBlock",
+    "Divider",
     "Equation",
+    "HorizontalRule",
     "NumberedList",
     "PageBreak",
     "PageBreaker",
@@ -645,6 +784,10 @@ __all__ = [
     "Section",
     "Subsection",
     "Subsubsection",
+    "VSpace",
+    "VerticalSpace",
     "coerce_cell",
     "coerce_list_item",
+    "hrule",
+    "vspace",
 ]

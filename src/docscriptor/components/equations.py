@@ -191,6 +191,10 @@ class _EquationParser:
                 + denominator
                 + [EquationSegment(")")]
             )
+        if command == "prescript":
+            superscript = _apply_vertical_alignment(self._read_token(), SUPERSCRIPT)
+            subscript = _apply_vertical_alignment(self._read_token(), SUBSCRIPT)
+            return superscript + subscript + self._read_token()
         if command == "sqrt":
             return [EquationSegment("sqrt(")] + self._read_token() + [EquationSegment(")")]
         if command == "overline":

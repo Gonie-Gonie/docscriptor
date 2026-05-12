@@ -18,6 +18,7 @@ from reportlab.platypus import Image as RLImage
 from reportlab.platypus import (
     Flowable,
     Frame,
+    HRFlowable,
     KeepTogether,
     PageBreak as RLPageBreak,
     PageTemplate,
@@ -34,12 +35,14 @@ from docscriptor.components.blocks import (
     Box,
     BulletList,
     CodeBlock,
+    Divider,
     Equation,
     NumberedList,
     PageBreak as DocscriptorPageBreak,
     Paragraph,
     Part,
     Section,
+    VerticalSpace,
 )
 from docscriptor.components.generated import (
     CommentsPage,
@@ -705,6 +708,33 @@ class PdfRenderer:
 
         return [RLPageBreak()]
 
+    def render_vertical_space(
+        self,
+        block: VerticalSpace,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render a LaTeX-like vertical spacer into PDF flowables."""
+
+        return [Spacer(1, block.height_in_points())]
+
+    def render_divider(
+        self,
+        block: Divider,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render a horizontal divider into PDF flowables."""
+
+        width = block.width_in_inches(context.unit)
+        flowable = HRFlowable(
+            width="100%" if width is None else width * inch,
+            thickness=block.thickness,
+            color=colors.HexColor(f"#{block.color}"),
+            spaceBefore=block.space_before,
+            spaceAfter=block.space_after,
+            hAlign=FLOWABLE_ALIGNMENTS[block.alignment],
+        )
+        return [flowable]
+
     def render_box(
         self,
         block: Box,
@@ -1000,7 +1030,8 @@ class PdfRenderer:
                     space_after=12,
                 )
             )
-        for line, is_last_for_author in document.settings.iter_author_title_lines():
+        author_lines = list(document.settings.iter_author_title_lines())
+        for index, (line, _is_last_for_author) in enumerate(author_lines):
             story.append(
                 self._title_paragraph(
                     list(line.fragments),
@@ -1010,7 +1041,7 @@ class PdfRenderer:
                     font_size=self._title_line_font_size(line, theme),
                     alignment=self._title_line_alignment(line, theme),
                     italic=line.kind == "affiliation",
-                    space_after=12 if is_last_for_author else (4 if line.kind == "name" else 3),
+                    space_after=self._author_title_line_space_after(author_lines, index, last_space=12),
                 )
             )
         return story
@@ -1028,6 +1059,23 @@ class PdfRenderer:
         if line.kind == "affiliation":
             return max(theme.body_font_size - 0.5, 9)
         return max(theme.body_font_size - 1, 9)
+
+    def _author_title_line_space_after(
+        self,
+        lines: list[tuple[AuthorTitleLine, bool]],
+        index: int,
+        *,
+        last_space: float,
+    ) -> float:
+        line, is_last = lines[index]
+        if is_last:
+            return last_space
+        next_line = lines[index + 1][0] if index + 1 < len(lines) else None
+        if line.kind == "name":
+            return 8
+        if line.kind == "affiliation" and next_line is not None and next_line.kind == "detail":
+            return 7
+        return 3
 
     def _title_paragraph(
         self,

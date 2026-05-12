@@ -32,6 +32,7 @@ from docscriptor import (
     Comment,
     CommentsPage,
     CodeBlock,
+    Divider,
     Document,
     DocumentSettings,
     Figure,
@@ -61,6 +62,7 @@ from docscriptor import (
     TitleMatterOptions,
     TocLevelStyle,
     TypographyOptions,
+    VerticalSpace,
     badge,
     bold,
     code,
@@ -339,7 +341,7 @@ PROJECT_LAYOUT_SNIPPET = """my-report/
     report.html
 """
 
-LATEX_COMPARISON_SNIPPET = """from docscriptor import Box, Figure, Paragraph, Table, bold, code
+LATEX_COMPARISON_SNIPPET = """from docscriptor import Box, Divider, Figure, Paragraph, Table, VerticalSpace, bold, code
 
 summary = Box(
     Paragraph(bold("Takeaway. "), "The result table and figure are normal document blocks."),
@@ -348,6 +350,8 @@ summary = Box(
         rows=[["Baseline", "0.81"], ["Docscriptor workflow", "0.88"]],
         caption="Benchmark summary generated from Python data.",
     ),
+    VerticalSpace(6),
+    Divider(space_before=2, space_after=6),
     Figure("assets/system-diagram.png", caption="Pipeline diagram.", width=12, unit="cm"),
     title="Report-ready evidence",
     width=16,
@@ -809,6 +813,7 @@ def build_usage_guide_document() -> Document:
             ["\\section, \\subsection", "Chapter, Section, Subsection", "The Python object tree is also the document outline, so headings, contents, and anchors stay synchronized."],
             ["\\textbf, \\emph, \\texttt", "bold(...), italic(...), code(...)", "Inline styling stays attached to the words being styled and works in DOCX, PDF, and HTML."],
             ["\\includegraphics", "Figure(path_or_matplotlib_figure, caption=...)", "Static images and Python-generated figures use the same captioning and referencing model."],
+            ["\\vspace{...}, \\hrule", "VerticalSpace(...), vspace(...), Divider(), hrule()", "Vertical spacing and separators remain explicit document blocks, including a Notion-like divider for lightweight visual breaks."],
             ["tabular or booktabs", "Table(...), Table.from_dataframe(...)", "Tables can be created directly from Python data instead of being copied into markup."],
             ["\\label and \\ref", "Call reference(figure_obj) or figure_obj.reference() inside Paragraph(...)", "References follow the indexed document order without hand-maintained labels."],
             ["tcolorbox", "Box(..., background_color=..., padding=...)", "Report panels remain editable in Word while keeping a similar grouped visual shape in PDF and HTML."],
@@ -878,6 +883,8 @@ def build_usage_guide_document() -> Document:
             ["Work in metric units", "DocumentSettings(unit='cm')", "Numeric lengths are interpreted as centimeters unless an object overrides unit."],
             ["Set paper size", "PageSize.a4(), PageSize.letter(), or PageSize(width, height, unit=...)", "DOCX, PDF, and HTML use the same page box."],
             ["Set printable margins", "PageMargins.all(...) or PageMargins.symmetric(...)", "The text area and HTML @page margins stay aligned."],
+            ["Add local vertical spacing", "VerticalSpace(8) or vspace(8)", "A small block-level spacer gives the flow LaTeX-like breathing room without inserting dummy prose."],
+            ["Insert a visual separator", "Divider() or hrule()", "A Notion-like horizontal rule separates nearby blocks while staying renderer-neutral."],
             ["Force a new page", "PageBreak()", "The break is explicit in the document tree and renders across DOCX, PDF, and HTML."],
             ["Size a figure from text width", "settings.get_text_width(0.75)", "Figures can follow the document text block instead of hard-coded page assumptions."],
         ],
@@ -1149,6 +1156,7 @@ def build_usage_guide_document() -> Document:
                     "If you already know LaTeX, the important shift is that docscriptor treats document structure as Python objects rather than commands in a markup stream. You still get numbered headings, captions, cross-references, equations, citations, and tcolorbox-like panels, but the same source can also produce an editable DOCX review copy."
                 ),
                 latex_transition_table,
+                Divider(space_before=2, space_after=8),
                 Paragraph(
                     "The practical advantage is strongest when the document depends on Python outputs. A table can come from a dataframe, a figure can come from matplotlib, and the caption reference can be written directly in prose without copying values between tools."
                 ),

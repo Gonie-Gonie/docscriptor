@@ -26,12 +26,14 @@ from docscriptor.components.blocks import (
     Box,
     BulletList,
     CodeBlock,
+    Divider,
     Equation,
     NumberedList,
     PageBreak,
     Paragraph,
     Part,
     Section,
+    VerticalSpace,
 )
 from docscriptor.components.generated import (
     CommentsPage,
@@ -351,6 +353,37 @@ class DocxRenderer:
         paragraph = self._add_paragraph(container)
         paragraph.add_run().add_break(WD_BREAK.PAGE)
 
+    def render_vertical_space(
+        self,
+        container: object,
+        block: VerticalSpace,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render a LaTeX-like vertical spacer into DOCX."""
+
+        paragraph = self._add_paragraph(container)
+        paragraph.paragraph_format.space_before = Pt(0)
+        paragraph.paragraph_format.space_after = Pt(block.height_in_points())
+        paragraph.paragraph_format.line_spacing = Pt(1)
+        run = paragraph.add_run("")
+        run.font.size = Pt(1)
+
+    def render_divider(
+        self,
+        container: object,
+        block: Divider,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render a horizontal divider into DOCX."""
+
+        paragraph = self._add_paragraph(container)
+        paragraph.alignment = ALIGNMENTS[block.alignment]
+        paragraph.paragraph_format.space_before = Pt(block.space_before)
+        paragraph.paragraph_format.space_after = Pt(block.space_after)
+        paragraph.paragraph_format.line_spacing = Pt(1)
+        self._apply_divider_width(paragraph, block, context)
+        self._set_paragraph_bottom_border(paragraph, block.color, block.thickness)
+
     def render_box(
         self,
         container: object,
@@ -649,14 +682,15 @@ class DocxRenderer:
                 italic=True,
                 space_after=10,
             )
-        for line, is_last_for_author in document.settings.iter_author_title_lines():
+        author_lines = list(document.settings.iter_author_title_lines())
+        for index, (line, _is_last_for_author) in enumerate(author_lines):
             self._add_title_line(
                 word_document,
                 list(line.fragments),
                 font_size=self._title_line_font_size(line, context.theme),
                 alignment=self._title_line_alignment(line, context.theme),
                 italic=line.kind == "affiliation",
-                space_after=10 if is_last_for_author else (4 if line.kind == "name" else 3),
+                space_after=self._author_title_line_space_after(author_lines, index, last_space=10),
             )
 
     def _add_title_line(
@@ -724,6 +758,23 @@ class DocxRenderer:
         if line.kind == "affiliation":
             return max(theme.body_font_size - 0.5, 9)
         return max(theme.body_font_size - 1, 9)
+
+    def _author_title_line_space_after(
+        self,
+        lines: list[tuple[AuthorTitleLine, bool]],
+        index: int,
+        *,
+        last_space: float,
+    ) -> float:
+        line, is_last = lines[index]
+        if is_last:
+            return last_space
+        next_line = lines[index + 1][0] if index + 1 < len(lines) else None
+        if line.kind == "name":
+            return 8
+        if line.kind == "affiliation" and next_line is not None and next_line.kind == "detail":
+            return 7
+        return 3
 
     def _is_paginated_generated_page(self, block: object) -> bool:
         return isinstance(block, (TableList, FigureList, TableOfContents))
@@ -953,6 +1004,25 @@ class DocxRenderer:
             paragraph.paragraph_format.right_indent = Inches(right_indent)
         if first_line_indent is not None:
             paragraph.paragraph_format.first_line_indent = Inches(first_line_indent)
+
+    def _apply_divider_width(
+        self,
+        paragraph: object,
+        block: Divider,
+        context: DocxRenderContext,
+    ) -> None:
+        width = block.width_in_inches(context.unit)
+        if width is None:
+            return
+        text_width = context.settings.text_width_in_inches()
+        extra = max(text_width - width, 0)
+        if block.alignment == "left":
+            paragraph.paragraph_format.right_indent = Inches(extra)
+        elif block.alignment == "right":
+            paragraph.paragraph_format.left_indent = Inches(extra)
+        else:
+            paragraph.paragraph_format.left_indent = Inches(extra / 2)
+            paragraph.paragraph_format.right_indent = Inches(extra / 2)
 
     def _append_runs(
         self,
@@ -2287,6 +2357,19 @@ class DocxRenderer:
             edge.set(qn("w:space"), "0")
             edge.set(qn("w:color"), color)
             borders.append(edge)
+        properties.append(borders)
+
+    def _set_paragraph_bottom_border(self, paragraph: object, color: str, width: float) -> None:
+        properties = paragraph._p.get_or_add_pPr()
+        for existing in list(properties.findall(qn("w:pBdr"))):
+            properties.remove(existing)
+        borders = OxmlElement("w:pBdr")
+        bottom = OxmlElement("w:bottom")
+        bottom.set(qn("w:val"), "single")
+        bottom.set(qn("w:sz"), str(max(int(round(width * 8)), 1)))
+        bottom.set(qn("w:space"), "1")
+        bottom.set(qn("w:color"), color)
+        borders.append(bottom)
         properties.append(borders)
 
     def _set_cell_padding(self, cell: object, padding: float) -> None:

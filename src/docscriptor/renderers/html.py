@@ -12,12 +12,14 @@ from docscriptor.components.blocks import (
     Box,
     BulletList,
     CodeBlock,
+    Divider,
     Equation,
     NumberedList,
     PageBreak,
     Paragraph,
     Part,
     Section,
+    VerticalSpace,
 )
 from docscriptor.components.generated import (
     CommentsPage,
@@ -286,6 +288,34 @@ class HtmlRenderer:
         """Render an explicit page break into HTML."""
 
         return '<div class="docscriptor-page-break"></div>'
+
+    def render_vertical_space(
+        self,
+        block: VerticalSpace,
+        context: HtmlRenderContext,
+    ) -> str:
+        """Render a LaTeX-like vertical spacer into HTML."""
+
+        return (
+            '<div class="docscriptor-vertical-space" aria-hidden="true" '
+            f'style="height: {block.height_in_points():.1f}pt;"></div>'
+        )
+
+    def render_divider(
+        self,
+        block: Divider,
+        context: HtmlRenderContext,
+    ) -> str:
+        """Render a horizontal divider into HTML."""
+
+        width = block.width_in_inches(context.unit)
+        width_style = "width: 100%;" if width is None else f"width: {width:.4f}in;"
+        return (
+            '<hr class="docscriptor-divider" '
+            f'style="border: 0; border-top: {block.thickness:.2f}pt solid #{block.color}; '
+            f'margin-top: {block.space_before:.1f}pt; margin-bottom: {block.space_after:.1f}pt; '
+            f'{width_style} {self._block_alignment_css(block.alignment)}" />'
+        )
 
     def render_box(self, block: Box, context: HtmlRenderContext) -> str:
         """Render a box and its children into HTML."""
@@ -787,7 +817,8 @@ class HtmlRenderer:
                     space_after=10,
                 )
             )
-        for line, is_last_for_author in document.settings.iter_author_title_lines():
+        author_lines = list(document.settings.iter_author_title_lines())
+        for index, (line, _is_last_for_author) in enumerate(author_lines):
             lines.append(
                 self._title_line_html(
                     list(line.fragments),
@@ -796,7 +827,7 @@ class HtmlRenderer:
                     italic=line.kind == "affiliation",
                     class_name=self._title_line_class(line),
                     theme=context.theme,
-                    space_after=10 if is_last_for_author else (4 if line.kind == "name" else 3),
+                    space_after=self._author_title_line_space_after(author_lines, index, last_space=10),
                 )
             )
         return f'<header class="{" ".join(classes)}">{"".join(lines)}</header>'
@@ -840,6 +871,23 @@ class HtmlRenderer:
         if line.kind == "affiliation":
             return max(theme.body_font_size - 0.5, 9)
         return max(theme.body_font_size - 1, 9)
+
+    def _author_title_line_space_after(
+        self,
+        lines: list[tuple[AuthorTitleLine, bool]],
+        index: int,
+        *,
+        last_space: float,
+    ) -> float:
+        line, is_last = lines[index]
+        if is_last:
+            return last_space
+        next_line = lines[index + 1][0] if index + 1 < len(lines) else None
+        if line.kind == "name":
+            return 8
+        if line.kind == "affiliation" and next_line is not None and next_line.kind == "detail":
+            return 7
+        return 3
 
     def _title_line_class(self, line: AuthorTitleLine) -> str:
         if line.kind == "name":

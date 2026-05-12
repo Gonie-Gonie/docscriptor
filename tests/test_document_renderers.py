@@ -17,6 +17,7 @@ from pypdf import PdfReader
 
 import docscriptor.components.generated as generated_components
 import docscriptor.components.inline as inline_components
+from docscriptor.components.equations import BASELINE, SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
 from docscriptor.core import length_to_inches
 from docscriptor.layout.indexing import build_render_index
 from docscriptor import (
@@ -36,12 +37,14 @@ from docscriptor import (
     CodeBlock,
     Document,
     DocumentSettings,
+    Divider,
     Equation,
     Figure,
     FigureList,
     Footnote,
     GeneratedPageOptions,
     HeadingNumbering,
+    HorizontalRule,
     ImageBox,
     InlineChip,
     InlineChipStyle,
@@ -75,6 +78,8 @@ from docscriptor import (
     TitleMatterOptions,
     TocLevelStyle,
     TypographyOptions,
+    VSpace,
+    VerticalSpace,
     badge,
     bold,
     code,
@@ -83,6 +88,7 @@ from docscriptor import (
     comment,
     footnote,
     highlight,
+    hrule,
     italic,
     keyboard,
     link,
@@ -95,6 +101,7 @@ from docscriptor import (
     strikethrough,
     styled,
     tag,
+    vspace,
 )
 from docscriptor.presets.components import CalloutBox, KeyValueTable, Nomenclature
 from docscriptor.presets.templates import JournalArticleTemplate, ManuscriptSection
@@ -319,6 +326,46 @@ def test_comment_and_math_helpers_create_renderable_fragments() -> None:
     assert isinstance(inline_math, Math)
     assert inline_math.plain_text() == "alpha2 + beta2"
     assert equation.plain_text() == "(1)/(2)"
+
+
+def test_math_prescript_renders_to_all_outputs(tmp_path: Path) -> None:
+    segments = parse_latex_segments(r"\prescript{14}{6}{C} + {}^{3}_{1}H")
+    assert [(segment.text, segment.vertical_align) for segment in segments] == [
+        ("14", SUPERSCRIPT),
+        ("6", SUBSCRIPT),
+        ("C + ", BASELINE),
+        ("3", SUPERSCRIPT),
+        ("1", SUBSCRIPT),
+        ("H", BASELINE),
+    ]
+
+    document = Document(
+        "Prescript Math",
+        Paragraph("Inline isotope ", Math(r"\prescript{14}{6}{C} + {}^{3}_{1}H"), "."),
+        Equation(r"\prescript{14}{6}{C} + {}^{3}_{1}H"),
+    )
+
+    docx_path = tmp_path / "prescript.docx"
+    pdf_path = tmp_path / "prescript.pdf"
+    html_path = tmp_path / "prescript.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_document = WordDocument(docx_path)
+    inline_paragraph = next(paragraph for paragraph in word_document.paragraphs if "Inline isotope" in paragraph.text)
+    equation_paragraph = next(paragraph for paragraph in word_document.paragraphs if paragraph.text.startswith("146C + 31H"))
+    assert any(run.text == "14" and run.font.superscript for run in inline_paragraph.runs)
+    assert any(run.text == "6" and run.font.subscript for run in inline_paragraph.runs)
+    assert any(run.text == "3" and run.font.superscript for run in equation_paragraph.runs)
+    assert any(run.text == "1" and run.font.subscript for run in equation_paragraph.runs)
+
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    assert "146C + 31H" in pdf_text
+
+    html_text = html_path.read_text(encoding="utf-8")
+    assert "<sup>14</sup><sub>6</sub>C" in html_text
+    assert "<sup>3</sup><sub>1</sub>H" in html_text
 
 
 def test_method_style_inline_actions_create_renderable_fragments() -> None:
@@ -924,6 +971,10 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "TextStyle")
     assert hasattr(docscriptor, "TextBox")
     assert hasattr(docscriptor, "LineBreak")
+    assert hasattr(docscriptor, "VerticalSpace")
+    assert hasattr(docscriptor, "VSpace")
+    assert hasattr(docscriptor, "Divider")
+    assert hasattr(docscriptor, "HorizontalRule")
     assert not hasattr(docscriptor, "Sheet")
     assert not hasattr(docscriptor, "Body")
     assert not hasattr(docscriptor, "Bold")
@@ -954,6 +1005,8 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "highlight")
     assert hasattr(docscriptor, "link")
     assert hasattr(docscriptor, "line_break")
+    assert hasattr(docscriptor, "vspace")
+    assert hasattr(docscriptor, "hrule")
     assert hasattr(docscriptor, "strike")
     assert hasattr(docscriptor, "strikethrough")
     assert hasattr(docscriptor, "tag")
@@ -1418,6 +1471,52 @@ def test_paragraph_spacing_and_pagination_options_render_to_all_outputs(tmp_path
     assert "break-inside: avoid" in html_text
     assert "page-break-before: always" in html_text
     assert "widows: 1" in html_text
+
+
+def test_vertical_space_and_divider_render_to_all_outputs(tmp_path: Path) -> None:
+    assert VSpace is VerticalSpace
+    assert HorizontalRule is Divider
+    assert isinstance(vspace(6), VerticalSpace)
+    assert isinstance(hrule(), Divider)
+
+    document = Document(
+        "Spacing Blocks",
+        Paragraph("Before spacer."),
+        VerticalSpace(18),
+        Divider(
+            color="C8CDD6",
+            thickness=1.5,
+            space_before=4,
+            space_after=5,
+            width=2.0,
+            alignment="center",
+            unit="in",
+        ),
+        Paragraph("After divider."),
+    )
+
+    docx_path = tmp_path / "spacing-blocks.docx"
+    pdf_path = tmp_path / "spacing-blocks.pdf"
+    html_path = tmp_path / "spacing-blocks.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    docx_xml = _docx_document_xml(docx_path)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+
+    assert 'w:after="360"' in docx_xml
+    assert 'w:before="80"' in docx_xml
+    assert 'w:after="100"' in docx_xml
+    assert '<w:bottom w:val="single" w:sz="12" w:space="1" w:color="C8CDD6"/>' in docx_xml
+    assert "Before spacer." in pdf_text
+    assert "After divider." in pdf_text
+    assert 'class="docscriptor-vertical-space"' in html_text
+    assert "height: 18.0pt" in html_text
+    assert 'class="docscriptor-divider"' in html_text
+    assert "border-top: 1.50pt solid #C8CDD6" in html_text
+    assert "width: 2.0000in" in html_text
 
 
 def test_table_cell_alignment_renders_to_all_outputs(tmp_path: Path) -> None:
