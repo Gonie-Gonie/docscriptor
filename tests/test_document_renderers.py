@@ -1825,6 +1825,29 @@ def test_code_block_language_label_can_move_or_hide(tmp_path: Path) -> None:
     assert "README.md" in html_text
 
 
+def test_pdf_code_block_flowable_wraps_long_unbroken_lines() -> None:
+    from docscriptor.renderers.pdf import CodeBlockFlowable
+    from docscriptor.renderers.syntax import SyntaxToken
+
+    flowable = CodeBlockFlowable(
+        [SyntaxToken("x" * 120)],
+        font_names={
+            (False, False): "Courier",
+            (True, False): "Courier-Bold",
+            (False, True): "Courier-Oblique",
+            (True, True): "Courier-BoldOblique",
+        },
+        font_size=9,
+        leading=12,
+    )
+
+    width, height = flowable.wrap(90, 400)
+
+    assert width == 90
+    assert height > 12
+    assert len(flowable._lines) > 1
+
+
 def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Path) -> None:
     document = Document(
         "TOC Test",

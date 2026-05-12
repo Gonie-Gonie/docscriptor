@@ -22,7 +22,6 @@ from reportlab.platypus import (
     PageBreak as RLPageBreak,
     PageTemplate,
     Paragraph as RLParagraph,
-    Preformatted,
     SimpleDocTemplate,
     Spacer,
     Table as RLTable,
@@ -30,7 +29,6 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.doctemplate import _doNothing
 from reportlab.platypus.tableofcontents import TableOfContents as RLTableOfContents
-from reportlab.platypus.xpreformatted import XPreformatted
 
 from docscriptor.components.blocks import (
     Box,
@@ -78,7 +76,7 @@ from docscriptor.core import DocscriptorError, PathLike, length_to_inches
 from docscriptor.layout.indexing import RenderIndex, build_render_index
 from docscriptor.layout.theme import ParagraphStyle, Theme
 from docscriptor.renderers.context import PdfRenderContext
-from docscriptor.renderers.syntax import syntax_pdf_markup
+from docscriptor.renderers.syntax import SyntaxToken, syntax_tokens
 
 
 ALIGNMENTS = {
@@ -188,6 +186,102 @@ class FilteredTableOfContents(RLTableOfContents):
             if level > self.max_level:
                 return
         super().notify(kind, stuff)
+
+
+class CodeBlockFlowable(Flowable):
+    """Syntax-highlighted code that wraps to the available PDF width."""
+
+    def __init__(
+        self,
+        tokens: list[SyntaxToken],
+        *,
+        font_names: dict[tuple[bool, bool], str],
+        font_size: float,
+        leading: float,
+        anchor: str | None = None,
+    ) -> None:
+        super().__init__()
+        self.tokens = tokens
+        self.font_names = font_names
+        self.font_size = font_size
+        self.leading = leading
+        self.anchor = anchor
+        self.width = 0.0
+        self.height = leading
+        self._lines: list[list[SyntaxToken]] = []
+
+    def wrap(self, available_width: float, available_height: float) -> tuple[float, float]:
+        self.width = max(available_width, self.font_size)
+        self._lines = self._wrap_tokens(self.width)
+        self.height = max(len(self._lines), 1) * self.leading
+        return (self.width, self.height)
+
+    def draw(self) -> None:
+        if self.anchor:
+            self.canv.bookmarkPage(self.anchor)
+        y = self.height - self.font_size
+        for line in self._lines or [[]]:
+            text_object = self.canv.beginText(0, y)
+            for segment in line:
+                if not segment.text:
+                    continue
+                font_name = self.font_names[(segment.bold, segment.italic)]
+                text_object.setFont(font_name, self.font_size)
+                text_object.setFillColor(colors.HexColor(f"#{segment.color}") if segment.color else colors.black)
+                text_object.textOut(segment.text)
+            self.canv.drawText(text_object)
+            y -= self.leading
+        self.canv.setFillColor(colors.black)
+
+    def _wrap_tokens(self, max_width: float) -> list[list[SyntaxToken]]:
+        lines: list[list[SyntaxToken]] = []
+        current_line: list[SyntaxToken] = []
+        current_width = 0.0
+
+        for token in self.tokens:
+            text = token.text.replace("\r\n", "\n").replace("\r", "\n").replace("\t", "    ")
+            for character in text:
+                if character == "\n":
+                    lines.append(current_line)
+                    current_line = []
+                    current_width = 0.0
+                    continue
+
+                font_name = self.font_names[(token.bold, token.italic)]
+                character_width = pdfmetrics.stringWidth(character, font_name, self.font_size)
+                if current_line and current_width + character_width > max_width:
+                    lines.append(current_line)
+                    current_line = []
+                    current_width = 0.0
+
+                current_line = self._append_segment(current_line, character, token)
+                current_width += character_width
+
+        lines.append(current_line)
+        return lines
+
+    def _append_segment(
+        self,
+        line: list[SyntaxToken],
+        text: str,
+        token: SyntaxToken,
+    ) -> list[SyntaxToken]:
+        if (
+            line
+            and line[-1].color == token.color
+            and line[-1].bold == token.bold
+            and line[-1].italic == token.italic
+        ):
+            previous = line[-1]
+            line[-1] = SyntaxToken(
+                previous.text + text,
+                color=previous.color,
+                bold=previous.bold,
+                italic=previous.italic,
+            )
+        else:
+            line.append(SyntaxToken(text, color=token.color, bold=token.bold, italic=token.italic))
+        return line
 
 
 class PositionedItemFlowable(Flowable):
@@ -584,6 +678,8 @@ class PdfRenderer:
             context.theme,
             context.styles,
             context.render_index,
+            context.settings,
+            context.in_box,
         )
 
     def render_equation(
@@ -1569,13 +1665,16 @@ class PdfRenderer:
         theme: Theme,
         styles: object,
         render_index: RenderIndex,
+        settings: DocumentSettings,
+        in_box: bool,
     ) -> list[object]:
+        font_size = max(theme.body_font_size - 1, 8)
         code_style = RLParagraphStyle(
             "CodeBlock",
             parent=styles["Code"],
             fontName=self._resolve_font(theme.monospace_font_name, False, False),
-            fontSize=max(theme.body_font_size - 1, 8),
-            leading=max(theme.body_font_size - 1, 8) * 1.35,
+            fontSize=font_size,
+            leading=font_size * 1.35,
             leftIndent=0,
             rightIndent=0,
             spaceBefore=0,
@@ -1603,17 +1702,29 @@ class PdfRenderer:
                 anchor = None
                 cell_flowables.append(RLParagraph(label_markup, label_style))
 
-        code_markup = syntax_pdf_markup(block.code, block.language)
-        if anchor is not None:
-            code_markup = self._anchor_markup(anchor) + code_markup
-        cell_flowables.append(XPreformatted(code_markup, code_style))
+        cell_flowables.append(
+            CodeBlockFlowable(
+                syntax_tokens(block.code, block.language),
+                font_names={
+                    (False, False): self._resolve_font(theme.monospace_font_name, False, False),
+                    (True, False): self._resolve_font(theme.monospace_font_name, True, False),
+                    (False, True): self._resolve_font(theme.monospace_font_name, False, True),
+                    (True, True): self._resolve_font(theme.monospace_font_name, True, True),
+                },
+                font_size=code_style.fontSize,
+                leading=code_style.leading,
+                anchor=anchor,
+            )
+        )
         if show_label and block.language_position.startswith("bottom"):
             label_style.spaceBefore = 4
             cell_flowables.append(RLParagraph(escape(block.language.upper()), label_style))
 
         block_alignment = theme.resolve_paragraph_alignment(block.style)
+        column_widths = None if in_box else [settings.text_width_in_inches() * inch]
         table = RLTable(
             [[cell_flowables]],
+            colWidths=column_widths,
             hAlign=FLOWABLE_ALIGNMENTS[block_alignment if block_alignment in FLOWABLE_ALIGNMENTS else "left"],
             repeatRows=0,
         )
