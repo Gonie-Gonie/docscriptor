@@ -177,24 +177,25 @@ def build_traceability_figure():
 def build_quality_latency_figure(results_df: pd.DataFrame):
     """Plot the quality-latency frontier from the benchmark CSV."""
 
-    figure, axis = plt.subplots(figsize=(6.4, 3.4))
+    figure, axis = plt.subplots(figsize=(3.4, 2.8))
     palette = ["#6C8DB0", "#4F8DA1", "#3F9D79", "#D07B42"]
-    axis.scatter(results_df["Latency_ms"], results_df["Accuracy"], s=180, c=palette, edgecolors="#173042", linewidths=1.0)
-    axis.plot(results_df["Latency_ms"], results_df["Accuracy"], color="#7B8E9E", linestyle="--", linewidth=1.5)
+    axis.scatter(results_df["Latency_ms"], results_df["Accuracy"], s=80, c=palette, edgecolors="#173042", linewidths=0.8)
+    axis.plot(results_df["Latency_ms"], results_df["Accuracy"], color="#7B8E9E", linestyle="--", linewidth=1.1)
     for _, row in results_df.iterrows():
         axis.annotate(
             row["Model"],
             (row["Latency_ms"], row["Accuracy"]),
             textcoords="offset points",
-            xytext=(0, 10),
+            xytext=(0, 6),
             ha="center",
-            fontsize=8.5,
+            fontsize=6.8,
             color="#173042",
         )
-    axis.set_xlabel("Latency (ms)")
-    axis.set_ylabel("Accuracy")
+    axis.set_xlabel("Latency (ms)", fontsize=7.5)
+    axis.set_ylabel("Accuracy", fontsize=7.5)
     axis.set_ylim(0.865, 0.95)
-    axis.set_title("Quality-Latency Frontier")
+    axis.set_title("Quality-Latency Frontier", fontsize=8.5)
+    axis.tick_params(labelsize=6.8)
     axis.grid(alpha=0.25, linestyle=":")
     figure.tight_layout()
     return figure
@@ -207,15 +208,16 @@ def build_revision_effort_figure():
     manual_minutes = [36, 49, 63, 79]
     docscriptor_minutes = [18, 21, 25, 29]
 
-    figure, axis = plt.subplots(figsize=(6.4, 3.4))
-    axis.plot(revision_rounds, manual_minutes, marker="o", linewidth=2.5, color="#D06A44", label="Manual document synchronization")
-    axis.plot(revision_rounds, docscriptor_minutes, marker="o", linewidth=2.5, color="#3F8F6B", label="Docscriptor-based synchronization")
+    figure, axis = plt.subplots(figsize=(3.4, 2.8))
+    axis.plot(revision_rounds, manual_minutes, marker="o", linewidth=1.8, color="#D06A44", label="Manual")
+    axis.plot(revision_rounds, docscriptor_minutes, marker="o", linewidth=1.8, color="#3F8F6B", label="Docscriptor")
     axis.fill_between(revision_rounds, docscriptor_minutes, manual_minutes, color="#F6D8CB", alpha=0.45)
-    axis.set_xlabel("Late revision round")
-    axis.set_ylabel("Estimated minutes per update")
+    axis.set_xlabel("Late revision round", fontsize=7.5)
+    axis.set_ylabel("Minutes per update", fontsize=7.5)
     axis.set_xticks(revision_rounds)
-    axis.set_title("Operational Cost of Late Revisions")
-    axis.legend(frameon=False, fontsize=8.5)
+    axis.set_title("Cost of Late Revisions", fontsize=8.5)
+    axis.legend(frameon=False, fontsize=6.8)
+    axis.tick_params(labelsize=6.8)
     axis.grid(alpha=0.25, linestyle=":")
     figure.tight_layout()
     return figure
@@ -298,14 +300,16 @@ def build_journal_paper_document() -> Document:
         caption=Paragraph(
             "Quality-latency frontier derived directly from the benchmark CSV used in the manuscript."
         ),
-        width=6.0,
+        width=2.7,
+        placement="here",
     )
     revision_effort_figure = Figure(
         build_revision_effort_figure(),
         caption=Paragraph(
             "Estimated late-revision synchronization effort comparing manual workflows with a docscriptor-based workflow."
         ),
-        width=6.0,
+        width=2.7,
+        placement="here",
     )
 
     return Document(
@@ -348,11 +352,17 @@ def build_journal_paper_document() -> Document:
                     "Research manuscripts often combine at least four moving parts: benchmark tables, static diagrams, generated plots, and conventional prose. In many teams those assets are edited in different tools, which creates avoidable synchronization work every time a metric, caption, or section ordering changes."
                 ),
                 Paragraph(
+                    "The practical difficulty is not that any single asset is hard to regenerate. The difficulty is that small mismatches accumulate across captions, references, tables, review copies, and exported figures. A paper can therefore look polished while still hiding several manual edits that no longer correspond to the source evidence."
+                ),
+                Paragraph(
                     "The workflow studied here treats the manuscript itself as code. That does not eliminate editorial work, but it does move the document closer to the data that supports it, which is the operational direction already suggested by ",
                     manuscript_sources.cite("literate-programming"),
                     " and systems such as ",
                     manuscript_sources.cite("knitr"),
                     ".",
+                ),
+                Paragraph(
+                    "This example focuses on the authoring layer rather than on a particular scientific domain. The same pattern could sit behind a methods note, a simulation study, or a benchmark report: load structured inputs, assemble explicit document blocks, and export the formats expected by collaborators and reviewers."
                 ),
                 level=1,
             ),
@@ -367,6 +377,9 @@ def build_journal_paper_document() -> Document:
                 Paragraph(
                     "The intent is not to force authors into a notebook-like page. Instead, the workflow preserves manuscript conventions such as abstract sections, captions, and editable review copies while keeping those conventions downstream of the evidence."
                 ),
+                Paragraph(
+                    "Traceability is treated as a document property, not as a separate checklist. When a table number, figure caption, citation label, or exported file changes, the manuscript is regenerated from the same source graph. Reviewers can then inspect the visible prose while maintainers can inspect the code path that produced each referenced artifact."
+                ),
                 level=2,
             ),
             ColumnSpan(traceability_figure),
@@ -377,6 +390,12 @@ def build_journal_paper_document() -> Document:
                 ),
                 Paragraph(
                     "These rules are deliberately modest. They can be adopted in a small project without introducing a full experiment-tracking platform, yet they materially reduce the number of unreviewable document edits."
+                ),
+                Paragraph(
+                    "The rules also keep the example close to ordinary writing practice. Authors still decide what claims matter, which caveats belong in the prose, and how much interpretation a figure needs. The automation only removes the repeated assembly steps that are easy to forget when a paper is revised under time pressure."
+                ),
+                Paragraph(
+                    "A second constraint was readability of the source file. The document is written as a sequence of concrete blocks rather than through deeply nested helper functions, so a new contributor can scan the paper and understand where a paragraph, table, or figure enters the manuscript."
                 ),
                 level=2,
             ),
@@ -389,6 +408,12 @@ def build_journal_paper_document() -> Document:
             dataset_table,
             Paragraph(
                 "The important point is not the corpus size by itself. The point is that the visible document objects and the supporting data remain connected through explicit code rather than through manual export steps."
+            ),
+            Paragraph(
+                "The corpus table remains full-width because its descriptive source column benefits from horizontal space. Other evidence objects, especially compact plots, can sit inside a single manuscript column so the page feels like a real article instead of a sequence of full-width interruptions."
+            ),
+            Paragraph(
+                "Input files are kept beside the example script so that the paper can be rebuilt without external services. That makes the example useful as a regression target: if a renderer changes table layout, image sizing, citation formatting, or page flow, the generated paper exposes the change in every supported output format."
             ),
             Section("Results", level=1),
             Section(
@@ -403,10 +428,13 @@ def build_journal_paper_document() -> Document:
                 Paragraph(
                     "The relevant result is not merely the best final score. The more useful observation is that the quality improvement remains interpretable because the comparison table and the comparison plot are generated from the same underlying CSV."
                 ),
+                Paragraph(
+                    "The full benchmark table is allowed to span both columns because the row labels and numeric columns benefit from horizontal space. The accompanying plot is smaller and can live inside one column, where it acts as a local visual summary rather than a page-level interruption."
+                ),
                 level=2,
             ),
             benchmark_table,
-            ColumnSpan(quality_latency_figure),
+            quality_latency_figure,
             Section(
                 "Ablation Signals",
                 Paragraph(
@@ -416,6 +444,9 @@ def build_journal_paper_document() -> Document:
                 ),
                 Paragraph(
                     "The value of the ablation is conceptual as much as numeric: it demonstrates that manuscript reliability depends on several small pieces staying connected, including caption generation, citation handling, and predictable asset reuse."
+                ),
+                Paragraph(
+                    "The ablation table stays full-width because its component labels are explanatory rather than symbolic. This gives the results section a more typical journal rhythm: prose, compact in-column plots, and occasional wide artifacts when the data genuinely needs the space."
                 ),
                 level=2,
             ),
@@ -430,9 +461,12 @@ def build_journal_paper_document() -> Document:
                 Paragraph(
                     "This type of figure matters because many workflow decisions are justified by revision logistics rather than by accuracy alone. Even when two pipelines can represent the same final content, the cheaper revision path is usually the one that survives into regular team use."
                 ),
+                Paragraph(
+                    "The revision curve is not intended as a universal measurement. It is a compact model of a familiar editorial pattern: early changes are cheap, but late changes become expensive when authors must synchronize text, tables, captions, references, and exported files by hand."
+                ),
                 level=2,
             ),
-            ColumnSpan(revision_effort_figure),
+            revision_effort_figure,
             Section(
                 "Discussion",
                 Paragraph(
@@ -441,12 +475,21 @@ def build_journal_paper_document() -> Document:
                 Paragraph(
                     "There are still tradeoffs. A programmable manuscript requires some repository discipline, and teams unfamiliar with packaging or automated builds may need a small onboarding step. In return, they gain a workflow where visible manuscript changes can be reviewed with the same habits used for code changes."
                 ),
+                Paragraph(
+                    "The multicolumn body is a useful stress test for this idea because article layout exposes awkward edges quickly. Figures that are too wide must escape the columns, compact evidence should remain near the relevant prose, and headings must keep their numbering even when the renderer changes the physical flow."
+                ),
+                Paragraph(
+                    "For production use, a team would likely add project-specific checks around required statements, data availability language, and target journal preferences. Those checks can sit above the core block model without changing how paragraphs, figures, tables, and citations are assembled."
+                ),
                 level=1,
             ),
             Section(
                 "Conclusion",
                 Paragraph(
                     "This journal example shows docscriptor at its most manuscript-oriented: structured authorship, data-backed tables, explanatory figures, and submission-ready exports are kept in one readable Python source. The result is not just reproducible output, but a document workflow that is easier to revise and easier to trust."
+                ),
+                Paragraph(
+                    "The broader lesson is that document automation does not have to mean giving up familiar manuscript structure. It can instead make that structure cheaper to maintain, especially when the final paper must exist as DOCX, PDF, and HTML at the same time."
                 ),
                 level=1,
             ),

@@ -125,8 +125,9 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     assert "Traceability pipeline used in the study" in pdf_text
     assert "Benchmark results loaded directly from the experiment CSV file." in pdf_text
     assert "Ablation results for the manuscript automation workflow." in pdf_text
-    assert "late-revision synchronization effort" in pdf_text
-    assert "docscriptor-based workflow" in pdf_text
+    assert "late-revision" in pdf_text
+    assert "synchronization effort" in pdf_text
+    assert "docscriptor-based" in pdf_text
     assert "https://doi.org/10.1093/comjnl/27.2.97" in pdf_text
     assert "https://doi.org/10.1198/106186007X178663" in pdf_text
     assert "https://yihui.org/knitr/" in pdf_text

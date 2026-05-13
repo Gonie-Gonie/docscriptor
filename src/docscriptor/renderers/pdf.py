@@ -1050,6 +1050,7 @@ class PdfRenderer:
             return []
         if block.columns == 1:
             return story
+        story = self._flatten_keep_together_for_columns(story)
         gap_points = block.column_gap_in_inches(context.unit) * inch
         return [
             BalancedColumns(
@@ -1059,6 +1060,15 @@ class PdfRenderer:
                 spaceAfter=6,
             )
         ]
+
+    def _flatten_keep_together_for_columns(self, story: list[object]) -> list[object]:
+        flattened: list[object] = []
+        for flowable in story:
+            if isinstance(flowable, KeepTogether):
+                flattened.extend(flowable._content)
+                continue
+            flattened.append(flowable)
+        return flattened
 
     def _mark_float_story(self, story: list[object]) -> list[object]:
         for flowable in story:
