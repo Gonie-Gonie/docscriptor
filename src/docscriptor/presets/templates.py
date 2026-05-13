@@ -5,20 +5,67 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from docscriptor.components.base import BlockInput
-from docscriptor.components.blocks import Chapter, Paragraph, Section
+from docscriptor.components.base import Block, BlockInput, coerce_blocks
+from docscriptor.components.blocks import Paragraph, Section
 from docscriptor.components.generated import ReferencesPage, TableOfContents
 from docscriptor.components.inline import InlineInput, Text, bold
 from docscriptor.components.people import AuthorInput, AuthorLayout
 from docscriptor.components.references import CitationLibrary, CitationSource
 from docscriptor.document import Document
 from docscriptor.layout.theme import (
+    BlockOptions,
+    CaptionOptions,
+    GeneratedPageOptions,
+    PageNumberOptions,
+    TitleMatterOptions,
+    TypographyOptions,
     Theme,
 )
 from docscriptor.settings import DocumentSettings, PageMargins, PageSize
 
 
-AbstractInput = str | Paragraph | Sequence[BlockInput]
+SectionContentInput = str | Block | Sequence[BlockInput]
+AbstractInput = SectionContentInput
+StatementInput = SectionContentInput
+
+
+def _default_journal_theme() -> Theme:
+    """Return manuscript defaults suitable for a conventional journal draft."""
+
+    return Theme(
+        TypographyOptions(
+            body_font_name="Times New Roman",
+            body_font_size=11.0,
+            title_font_size=16.0,
+            heading_sizes=(13.0, 12.0, 11.0, 11.0),
+            caption_font_size=10.0,
+        ),
+        CaptionOptions(
+            caption_alignment="left",
+            table_caption_position="above",
+            figure_caption_position="below",
+        ),
+        GeneratedPageOptions(
+            generated_section_level=1,
+            generated_page_breaks=False,
+        ),
+        PageNumberOptions(
+            show_page_numbers=True,
+            page_number_alignment="center",
+        ),
+        TitleMatterOptions(
+            title_alignment="center",
+            subtitle_alignment="center",
+            author_alignment="center",
+            affiliation_alignment="center",
+            author_detail_alignment="center",
+        ),
+        BlockOptions(
+            paragraph_alignment="justify",
+            table_alignment="center",
+            figure_alignment="center",
+        ),
+    )
 
 
 @dataclass(slots=True)
@@ -46,10 +93,10 @@ ArticleSectionInput = Section | ManuscriptSection | tuple[InlineInput, Sequence[
 
 @dataclass(slots=True)
 class JournalArticleTemplate:
-    """Build a document from title matter, abstract, body sections, and references."""
+    """Build a journal-style manuscript from content-oriented inputs."""
 
     name: str = "Journal article"
-    theme: Theme = field(default_factory=Theme)
+    theme: Theme = field(default_factory=_default_journal_theme)
     page_size: PageSize = field(default_factory=PageSize.a4)
     page_margins: PageMargins = field(default_factory=PageMargins)
     author_layout: AuthorLayout = field(default_factory=AuthorLayout)
@@ -66,6 +113,8 @@ class JournalArticleTemplate:
         authors: Sequence[AuthorInput] | None = None,
         keywords: Sequence[str] | None = None,
         subtitle: InlineInput | None = None,
+        acknowledgements: StatementInput | None = None,
+        data_availability: StatementInput | None = None,
         summary: str | None = None,
         citations: CitationLibrary | Sequence[CitationSource] | str | None = None,
         include_contents: bool | None = None,
@@ -99,6 +148,10 @@ class JournalArticleTemplate:
                 )
             )
         children.extend(self._coerce_sections(sections))
+        if acknowledgements is not None:
+            children.append(self._statement_section("Acknowledgements", acknowledgements))
+        if data_availability is not None:
+            children.append(self._statement_section("Data Availability", data_availability))
         if include_references_value:
             children.append(ReferencesPage())
 
@@ -115,11 +168,22 @@ class JournalArticleTemplate:
         return Document(title, *children, settings=settings, citations=citations)
 
     def _abstract_blocks(self, abstract: AbstractInput) -> list[BlockInput]:
-        if isinstance(abstract, Paragraph):
-            return [abstract]
-        if isinstance(abstract, str):
-            return [Paragraph(abstract)]
-        return list(abstract)
+        return self._content_blocks(abstract)
+
+    def _content_blocks(self, content: SectionContentInput) -> list[BlockInput]:
+        if isinstance(content, Block):
+            return [content]
+        if isinstance(content, str):
+            return [Paragraph(content)]
+        return coerce_blocks(content)
+
+    def _statement_section(self, title: str, content: StatementInput) -> Section:
+        return Section(
+            title,
+            *self._content_blocks(content),
+            level=1,
+            numbered=False,
+        )
 
     def _coerce_sections(self, sections: Sequence[ArticleSectionInput]) -> list[Section]:
         return [self._coerce_section(section) for section in sections]
@@ -130,7 +194,7 @@ class JournalArticleTemplate:
         if isinstance(section, ManuscriptSection):
             return section.to_section()
         title, children = section
-        return Chapter(title, *children)
+        return Section(title, *children, level=1)
 
 
 __all__ = [

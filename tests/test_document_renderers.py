@@ -1737,10 +1737,19 @@ def test_component_and_template_presets_build_renderable_documents(tmp_path: Pat
             ManuscriptSection("Introduction", [Paragraph("Problem and contribution.")]),
             ("Methods", [Paragraph("Data, model, and validation.")]),
         ],
+        acknowledgements="The authors thank the review team.",
+        data_availability=None,
     )
 
     assert isinstance(article_document, Document)
     assert any(isinstance(child, TableOfContents) for child in article_document.body.children)
+    article_headings = [
+        child.plain_title()
+        for child in article_document.body.children
+        if isinstance(child, Section)
+    ]
+    assert "Acknowledgements" in article_headings
+    assert "Data Availability" not in article_headings
 
     unitless = Nomenclature([("x", "value"), ("y", "other value")], double_column=True)
     assert unitless.children[0].header_rows[0][0].content.content[0].value == "Symbol"

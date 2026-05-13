@@ -42,7 +42,7 @@ def test_template_preset_examples_build_all_outputs(tmp_path: Path) -> None:
     }
 
     expected_titles = {
-        "journal-article-template": "Template Preset Example: Custom JournalArticleTemplate",
+        "journal-article-template": "Content-First Journal Article Template",
     }
     for stem, title in expected_titles.items():
         docx_path = tmp_path / f"{stem}.docx"
@@ -67,13 +67,15 @@ def test_template_preset_examples_build_all_outputs(tmp_path: Path) -> None:
 
         assert title in word_text
         assert "Introduction" in word_text
-        assert "Template presets keep common manuscript pieces close to the input data." in word_text
-        assert "Your Paper Your Way" in word_text
-        assert "Taylor & Francis" in word_text
-        assert "Nomenclature" in table_text
+        assert "Content-first journal templates separate manuscript content from repeated document assembly." in word_text
+        assert "JournalArticleTemplate.build(...)" in word_text
+        assert "Data Availability" in word_text
+        assert "Acknowledgements" in word_text
+        assert "Template responsibility" in table_text
         assert "References" in word_text
         assert title in normalized_pdf_text
-        assert "Template Surface" in normalized_pdf_text
+        assert "Methods" in normalized_pdf_text
+        assert "Data Availability" in normalized_pdf_text
         assert "References" in normalized_pdf_text
         assert title in html_text
-        assert "document.save_all(...)" in html_text
+        assert "content-first template" in html_text

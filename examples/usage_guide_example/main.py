@@ -537,7 +537,7 @@ nomenclature = Nomenclature(
 TEMPLATE_PRESETS_SNIPPET = """from docscriptor import Author, Paragraph
 from docscriptor.presets.templates import JournalArticleTemplate, ManuscriptSection
 
-document = JournalArticleTemplate(include_contents=True).build(
+document = JournalArticleTemplate().build(
     "Readable manuscript generation",
     authors=[Author("Research Lead", affiliations=["Example Lab"], corresponding=True)],
     abstract="A concise abstract paragraph.",
@@ -546,6 +546,8 @@ document = JournalArticleTemplate(include_contents=True).build(
         ManuscriptSection("Introduction", [Paragraph("Problem and contribution.")]),
         ManuscriptSection("Methods", [Paragraph("Data, model, and validation.")]),
     ],
+    acknowledgements="The authors thank the internal review group.",
+    data_availability=None,
 )
 
 document.save_all("artifacts/manuscript", stem="article-draft")
@@ -966,9 +968,9 @@ def build_usage_guide_document() -> Document:
     template_presets_table = Table(
         headers=["Template", "Accepted structure", "Best first use"],
         rows=[
-            ["JournalArticleTemplate", "title, authors, abstract, keywords, sections, citations, references flag.", "A generic manuscript-shaped document builder that can be configured for local or journal-specific needs."],
+            ["JournalArticleTemplate", "title, authors, abstract, keywords, body sections, optional declarations, citations.", "A content-first manuscript builder where the caller fills article fields and the preset owns routine article assembly."],
             ["ManuscriptSection", "title, children, level, numbered.", "A small descriptor when users prefer data-like section lists over nested Section objects."],
-            ["Theme and settings", "theme, page_size, page_margins, author_layout, include_contents.", "Use these inputs to make an institutional or lab manuscript preset."],
+            ["Advanced overrides", "theme, page_size, page_margins, author_layout, contents/references flags.", "Use these only when a lab or target journal has explicit layout requirements."],
         ],
         caption="Template presets build full Document objects from manuscript-shaped inputs.",
         column_widths=[1.7, 3.4, 2.3],
@@ -1623,7 +1625,7 @@ def build_usage_guide_document() -> Document:
                     Paragraph(
                         "Template presets live under ",
                         code("docscriptor.presets.templates"),
-                        ". The generic template owns a document-level combination of theme, page geometry, author layout, generated pages, and references. The build input stays small: a title, optional authors, an abstract, keywords, a section list, and citation data. Publisher-specific presets are intentionally not included because broad public guidance is not the same thing as a journal-specific template. The included example uses common manuscript elements that appear in Elsevier's general Your Paper Your Way guidance ",
+                        ". The generic journal template owns the routine article scaffolding so callers usually fill content fields rather than theme details. The build input stays small: title, authors, abstract, keywords, body sections, optional acknowledgement and data availability statements, and citation data. Publisher-specific presets are intentionally not included because broad public guidance is not the same thing as a journal-specific template. The included example uses common manuscript elements that appear in Elsevier's general Your Paper Your Way guidance ",
                         RELATED_WORK.cite("elsevier-your-paper-your-way"),
                         " and Taylor & Francis Author Services guidance ",
                         RELATED_WORK.cite("taylor-francis-layout-guide"),

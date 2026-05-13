@@ -1,54 +1,38 @@
-"""Standalone JournalArticleTemplate customization example."""
+"""Standalone content-first JournalArticleTemplate example."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from docscriptor import (
-    AuthorLayout,
-    BlockOptions,
-    CaptionOptions,
-    GeneratedPageOptions,
-    PageMargins,
-    PageNumberOptions,
-    PageSize,
-    Theme,
-    TitleMatterOptions,
-    TypographyOptions,
-)
 from docscriptor.presets.templates import JournalArticleTemplate
 
-from common import sample_authors, sample_citations, sample_sections, save_template_document
+from common import (
+    sample_acknowledgements,
+    sample_abstract,
+    sample_authors,
+    sample_citations,
+    sample_data_availability,
+    sample_keywords,
+    sample_sections,
+    save_template_document,
+)
 
 
 def build_document():
-    """Build a custom journal-like manuscript preset."""
+    """Build a journal manuscript from content-oriented inputs."""
 
     citations = sample_citations()
-    template = JournalArticleTemplate(
-        name="Lab report article",
-        theme=Theme(
-            TypographyOptions(body_font_name="Arial", body_font_size=10.5, title_font_size=17),
-            CaptionOptions(caption_alignment="left", table_caption_position="above"),
-            GeneratedPageOptions(generated_section_level=1, generated_page_breaks=False),
-            PageNumberOptions(show_page_numbers=True, page_number_alignment="right"),
-            TitleMatterOptions(title_alignment="left", subtitle_alignment="left", author_alignment="left"),
-            BlockOptions(paragraph_alignment="justify", table_alignment="center", figure_alignment="center"),
-        ),
-        page_size=PageSize.letter(),
-        page_margins=PageMargins.symmetric(vertical=1.0, horizontal=1.1, unit="in"),
-        author_layout=AuthorLayout(mode="stacked", show_details=True),
-        include_contents=True,
-    )
-    return template.build(
-        "Template Preset Example: Custom JournalArticleTemplate",
-        subtitle="A small institutional template built from the base preset",
+    return JournalArticleTemplate().build(
+        "Content-First Journal Article Template",
+        subtitle="A ready manuscript draft from article metadata and body sections",
         authors=sample_authors(),
-        abstract="This example customizes JournalArticleTemplate with local typography, margins, title matter, and generated-page defaults.",
-        keywords=["docscriptor", "custom template", "lab report"],
+        abstract=sample_abstract(),
+        keywords=sample_keywords(),
         sections=sample_sections(citations),
+        acknowledgements=sample_acknowledgements(),
+        data_availability=sample_data_availability(),
         citations=citations,
-        summary="Custom JournalArticleTemplate preset example",
+        summary="Content-first JournalArticleTemplate preset example",
     )
 
 
