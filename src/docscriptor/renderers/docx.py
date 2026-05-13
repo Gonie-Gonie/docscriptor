@@ -26,8 +26,10 @@ from docscriptor.components.blocks import (
     Box,
     BulletList,
     CodeBlock,
+    ColumnSpan,
     Divider,
     Equation,
+    MultiColumn,
     NumberedList,
     PageBreak,
     Paragraph,
@@ -402,6 +404,27 @@ class DocxRenderer:
             word_document=context.word_document,
         )
 
+    def render_column_span(
+        self,
+        container: object,
+        block: ColumnSpan,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render full-width content from a multicolumn flow."""
+
+        for child in block.children:
+            child.render_to_docx(self, container, context)
+
+    def render_multi_column(
+        self,
+        container: object,
+        block: MultiColumn,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render a multicolumn flow into DOCX."""
+
+        self._render_multi_column(container, block, context)
+
     def render_shape(
         self,
         container: object,
@@ -640,6 +663,15 @@ class DocxRenderer:
         section.right_margin = Inches(right)
         section.bottom_margin = Inches(bottom)
         section.left_margin = Inches(left)
+
+    def _set_section_columns(self, section: object, columns: int, gap_inches: float) -> None:
+        sect_pr = section._sectPr
+        cols = sect_pr.find(qn("w:cols"))
+        if cols is None:
+            cols = OxmlElement("w:cols")
+            sect_pr.append(cols)
+        cols.set(qn("w:num"), str(max(columns, 1)))
+        cols.set(qn("w:space"), str(max(int(round(gap_inches * 1440)), 0)))
 
     def _render_top_level_children(
         self,
@@ -1728,6 +1760,141 @@ class DocxRenderer:
         if not cell.paragraphs:
             cell.add_paragraph()
 
+    def _render_multi_column(
+        self,
+        container: object,
+        block: MultiColumn,
+        context: DocxRenderContext,
+    ) -> None:
+        if block.columns == 1:
+            for child in block.children:
+                child.render_to_docx(self, container, context)
+            return
+
+        if not self._is_cell_container(container) and hasattr(container, "add_section"):
+            self._render_multi_column_sections(container, block, context)
+            return
+
+        self._render_multi_column_layout_table(container, block, context)
+
+    def _render_multi_column_sections(
+        self,
+        word_document: WordDocument,
+        block: MultiColumn,
+        context: DocxRenderContext,
+    ) -> None:
+        current_group: list[object] = []
+        available_width = context.settings.text_width_in_inches()
+        self._start_column_section(word_document, block.columns, block, context)
+
+        def flush_group() -> None:
+            if not current_group:
+                return
+            for group_child in current_group:
+                group_child.render_to_docx(self, word_document, context)
+            current_group.clear()
+
+        for child in block.children:
+            if block._child_spans_columns(
+                child,
+                available_width=available_width,
+                default_unit=context.unit,
+            ):
+                flush_group()
+                self._start_column_section(word_document, 1, block, context)
+                child.render_to_docx(self, word_document, context)
+                self._start_column_section(word_document, block.columns, block, context)
+                continue
+            current_group.append(child)
+        flush_group()
+        self._start_column_section(word_document, 1, block, context)
+
+    def _start_column_section(
+        self,
+        word_document: WordDocument,
+        columns: int,
+        block: MultiColumn,
+        context: DocxRenderContext,
+    ) -> None:
+        section = word_document.add_section(WD_SECTION.CONTINUOUS)
+        self._configure_section_page_box(section, context.settings)
+        self._set_section_columns(section, columns, block.column_gap_in_inches(context.unit))
+
+    def _render_multi_column_layout_table(
+        self,
+        container: object,
+        block: MultiColumn,
+        context: DocxRenderContext,
+    ) -> None:
+        current_group: list[object] = []
+        available_width = context.settings.text_width_in_inches()
+
+        def flush_group() -> None:
+            if not current_group:
+                return
+            self._render_multi_column_group_table(container, block, current_group, context)
+            current_group.clear()
+
+        for child in block.children:
+            if block._child_spans_columns(
+                child,
+                available_width=available_width,
+                default_unit=context.unit,
+            ):
+                flush_group()
+                child.render_to_docx(self, container, context)
+                continue
+            current_group.append(child)
+        flush_group()
+
+    def _render_multi_column_group_table(
+        self,
+        container: object,
+        block: MultiColumn,
+        children: list[object],
+        context: DocxRenderContext,
+    ) -> None:
+        table = container.add_table(rows=1, cols=block.columns)
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        gap_inches = block.column_gap_in_inches(context.unit)
+        gap_points = gap_inches * 72
+
+        if not context.in_box:
+            available_width = context.settings.text_width_in_inches()
+            table.autofit = False
+            self._set_table_width(table, available_width)
+            column_width = block.column_width_in_inches(available_width, context.unit)
+            for column in table.columns:
+                column.width = Inches(column_width)
+
+        chunk_size = max((len(children) + block.columns - 1) // block.columns, 1)
+        for column_index, cell in enumerate(table.rows[0].cells):
+            cell._tc.clear_content()
+            self._initialized_cells.discard(id(cell))
+            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+            if not context.in_box:
+                self._set_cell_width(
+                    cell,
+                    block.column_width_in_inches(
+                        context.settings.text_width_in_inches(),
+                        context.unit,
+                    ),
+                )
+            self._set_cell_margins(
+                cell,
+                0,
+                gap_points / 2 if column_index < block.columns - 1 else 0,
+                0,
+                gap_points / 2 if column_index > 0 else 0,
+            )
+            self._set_cell_borders_none(cell)
+            start = column_index * chunk_size
+            end = start + chunk_size
+            for child in children[start:end]:
+                child.render_to_docx(self, cell, context)
+            if not cell.paragraphs:
+                cell.add_paragraph()
+
     def _render_page_items(
         self,
         word_document: WordDocument,
@@ -2356,6 +2523,17 @@ class DocxRenderer:
             edge.set(qn("w:sz"), size)
             edge.set(qn("w:space"), "0")
             edge.set(qn("w:color"), color)
+            borders.append(edge)
+        properties.append(borders)
+
+    def _set_cell_borders_none(self, cell: object) -> None:
+        properties = cell._tc.get_or_add_tcPr()
+        for existing in list(properties.findall(qn("w:tcBorders"))):
+            properties.remove(existing)
+        borders = OxmlElement("w:tcBorders")
+        for edge_name in ("top", "left", "bottom", "right"):
+            edge = OxmlElement(f"w:{edge_name}")
+            edge.set(qn("w:val"), "nil")
             borders.append(edge)
         properties.append(borders)
 

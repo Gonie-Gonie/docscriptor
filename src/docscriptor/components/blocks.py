@@ -513,6 +513,136 @@ class Divider(Block):
 
 
 @dataclass(slots=True, init=False)
+class ColumnSpan(Block):
+    """Full-width content inside a ``MultiColumn`` block."""
+
+    children: list[Block]
+
+    def __init__(self, *children: BlockInput) -> None:
+        self.children = coerce_blocks(children)
+
+    def render_to_docx(
+        self,
+        renderer: object,
+        container: object,
+        context: DocxRenderContext,
+    ) -> None:
+        renderer.render_column_span(container, self, context)
+
+    def render_to_pdf(
+        self,
+        renderer: object,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        return renderer.render_column_span(self, context)
+
+    def render_to_html(
+        self,
+        renderer: object,
+        context: HtmlRenderContext,
+    ) -> str:
+        return renderer.render_column_span(self, context)
+
+
+@dataclass(slots=True, init=False)
+class MultiColumn(Block):
+    """A document flow container rendered across multiple columns."""
+
+    children: list[Block]
+    columns: int
+    column_gap: float
+    unit: str | None
+    span_wide_media: bool
+
+    def __init__(
+        self,
+        *children: BlockInput,
+        columns: int = 2,
+        column_gap: float = 0.25,
+        unit: str | None = None,
+        span_wide_media: bool = True,
+    ) -> None:
+        if columns < 1:
+            raise ValueError("MultiColumn columns must be >= 1")
+        if column_gap < 0:
+            raise ValueError("MultiColumn column_gap must be >= 0")
+        self.children = coerce_blocks(children)
+        self.columns = columns
+        self.column_gap = float(column_gap)
+        self.unit = normalize_length_unit(unit) if unit is not None else None
+        self.span_wide_media = bool(span_wide_media)
+
+    def column_gap_in_inches(self, default_unit: str) -> float:
+        """Return the gap between columns in inches."""
+
+        return length_to_inches(self.column_gap, self.unit or default_unit)
+
+    def column_width_in_inches(self, available_width: float, default_unit: str) -> float:
+        """Return the width available to a single column in inches."""
+
+        if self.columns <= 1:
+            return max(available_width, 0)
+        total_gap = self.column_gap_in_inches(default_unit) * (self.columns - 1)
+        return max((available_width - total_gap) / self.columns, 0)
+
+    def _child_spans_columns(
+        self,
+        child: Block,
+        *,
+        available_width: float,
+        default_unit: str,
+    ) -> bool:
+        if isinstance(child, (ColumnSpan, PageBreak)):
+            return True
+        if not self.span_wide_media or self.columns <= 1:
+            return False
+
+        from docscriptor.components.media import Figure, SubFigureGroup, Table
+
+        column_width = self.column_width_in_inches(available_width, default_unit)
+        if isinstance(child, Figure):
+            figure_width = child.width_in_inches(default_unit)
+            return figure_width is None or figure_width > column_width
+        if isinstance(child, Table):
+            column_widths = child.column_widths_in_inches(default_unit)
+            return column_widths is None or sum(column_widths) > column_width
+        if isinstance(child, SubFigureGroup):
+            row = child.subfigures[: child.columns]
+            if not row:
+                return False
+            widths = [subfigure.width_in_inches(default_unit) for subfigure in row]
+            if any(width is None for width in widths):
+                return True
+            group_gap = length_to_inches(child.column_gap, child.unit or default_unit)
+            group_width = sum(width for width in widths if width is not None)
+            group_width += group_gap * max(len(row) - 1, 0)
+            return group_width > column_width
+        return False
+
+    def render_to_docx(
+        self,
+        renderer: object,
+        container: object,
+        context: DocxRenderContext,
+    ) -> None:
+        renderer.render_multi_column(container, self, context)
+
+    def render_to_pdf(
+        self,
+        renderer: object,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        return renderer.render_multi_column(self, context)
+
+    def render_to_html(
+        self,
+        renderer: object,
+        context: HtmlRenderContext,
+    ) -> str:
+        return renderer.render_multi_column(self, context)
+
+
+@dataclass(slots=True, init=False)
 class Part(Block):
     """Top-level document division rendered on its own separator page."""
 
@@ -752,8 +882,10 @@ __all__ = [
     "Chapter",
     "CellInput",
     "CodeBlock",
+    "ColumnSpan",
     "Divider",
     "Equation",
+    "MultiColumn",
     "NumberedList",
     "PageBreak",
     "Paragraph",

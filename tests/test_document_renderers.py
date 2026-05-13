@@ -35,6 +35,7 @@ from docscriptor import (
     Comment,
     CommentsPage,
     CodeBlock,
+    ColumnSpan,
     Document,
     DocumentSettings,
     Divider,
@@ -49,6 +50,7 @@ from docscriptor import (
     InlineChipStyle,
     ListStyle,
     Math,
+    MultiColumn,
     NumberedList,
     PageNumberOptions,
     PageMargins,
@@ -945,6 +947,8 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Paragraph")
     assert hasattr(docscriptor, "Part")
     assert hasattr(docscriptor, "BulletList")
+    assert hasattr(docscriptor, "ColumnSpan")
+    assert hasattr(docscriptor, "MultiColumn")
     assert hasattr(docscriptor, "NumberedList")
     assert hasattr(docscriptor, "PageBreak")
     assert hasattr(docscriptor, "PageMargins")
@@ -1045,6 +1049,85 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
         "figure",
     ):
         assert not hasattr(docscriptor, removed_name)
+
+
+def test_multicolumn_layout_renders_across_outputs(tmp_path: Path) -> None:
+    image_path = tmp_path / "multicolumn.png"
+    _write_sample_image(image_path)
+
+    wide_table = Table(
+        headers=["Metric", "Value"],
+        rows=[
+            ["Traceability checks", "passed"],
+            ["Late revision cost", "reduced"],
+        ],
+        caption="Wide result table.",
+        column_widths=[2.4, 2.4],
+        placement="here",
+    )
+    wide_figure = Figure(
+        image_path,
+        caption="Wide result figure.",
+        width=5.6,
+        placement="here",
+    )
+    document = Document(
+        "Multicolumn Report",
+        Section(
+            "Findings",
+            MultiColumn(
+                Paragraph("Column paragraph alpha."),
+                Paragraph("Column paragraph beta."),
+                wide_table,
+                Paragraph("Column paragraph gamma."),
+                ColumnSpan(wide_figure),
+                Paragraph("Column paragraph delta."),
+                columns=2,
+                column_gap=0.18,
+            ),
+        ),
+    )
+
+    docx_path = tmp_path / "multicolumn.docx"
+    pdf_path = tmp_path / "multicolumn.pdf"
+    html_path = tmp_path / "multicolumn.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_document = WordDocument(docx_path)
+    word_text = "\n".join(
+        [paragraph.text for paragraph in word_document.paragraphs]
+        + [
+            cell.text
+            for table in word_document.tables
+            for row in table.rows
+            for cell in row.cells
+        ]
+    )
+    assert "Column paragraph alpha." in word_text
+    assert "Column paragraph delta." in word_text
+    assert "Table 1. Wide result table." in word_text
+    assert "Figure 1. Wide result figure." in word_text
+    docx_xml = _docx_document_xml(docx_path)
+    assert "<w:cols" in docx_xml
+    assert 'w:num="2"' in docx_xml
+
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    assert "Column paragraph alpha." in pdf_text
+    assert "Column paragraph delta." in pdf_text
+    assert "Table 1. Wide result table." in pdf_text
+    assert "Figure 1. Wide result figure." in pdf_text
+
+    html_text = html_path.read_text(encoding="utf-8")
+    normalized_html_text = _normalized_html_text(html_path)
+    assert 'class="docscriptor-multi-column-layout"' in html_text
+    assert "column-count: 2" in html_text
+    assert html_text.count('class="docscriptor-column-span"') >= 2
+    assert "Column paragraph alpha." in normalized_html_text
+    assert "Column paragraph delta." in normalized_html_text
+    assert "Table 1. Wide result table." in normalized_html_text
+    assert "Figure 1. Wide result figure." in normalized_html_text
 
 
 def test_page_items_render_without_affecting_document_flow(tmp_path: Path) -> None:

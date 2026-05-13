@@ -12,8 +12,10 @@ from docscriptor.components.blocks import (
     Box,
     BulletList,
     CodeBlock,
+    ColumnSpan,
     Divider,
     Equation,
+    MultiColumn,
     NumberedList,
     PageBreak,
     Paragraph,
@@ -356,6 +358,51 @@ class HtmlRenderer:
             + children_html
             + "</section>"
         )
+
+    def render_column_span(self, block: ColumnSpan, context: HtmlRenderContext) -> str:
+        """Render full-width content from a multicolumn flow."""
+
+        return (
+            '<div class="docscriptor-column-span">'
+            + self._render_children(block.children, context)
+            + "</div>"
+        )
+
+    def render_multi_column(self, block: MultiColumn, context: HtmlRenderContext) -> str:
+        """Render a multicolumn flow into HTML."""
+
+        if block.columns == 1:
+            return self._render_children(block.children, context)
+
+        current_group: list[object] = []
+        parts: list[str] = []
+        available_width = context.settings.text_width_in_inches()
+
+        def flush_group() -> None:
+            if not current_group:
+                return
+            parts.append(self._multi_column_group_html(block, current_group, context))
+            current_group.clear()
+
+        for child in block.children:
+            if block._child_spans_columns(
+                child,
+                available_width=available_width,
+                default_unit=context.unit,
+            ):
+                flush_group()
+                if isinstance(child, ColumnSpan):
+                    parts.append(child.render_to_html(self, context))
+                else:
+                    parts.append(
+                        '<div class="docscriptor-column-span">'
+                        + child.render_to_html(self, context)
+                        + "</div>"
+                    )
+                continue
+            current_group.append(child)
+        flush_group()
+        return '<section class="docscriptor-multi-column-layout">' + "".join(parts) + "</section>"
 
     def render_shape(self, block: Shape, context: HtmlRenderContext) -> str:
         """Render a shape into HTML."""
@@ -770,6 +817,22 @@ class HtmlRenderer:
         context: HtmlRenderContext,
     ) -> str:
         return "".join(child.render_to_html(self, context) for child in children)
+
+    def _multi_column_group_html(
+        self,
+        block: MultiColumn,
+        children: list[object],
+        context: HtmlRenderContext,
+    ) -> str:
+        style = (
+            f"column-count: {block.columns}; "
+            f"column-gap: {block.column_gap_in_inches(context.unit):.2f}in;"
+        )
+        return (
+            f'<div class="docscriptor-multi-column-group" style="{style}">'
+            + self._render_children(children, context)
+            + "</div>"
+        )
 
     def _should_auto_render_footnotes_page(
         self,
@@ -2017,6 +2080,24 @@ body {{
 .docscriptor-equation-number {{
   margin-left: 0.5em;
   font-size: {theme.body_font_size:.1f}pt;
+}}
+.docscriptor-multi-column-layout {{
+  display: block;
+}}
+.docscriptor-multi-column-group {{
+  margin: 0 0 10pt;
+  column-fill: balance;
+}}
+.docscriptor-multi-column-group > .docscriptor-heading,
+.docscriptor-multi-column-group > .docscriptor-table-wrapper,
+.docscriptor-multi-column-group > .docscriptor-figure,
+.docscriptor-column-span {{
+  break-inside: avoid;
+  page-break-inside: avoid;
+}}
+.docscriptor-column-span {{
+  display: block;
+  margin: 0 0 10pt;
 }}
 .docscriptor-box {{
   overflow: hidden;

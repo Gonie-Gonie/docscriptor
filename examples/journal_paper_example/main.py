@@ -17,11 +17,13 @@ from docscriptor import (
     Affiliation,
     Author,
     BulletList,
+    ColumnSpan,
     CitationLibrary,
     CitationSource,
     Document,
     DocumentSettings,
     Figure,
+    MultiColumn,
     Paragraph,
     ReferencesPage,
     Section,
@@ -397,44 +399,56 @@ def build_journal_paper_document() -> Document:
             "Results",
             Section(
                 "Benchmark Frontier",
-                Paragraph(
-                    "The benchmark data in ",
-                    benchmark_table.reference(),
-                    " shows a steady quality gain as more structure is added to the workflow. The same CSV is also rendered into ",
-                    quality_latency_figure.reference(),
-                    ", which makes the trade-off between quality and latency easier to interpret during revision discussions."
+                MultiColumn(
+                    Paragraph(
+                        "The benchmark data in ",
+                        benchmark_table.reference(),
+                        " shows a steady quality gain as more structure is added to the workflow. The same CSV is also rendered into ",
+                        quality_latency_figure.reference(),
+                        ", which makes the trade-off between quality and latency easier to interpret during revision discussions."
+                    ),
+                    Paragraph(
+                        "The relevant result is not merely the best final score. The more useful observation is that the quality improvement remains interpretable because the comparison table and the comparison plot are generated from the same underlying CSV."
+                    ),
+                    benchmark_table,
+                    ColumnSpan(quality_latency_figure),
+                    columns=2,
+                    column_gap=0.28,
                 ),
-                Paragraph(
-                    "The relevant result is not merely the best final score. The more useful observation is that the quality improvement remains interpretable because the comparison table and the comparison plot are generated from the same underlying CSV."
-                ),
-                benchmark_table,
-                quality_latency_figure,
                 level=2,
             ),
             Section(
                 "Ablation Signals",
-                Paragraph(
-                    "Ablation results are summarized in ",
-                    ablation_table.reference(),
-                    ". Removing table automation, citation checks, or asset reuse each weakens the final result, which supports the claim that the workflow benefit comes from coordinated authoring behavior rather than from any single isolated feature."
+                MultiColumn(
+                    Paragraph(
+                        "Ablation results are summarized in ",
+                        ablation_table.reference(),
+                        ". Removing table automation, citation checks, or asset reuse each weakens the final result, which supports the claim that the workflow benefit comes from coordinated authoring behavior rather than from any single isolated feature."
+                    ),
+                    Paragraph(
+                        "The value of the ablation is conceptual as much as numeric: it demonstrates that manuscript reliability depends on several small pieces staying connected, including caption generation, citation handling, and predictable asset reuse."
+                    ),
+                    ablation_table,
+                    columns=2,
+                    column_gap=0.28,
                 ),
-                Paragraph(
-                    "The value of the ablation is conceptual as much as numeric: it demonstrates that manuscript reliability depends on several small pieces staying connected, including caption generation, citation handling, and predictable asset reuse."
-                ),
-                ablation_table,
                 level=2,
             ),
             Section(
                 "Late-Revision Cost",
-                Paragraph(
-                    "The workflow benefit becomes most visible late in the writing cycle. ",
-                    revision_effort_figure.reference(),
-                    " reports an estimated operational curve for repeated late updates. The estimate is intentionally approximate, but it captures a practical pattern: manual synchronization cost tends to rise more quickly than code-backed synchronization cost when the manuscript is revised several times close to submission."
+                MultiColumn(
+                    Paragraph(
+                        "The workflow benefit becomes most visible late in the writing cycle. ",
+                        revision_effort_figure.reference(),
+                        " reports an estimated operational curve for repeated late updates. The estimate is intentionally approximate, but it captures a practical pattern: manual synchronization cost tends to rise more quickly than code-backed synchronization cost when the manuscript is revised several times close to submission."
+                    ),
+                    Paragraph(
+                        "This type of figure matters because many workflow decisions are justified by revision logistics rather than by accuracy alone. Even when two pipelines can represent the same final content, the cheaper revision path is usually the one that survives into regular team use."
+                    ),
+                    ColumnSpan(revision_effort_figure),
+                    columns=2,
+                    column_gap=0.28,
                 ),
-                Paragraph(
-                    "This type of figure matters because many workflow decisions are justified by revision logistics rather than by accuracy alone. Even when two pipelines can represent the same final content, the cheaper revision path is usually the one that survives into regular team use."
-                ),
-                revision_effort_figure,
                 level=2,
             ),
             level=1,

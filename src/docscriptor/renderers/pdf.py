@@ -29,14 +29,17 @@ from reportlab.platypus import (
     TableStyle,
 )
 from reportlab.platypus.doctemplate import _doNothing
+from reportlab.platypus.flowables import BalancedColumns
 from reportlab.platypus.tableofcontents import TableOfContents as RLTableOfContents
 
 from docscriptor.components.blocks import (
     Box,
     BulletList,
     CodeBlock,
+    ColumnSpan,
     Divider,
     Equation,
+    MultiColumn,
     NumberedList,
     PageBreak as DocscriptorPageBreak,
     Paragraph,
@@ -751,6 +754,56 @@ class PdfRenderer:
             context.unit,
         )
 
+    def render_column_span(
+        self,
+        block: ColumnSpan,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render full-width content from a multicolumn flow."""
+
+        return self._render_flow_children(
+            block.children,
+            context,
+            flush_trailing_floats=True,
+        )
+
+    def render_multi_column(
+        self,
+        block: MultiColumn,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render a multicolumn flow into PDF flowables."""
+
+        if block.columns == 1:
+            return self._render_flow_children(
+                block.children,
+                context,
+                flush_trailing_floats=True,
+            )
+
+        story: list[object] = []
+        current_group: list[object] = []
+        available_width = context.settings.text_width_in_inches()
+
+        def flush_group() -> None:
+            if not current_group:
+                return
+            story.extend(self._render_multi_column_group(block, current_group, context))
+            current_group.clear()
+
+        for child in block.children:
+            if block._child_spans_columns(
+                child,
+                available_width=available_width,
+                default_unit=context.unit,
+            ):
+                flush_group()
+                story.extend(self._unmark_float_story(child.render_to_pdf(self, context)))
+                continue
+            current_group.append(child)
+        flush_group()
+        return story
+
     def render_shape(
         self,
         block: Shape,
@@ -982,9 +1035,40 @@ class PdfRenderer:
             story.extend(self._pop_pending_float_flowables())
         return story
 
+    def _render_multi_column_group(
+        self,
+        block: MultiColumn,
+        children: list[object],
+        context: PdfRenderContext,
+    ) -> list[object]:
+        story = self._render_flow_children(
+            children,
+            context,
+            flush_trailing_floats=True,
+        )
+        if not story:
+            return []
+        if block.columns == 1:
+            return story
+        gap_points = block.column_gap_in_inches(context.unit) * inch
+        return [
+            BalancedColumns(
+                story,
+                nCols=block.columns,
+                innerPadding=gap_points,
+                spaceAfter=6,
+            )
+        ]
+
     def _mark_float_story(self, story: list[object]) -> list[object]:
         for flowable in story:
             setattr(flowable, "_docscriptor_float", True)
+        return story
+
+    def _unmark_float_story(self, story: list[object]) -> list[object]:
+        for flowable in story:
+            if hasattr(flowable, "_docscriptor_float"):
+                setattr(flowable, "_docscriptor_float", False)
         return story
 
     def _is_float_story(self, story: list[object]) -> bool:

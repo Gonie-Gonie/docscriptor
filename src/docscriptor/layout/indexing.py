@@ -6,7 +6,18 @@ from dataclasses import dataclass, field
 from typing import Sequence
 
 from docscriptor.components.base import Block
-from docscriptor.components.blocks import Box, BulletList, CodeBlock, Equation, NumberedList, Paragraph, Part, Section
+from docscriptor.components.blocks import (
+    Box,
+    BulletList,
+    CodeBlock,
+    ColumnSpan,
+    Equation,
+    MultiColumn,
+    NumberedList,
+    Paragraph,
+    Part,
+    Section,
+)
 from docscriptor.components.generated import (
     CommentsPage,
     FigureList,
@@ -270,6 +281,16 @@ def _index_blocks(
             _register_block_anchor(render_index, block, "box")
             if block.title is not None:
                 _index_inlines(block.title, render_index, citations)
+            _index_blocks(
+                block.children,
+                render_index,
+                citations,
+                theme,
+                heading_counters=heading_counters,
+                part_counter=part_counter,
+            )
+            continue
+        if isinstance(block, (ColumnSpan, MultiColumn)):
             _index_blocks(
                 block.children,
                 render_index,
