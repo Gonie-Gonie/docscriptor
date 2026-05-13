@@ -147,11 +147,6 @@ class Monospace(Text):
         )
 
 
-Strong = Bold
-Emphasis = Italic
-Code = Monospace
-
-
 _INLINE_CHIP_STYLE_FIELDS = (
     "background_color",
     "text_color",
@@ -861,7 +856,6 @@ __all__ = [
     "Bold",
     "Citation",
     "Comment",
-    "Emphasis",
     "Footnote",
     "Highlight",
     "Hyperlink",
@@ -871,7 +865,6 @@ __all__ = [
     "LineBreak",
     "Math",
     "Monospace",
-    "Strong",
     "Strikethrough",
     "Text",
     "_BlockReference",

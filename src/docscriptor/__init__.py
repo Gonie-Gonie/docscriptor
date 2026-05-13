@@ -10,23 +10,18 @@ from docscriptor.components.blocks import (
     CodeBlock,
     Divider,
     Equation,
-    HorizontalRule,
     NumberedList,
     PageBreak,
-    PageBreaker,
     Paragraph,
     Part,
     Section,
     Subsection,
     Subsubsection,
-    VSpace,
     VerticalSpace,
-    hrule,
-    vspace,
 )
 from docscriptor.components.generated import CommentsPage, FigureList, ReferencesPage, TableList, TableOfContents, TocLevelStyle
 from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table, TableCell, TableCellStyle
-from docscriptor.components.markup import md, markup
+from docscriptor.components.markup import markup
 from docscriptor.components.people import Affiliation, Author, AuthorLayout
 from docscriptor.components.references import CitationLibrary, CitationSource
 from docscriptor.components.positioning import ImageBox, Shape, TextBox
@@ -125,7 +120,6 @@ __all__ = [
     "Footnote",
     "GeneratedPageOptions",
     "HeadingNumbering",
-    "HorizontalRule",
     "ImageBox",
     "InlineChip",
     "InlineChipStyle",
@@ -137,7 +131,6 @@ __all__ = [
     "PageMargins",
     "PageSize",
     "PageBreak",
-    "PageBreaker",
     "Paragraph",
     "Part",
     "ParagraphStyle",
@@ -161,7 +154,6 @@ __all__ = [
     "Theme",
     "TocLevelStyle",
     "TypographyOptions",
-    "VSpace",
     "VerticalSpace",
     "__version__",
     "badge",
@@ -172,7 +164,6 @@ __all__ = [
     "comment",
     "footnote",
     "highlight",
-    "hrule",
     "italic",
     "keyboard",
     "link",
@@ -183,13 +174,11 @@ __all__ = [
     "status",
     "strike",
     "strikethrough",
-    "md",
     "markup",
     "styled",
     "subscript",
     "superscript",
     "tag",
-    "vspace",
 ]
 
 for _module_name in ("components", "core", "document", "layout", "settings"):

@@ -94,7 +94,7 @@ Common translations:
 - LaTeX `\textbf{...}` / `\emph{...}` / `\texttt{...}` -> `bold(...)`, `italic(...)`, `code(...)`
 - LaTeX tag chips / compact inline labels -> `tag(...)`, `badge(...)`, `status(...)`, and `keyboard(...)`
 - Word highlight / strikethrough / manual line break -> `highlight(...)`, `strike(...)`, `line_break()`
-- LaTeX `\vspace{...}` / `\hrule` and Notion-style separators -> `VerticalSpace(...)`, `vspace(...)`, `Divider(...)`, or `hrule(...)`
+- LaTeX `\vspace{...}` / `\hrule` and Notion-style separators -> `VerticalSpace(...)` or `Divider(...)`
 - LaTeX `\includegraphics` -> `Figure(path_or_matplotlib_figure, caption=...)`
 - LaTeX subfigures -> `SubFigure(...)` children inside a captioned `SubFigureGroup(...)`
 - LaTeX `tabular` or copied tables -> `Table(...)` or `Table.from_dataframe(...)`

@@ -399,12 +399,9 @@ class PageBreak(Block):
         return renderer.render_page_break(self, context)
 
 
-PageBreaker = PageBreak
-
-
 @dataclass(slots=True, init=False)
 class VerticalSpace(Block):
-    """A LaTeX-like vertical spacer in the document flow."""
+    """A vertical spacer in the document flow."""
 
     height: float
     unit: str
@@ -441,15 +438,6 @@ class VerticalSpace(Block):
         context: HtmlRenderContext,
     ) -> str:
         return renderer.render_vertical_space(self, context)
-
-
-VSpace = VerticalSpace
-
-
-def vspace(height: float = 12.0, *, unit: str = "pt") -> VerticalSpace:
-    """Create a LaTeX-like vertical spacer block."""
-
-    return VerticalSpace(height, unit=unit)
 
 
 @dataclass(slots=True, init=False)
@@ -522,15 +510,6 @@ class Divider(Block):
         context: HtmlRenderContext,
     ) -> str:
         return renderer.render_divider(self, context)
-
-
-HorizontalRule = Divider
-
-
-def hrule(**kwargs: object) -> Divider:
-    """Create a horizontal divider block."""
-
-    return Divider(**kwargs)
 
 
 @dataclass(slots=True, init=False)
@@ -775,19 +754,14 @@ __all__ = [
     "CodeBlock",
     "Divider",
     "Equation",
-    "HorizontalRule",
     "NumberedList",
     "PageBreak",
-    "PageBreaker",
     "Paragraph",
     "Part",
     "Section",
     "Subsection",
     "Subsubsection",
-    "VSpace",
     "VerticalSpace",
     "coerce_cell",
     "coerce_list_item",
-    "hrule",
-    "vspace",
 ]

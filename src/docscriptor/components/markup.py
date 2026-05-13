@@ -19,12 +19,6 @@ def markup(source: str, *, style: TextStyle | None = None) -> list[Text]:
     return _parse_markup(source, base_style)
 
 
-def md(source: str, *, style: TextStyle | None = None) -> list[Text]:
-    """Short alias for markup()."""
-
-    return markup(source, style=style)
-
-
 def _parse_markup(source: str, base_style: TextStyle) -> list[Text]:
     fragments: list[Text] = []
     cursor = 0
@@ -92,4 +86,4 @@ def _rebase(fragments: list[Text], style: TextStyle) -> list[Text]:
     return rebased
 
 
-__all__ = ["md", "markup"]
+__all__ = ["markup"]

@@ -44,7 +44,6 @@ from docscriptor import (
     Footnote,
     GeneratedPageOptions,
     HeadingNumbering,
-    HorizontalRule,
     ImageBox,
     InlineChip,
     InlineChipStyle,
@@ -55,7 +54,6 @@ from docscriptor import (
     PageMargins,
     PageSize,
     PageBreak,
-    PageBreaker,
     Paragraph,
     ParagraphStyle,
     Part,
@@ -78,7 +76,6 @@ from docscriptor import (
     TitleMatterOptions,
     TocLevelStyle,
     TypographyOptions,
-    VSpace,
     VerticalSpace,
     badge,
     bold,
@@ -88,7 +85,6 @@ from docscriptor import (
     comment,
     footnote,
     highlight,
-    hrule,
     italic,
     keyboard,
     link,
@@ -104,7 +100,6 @@ from docscriptor import (
     subscript,
     superscript,
     tag,
-    vspace,
 )
 from docscriptor.presets.components import CalloutBox, KeyValueTable, Nomenclature
 from docscriptor.presets.templates import JournalArticleTemplate, ManuscriptSection
@@ -952,7 +947,6 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "BulletList")
     assert hasattr(docscriptor, "NumberedList")
     assert hasattr(docscriptor, "PageBreak")
-    assert hasattr(docscriptor, "PageBreaker")
     assert hasattr(docscriptor, "PageMargins")
     assert hasattr(docscriptor, "PageSize")
     assert hasattr(docscriptor, "TableList")
@@ -980,9 +974,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "TextBox")
     assert hasattr(docscriptor, "LineBreak")
     assert hasattr(docscriptor, "VerticalSpace")
-    assert hasattr(docscriptor, "VSpace")
     assert hasattr(docscriptor, "Divider")
-    assert hasattr(docscriptor, "HorizontalRule")
     assert not hasattr(docscriptor, "Sheet")
     assert not hasattr(docscriptor, "Body")
     assert not hasattr(docscriptor, "Bold")
@@ -1002,6 +994,9 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert not hasattr(docscriptor, "Strong")
     assert not hasattr(docscriptor, "Emphasis")
     assert not hasattr(docscriptor, "Code")
+    assert not hasattr(docscriptor, "PageBreaker")
+    assert not hasattr(docscriptor, "VSpace")
+    assert not hasattr(docscriptor, "HorizontalRule")
     assert hasattr(docscriptor, "comment")
     assert hasattr(docscriptor, "footnote")
     assert hasattr(docscriptor, "math")
@@ -1014,8 +1009,8 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "highlight")
     assert hasattr(docscriptor, "link")
     assert hasattr(docscriptor, "line_break")
-    assert hasattr(docscriptor, "vspace")
-    assert hasattr(docscriptor, "hrule")
+    assert not hasattr(docscriptor, "vspace")
+    assert not hasattr(docscriptor, "hrule")
     assert hasattr(docscriptor, "strike")
     assert hasattr(docscriptor, "strikethrough")
     assert hasattr(docscriptor, "tag")
@@ -1026,6 +1021,9 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "superscript")
     assert hasattr(inline_components, "InlineChip")
     assert hasattr(inline_components, "InlineChipStyle")
+    assert not hasattr(inline_components, "Strong")
+    assert not hasattr(inline_components, "Emphasis")
+    assert not hasattr(inline_components, "Code")
     assert hasattr(inline_components, "tag")
     assert hasattr(inline_components, "badge")
     assert hasattr(inline_components, "status")
@@ -1275,7 +1273,6 @@ def test_explicit_page_break_renders_to_all_outputs(tmp_path: Path) -> None:
         PageBreak(),
         Paragraph("After break."),
     )
-    assert PageBreaker is PageBreak
 
     docx_path = tmp_path / "break.docx"
     pdf_path = tmp_path / "break.pdf"
@@ -1496,11 +1493,6 @@ def test_paragraph_spacing_and_pagination_options_render_to_all_outputs(tmp_path
 
 
 def test_vertical_space_and_divider_render_to_all_outputs(tmp_path: Path) -> None:
-    assert VSpace is VerticalSpace
-    assert HorizontalRule is Divider
-    assert isinstance(vspace(6), VerticalSpace)
-    assert isinstance(hrule(), Divider)
-
     document = Document(
         "Spacing Blocks",
         Paragraph("Before spacer."),

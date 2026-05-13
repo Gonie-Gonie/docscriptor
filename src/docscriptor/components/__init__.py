@@ -26,7 +26,6 @@ _EXPORTS = {
     "Footnote": "docscriptor.components.inline",
     "FootnotesPage": "docscriptor.components.generated",
     "Highlight": "docscriptor.components.inline",
-    "HorizontalRule": "docscriptor.components.blocks",
     "Hyperlink": "docscriptor.components.inline",
     "ImageBox": "docscriptor.components.positioning",
     "InlineChip": "docscriptor.components.inline",
@@ -52,7 +51,6 @@ _EXPORTS = {
     "TableOfContents": "docscriptor.components.generated",
     "Text": "docscriptor.components.inline",
     "TextBox": "docscriptor.components.positioning",
-    "VSpace": "docscriptor.components.blocks",
     "VerticalSpace": "docscriptor.components.blocks",
     "badge": "docscriptor.components.inline",
     "bold": "docscriptor.components.inline",
@@ -62,13 +60,11 @@ _EXPORTS = {
     "comment": "docscriptor.components.inline",
     "footnote": "docscriptor.components.inline",
     "highlight": "docscriptor.components.inline",
-    "hrule": "docscriptor.components.blocks",
     "italic": "docscriptor.components.inline",
     "keyboard": "docscriptor.components.inline",
     "link": "docscriptor.components.inline",
     "line_break": "docscriptor.components.inline",
     "math": "docscriptor.components.inline",
-    "md": "docscriptor.components.markup",
     "markup": "docscriptor.components.markup",
     "prescript": "docscriptor.components.inline",
     "reference": "docscriptor.components.inline",
@@ -79,7 +75,6 @@ _EXPORTS = {
     "subscript": "docscriptor.components.inline",
     "superscript": "docscriptor.components.inline",
     "tag": "docscriptor.components.inline",
-    "vspace": "docscriptor.components.blocks",
 }
 
 __all__ = list(_EXPORTS)
