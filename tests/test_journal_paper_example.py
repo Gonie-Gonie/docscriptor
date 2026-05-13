@@ -5,6 +5,7 @@ from html import unescape
 from io import BytesIO
 from pathlib import Path
 import re
+import zipfile
 
 from docx import Document as WordDocument
 from pypdf import PdfReader
@@ -49,6 +50,11 @@ def _normalized_html_text(html_path: Path) -> str:
     html_text = re.sub(r"<style.*?>.*?</style>", " ", html_text, flags=re.DOTALL)
     text = re.sub(r"<[^>]+>", " ", html_text)
     return " ".join(unescape(text).split())
+
+
+def _docx_document_xml(docx_path: Path) -> str:
+    with zipfile.ZipFile(docx_path) as archive:
+        return archive.read("word/document.xml").decode("utf-8")
 
 
 def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
@@ -97,6 +103,7 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     assert any("Estimated late-revision synchronization effort comparing manual workflows with a docscriptor-based workflow." in text for text in paragraph_texts)
     assert len(word_document.tables) == 3
     assert len(word_document.inline_shapes) == 3
+    assert 'w:num="2"' in _docx_document_xml(docx_path)
 
     assert "Docscriptor Development Philosophy" in pdf_text
     assert "Hyeong-Gon Jo [1]*, Codex [2]" in pdf_text
@@ -138,5 +145,7 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     assert "https://doi.org/10.1198/106186007X178663" in normalized_html_text
     assert "https://yihui.org/knitr/" in normalized_html_text
     assert html_text.count("data:image/png;base64,") == 3
+    assert 'class="docscriptor-multi-column-layout"' in html_text
+    assert "column-count: 2" in html_text
     assert 'href="#table_2"' in html_text
     assert 'href="#figure_2"' in html_text

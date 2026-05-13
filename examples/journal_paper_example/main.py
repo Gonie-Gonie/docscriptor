@@ -341,22 +341,22 @@ def build_journal_paper_document() -> Document:
             level=2,
             numbered=False,
         ),
-        Section(
-            "Introduction",
-            Paragraph(
-                "Research manuscripts often combine at least four moving parts: benchmark tables, static diagrams, generated plots, and conventional prose. In many teams those assets are edited in different tools, which creates avoidable synchronization work every time a metric, caption, or section ordering changes."
+        MultiColumn(
+            Section(
+                "Introduction",
+                Paragraph(
+                    "Research manuscripts often combine at least four moving parts: benchmark tables, static diagrams, generated plots, and conventional prose. In many teams those assets are edited in different tools, which creates avoidable synchronization work every time a metric, caption, or section ordering changes."
+                ),
+                Paragraph(
+                    "The workflow studied here treats the manuscript itself as code. That does not eliminate editorial work, but it does move the document closer to the data that supports it, which is the operational direction already suggested by ",
+                    manuscript_sources.cite("literate-programming"),
+                    " and systems such as ",
+                    manuscript_sources.cite("knitr"),
+                    ".",
+                ),
+                level=1,
             ),
-            Paragraph(
-                "The workflow studied here treats the manuscript itself as code. That does not eliminate editorial work, but it does move the document closer to the data that supports it, which is the operational direction already suggested by ",
-                manuscript_sources.cite("literate-programming"),
-                " and systems such as ",
-                manuscript_sources.cite("knitr"),
-                ".",
-            ),
-            level=1,
-        ),
-        Section(
-            "Workflow Design",
+            Section("Workflow Design", level=1),
             Section(
                 "Evidence Traceability",
                 Paragraph(
@@ -367,9 +367,9 @@ def build_journal_paper_document() -> Document:
                 Paragraph(
                     "The intent is not to force authors into a notebook-like page. Instead, the workflow preserves manuscript conventions such as abstract sections, captions, and editable review copies while keeping those conventions downstream of the evidence."
                 ),
-                traceability_figure,
                 level=2,
             ),
+            ColumnSpan(traceability_figure),
             Section(
                 "Operational Rules",
                 Paragraph(
@@ -380,10 +380,7 @@ def build_journal_paper_document() -> Document:
                 ),
                 level=2,
             ),
-            level=1,
-        ),
-        Section(
-            "Study Assets",
+            Section("Study Assets", level=1),
             Paragraph(
                 "The evaluation uses a small but realistic asset bundle: benchmark result CSV files, an ablation CSV, structured citation metadata, and an authored manuscript script. The corpus summary is shown in ",
                 dataset_table.reference(),
@@ -393,82 +390,68 @@ def build_journal_paper_document() -> Document:
             Paragraph(
                 "The important point is not the corpus size by itself. The point is that the visible document objects and the supporting data remain connected through explicit code rather than through manual export steps."
             ),
-            level=1,
-        ),
-        Section(
-            "Results",
+            Section("Results", level=1),
             Section(
                 "Benchmark Frontier",
-                MultiColumn(
-                    Paragraph(
-                        "The benchmark data in ",
-                        benchmark_table.reference(),
-                        " shows a steady quality gain as more structure is added to the workflow. The same CSV is also rendered into ",
-                        quality_latency_figure.reference(),
-                        ", which makes the trade-off between quality and latency easier to interpret during revision discussions."
-                    ),
-                    Paragraph(
-                        "The relevant result is not merely the best final score. The more useful observation is that the quality improvement remains interpretable because the comparison table and the comparison plot are generated from the same underlying CSV."
-                    ),
-                    benchmark_table,
-                    ColumnSpan(quality_latency_figure),
-                    columns=2,
-                    column_gap=0.28,
+                Paragraph(
+                    "The benchmark data in ",
+                    benchmark_table.reference(),
+                    " shows a steady quality gain as more structure is added to the workflow. The same CSV is also rendered into ",
+                    quality_latency_figure.reference(),
+                    ", which makes the trade-off between quality and latency easier to interpret during revision discussions."
+                ),
+                Paragraph(
+                    "The relevant result is not merely the best final score. The more useful observation is that the quality improvement remains interpretable because the comparison table and the comparison plot are generated from the same underlying CSV."
                 ),
                 level=2,
             ),
+            benchmark_table,
+            ColumnSpan(quality_latency_figure),
             Section(
                 "Ablation Signals",
-                MultiColumn(
-                    Paragraph(
-                        "Ablation results are summarized in ",
-                        ablation_table.reference(),
-                        ". Removing table automation, citation checks, or asset reuse each weakens the final result, which supports the claim that the workflow benefit comes from coordinated authoring behavior rather than from any single isolated feature."
-                    ),
-                    Paragraph(
-                        "The value of the ablation is conceptual as much as numeric: it demonstrates that manuscript reliability depends on several small pieces staying connected, including caption generation, citation handling, and predictable asset reuse."
-                    ),
-                    ablation_table,
-                    columns=2,
-                    column_gap=0.28,
+                Paragraph(
+                    "Ablation results are summarized in ",
+                    ablation_table.reference(),
+                    ". Removing table automation, citation checks, or asset reuse each weakens the final result, which supports the claim that the workflow benefit comes from coordinated authoring behavior rather than from any single isolated feature."
+                ),
+                Paragraph(
+                    "The value of the ablation is conceptual as much as numeric: it demonstrates that manuscript reliability depends on several small pieces staying connected, including caption generation, citation handling, and predictable asset reuse."
                 ),
                 level=2,
             ),
+            ablation_table,
             Section(
                 "Late-Revision Cost",
-                MultiColumn(
-                    Paragraph(
-                        "The workflow benefit becomes most visible late in the writing cycle. ",
-                        revision_effort_figure.reference(),
-                        " reports an estimated operational curve for repeated late updates. The estimate is intentionally approximate, but it captures a practical pattern: manual synchronization cost tends to rise more quickly than code-backed synchronization cost when the manuscript is revised several times close to submission."
-                    ),
-                    Paragraph(
-                        "This type of figure matters because many workflow decisions are justified by revision logistics rather than by accuracy alone. Even when two pipelines can represent the same final content, the cheaper revision path is usually the one that survives into regular team use."
-                    ),
-                    ColumnSpan(revision_effort_figure),
-                    columns=2,
-                    column_gap=0.28,
+                Paragraph(
+                    "The workflow benefit becomes most visible late in the writing cycle. ",
+                    revision_effort_figure.reference(),
+                    " reports an estimated operational curve for repeated late updates. The estimate is intentionally approximate, but it captures a practical pattern: manual synchronization cost tends to rise more quickly than code-backed synchronization cost when the manuscript is revised several times close to submission."
+                ),
+                Paragraph(
+                    "This type of figure matters because many workflow decisions are justified by revision logistics rather than by accuracy alone. Even when two pipelines can represent the same final content, the cheaper revision path is usually the one that survives into regular team use."
                 ),
                 level=2,
             ),
-            level=1,
-        ),
-        Section(
-            "Discussion",
-            Paragraph(
-                "The example does not claim that every writing task should become a programming task. The stronger claim is narrower: when a project already depends on Python for data handling and figure generation, keeping the manuscript in the same environment improves traceability and usually reduces late-stage synchronization mistakes."
+            ColumnSpan(revision_effort_figure),
+            Section(
+                "Discussion",
+                Paragraph(
+                    "The example does not claim that every writing task should become a programming task. The stronger claim is narrower: when a project already depends on Python for data handling and figure generation, keeping the manuscript in the same environment improves traceability and usually reduces late-stage synchronization mistakes."
+                ),
+                Paragraph(
+                    "There are still tradeoffs. A programmable manuscript requires some repository discipline, and teams unfamiliar with packaging or automated builds may need a small onboarding step. In return, they gain a workflow where visible manuscript changes can be reviewed with the same habits used for code changes."
+                ),
+                level=1,
             ),
-            Paragraph(
-                "There are still tradeoffs. A programmable manuscript requires some repository discipline, and teams unfamiliar with packaging or automated builds may need a small onboarding step. In return, they gain a workflow where visible manuscript changes can be reviewed with the same habits used for code changes."
+            Section(
+                "Conclusion",
+                Paragraph(
+                    "This journal example shows docscriptor at its most manuscript-oriented: structured authorship, data-backed tables, explanatory figures, and submission-ready exports are kept in one readable Python source. The result is not just reproducible output, but a document workflow that is easier to revise and easier to trust."
+                ),
+                level=1,
             ),
-            level=1,
-        ),
-        Section(
-            "Conclusion",
-            Paragraph(
-                "This journal example shows docscriptor at its most manuscript-oriented: structured authorship, data-backed tables, explanatory figures, and submission-ready exports are kept in one readable Python source. The result is not just reproducible output, but a document workflow that is easier to revise and easier to trust."
-            ),
-            level=1,
+            columns=2,
+            column_gap=0.28,
         ),
         Section(
             "Acknowledgements",
