@@ -530,7 +530,12 @@ def build_journal_paper_document() -> Document:
                     note="GitHub: openai/codex",
                 ),
             ],
-            theme=Theme(show_page_numbers=True, page_number_format="{page}"),
+            theme=Theme(
+                show_page_numbers=True,
+                page_number_format="{page}",
+                citation_format="apa",
+                reference_format="apa",
+            ),
         ),
         citations=manuscript_sources,
     )

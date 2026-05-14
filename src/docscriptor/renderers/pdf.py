@@ -76,6 +76,7 @@ from docscriptor.components.positioning import (
     TextBox,
     resolve_positioned_boxes,
 )
+from docscriptor.components.references import format_citation_label, reference_entry_marker
 from docscriptor.document import Document
 from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
 from docscriptor.core import DocscriptorError, PathLike, length_to_inches
@@ -2258,10 +2259,16 @@ class PdfRenderer:
                 internal=True,
             )
         if isinstance(fragment, Citation):
+            citation_entry = render_index.citation_entry(fragment.target)
+            citation_label = format_citation_label(
+                citation_entry.source,
+                citation_entry.number,
+                theme.citation_format,
+            )
             return self._link_markup(
-                render_index.citation_anchor(fragment.target),
+                citation_entry.anchor,
                 self._styled_text_markup(
-                    f"[{render_index.citation_number(fragment.target)}]",
+                    citation_label,
                     fragment,
                     theme,
                     base_font_name=base_font_name,
@@ -2442,7 +2449,12 @@ class PdfRenderer:
                 return "".join(item.plain_text() for item in fragment.label)
             return self._resolve_block_reference(fragment.target, theme, render_index)
         if isinstance(fragment, Citation):
-            return f"[{render_index.citation_number(fragment.target)}]"
+            citation_entry = render_index.citation_entry(fragment.target)
+            return format_citation_label(
+                citation_entry.source,
+                citation_entry.number,
+                theme.citation_format,
+            )
         if isinstance(fragment, Hyperlink):
             return fragment.plain_text()
         if isinstance(fragment, Comment):
@@ -2796,11 +2808,19 @@ class PdfRenderer:
             ),
         ]
         for entry in render_index.citations:
+            marker = reference_entry_marker(
+                entry.number,
+                citation_format=theme.citation_format,
+                reference_format=theme.reference_format,
+            )
+            fragments = entry.source.reference_fragments(theme.reference_format)
+            if marker:
+                fragments = [Text(f"{marker} ")] + fragments
             story.append(
                 RLParagraph(
                     self._anchor_markup(entry.anchor)
                     + self._inline_markup(
-                        [Text(f"[{entry.number}] ")] + entry.source.reference_fragments(),
+                        fragments,
                         theme,
                         render_index,
                         base_font_name=entry_style.fontName,

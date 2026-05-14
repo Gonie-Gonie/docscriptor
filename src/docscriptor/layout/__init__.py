@@ -8,6 +8,7 @@ from importlib import import_module
 _EXPORTS = {
     "BoxStyle": "docscriptor.layout.theme",
     "CaptionEntry": "docscriptor.layout.indexing",
+    "CitationOptions": "docscriptor.layout.theme",
     "CitationReferenceEntry": "docscriptor.layout.indexing",
     "CommentReferenceEntry": "docscriptor.layout.indexing",
     "FootnoteReferenceEntry": "docscriptor.layout.indexing",

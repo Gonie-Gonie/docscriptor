@@ -29,6 +29,7 @@ from docscriptor import (
     BoxStyle,
     BulletList,
     CaptionOptions,
+    CitationOptions,
     CitationLibrary,
     CitationSource,
     Chapter,
@@ -438,6 +439,7 @@ def test_theme_accepts_grouped_option_objects() -> None:
     theme = Theme(
         TypographyOptions(body_font_name="Arial", body_font_size=10.0),
         CaptionOptions(figure_label="Fig.", table_caption_position="below"),
+        CitationOptions(citation_format="apa", reference_format="apa"),
         GeneratedPageOptions(contents_title="Outline"),
         PageNumberOptions(show_page_numbers=True, page_number_format="p. {page}"),
         TitleMatterOptions(title_alignment="left"),
@@ -450,6 +452,9 @@ def test_theme_accepts_grouped_option_objects() -> None:
     assert theme.body_font_size == 10.0
     assert theme.figure_label == "Fig."
     assert theme.table_caption_position == "below"
+    assert theme.citation_format == "apa"
+    assert theme.reference_format == "apa"
+    assert theme.citation_options.citation_format == "apa"
     assert theme.contents_title == "Outline"
     assert theme.show_page_numbers is True
     assert theme.format_page_number(4) == "p. 4"
@@ -958,6 +963,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "cite")
     assert hasattr(docscriptor, "Box")
     assert hasattr(docscriptor, "BoxStyle")
+    assert hasattr(docscriptor, "CitationOptions")
     assert hasattr(docscriptor, "HeadingNumbering")
     assert hasattr(docscriptor, "ImageBox")
     assert hasattr(docscriptor, "ListStyle")
@@ -2161,6 +2167,57 @@ def test_bibtex_string_creates_citation_library() -> None:
     assert entry.organization == "Gonie-Gonie"
     assert entry.url == "https://github.com/Gonie-Gonie/docscriptor"
     assert "GitHub repository" in entry.format_reference()
+
+
+def test_citation_and_reference_formats_can_be_configured(tmp_path: Path) -> None:
+    source = CitationSource(
+        "Literate Programming",
+        key="knuth",
+        authors=("Donald E. Knuth",),
+        publisher="The Computer Journal",
+        year="1984",
+        url="https://doi.org/10.1093/comjnl/27.2.97",
+    )
+    document = Document(
+        "Citation Style Test",
+        Paragraph("Prior work ", cite("knuth"), " remains relevant."),
+        ReferencesPage(),
+        settings=DocumentSettings(
+            theme=Theme(citation_format="apa", reference_format="apa"),
+        ),
+        citations=[source],
+    )
+
+    assert source.format_reference("apa").startswith(
+        "Knuth, D. E. (1984). Literate Programming."
+    )
+
+    docx_path = tmp_path / "citation-style.docx"
+    pdf_path = tmp_path / "citation-style.pdf"
+    html_path = tmp_path / "citation-style.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    paragraph_texts = [paragraph.text for paragraph in WordDocument(docx_path).paragraphs]
+    assert any("Prior work (Knuth, 1984) remains relevant." in text for text in paragraph_texts)
+    assert any(
+        text.startswith("Knuth, D. E. (1984). Literate Programming.")
+        for text in paragraph_texts
+    )
+    assert not any(text.startswith("[1] Knuth") for text in paragraph_texts)
+
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    assert "Prior work (Knuth, 1984) remains relevant." in pdf_text
+    assert "Knuth, D. E. (1984). Literate Programming." in pdf_text
+
+    html_text = html_path.read_text(encoding="utf-8")
+    normalized_html_text = _normalized_html_text(html_path)
+    assert "Prior work (Knuth, 1984) remains relevant." in normalized_html_text
+    assert "Knuth, D. E. (1984). Literate Programming." in normalized_html_text
+    assert 'href="#citation_1"' in html_text
+    assert 'id="citation_1"' in html_text
+    assert '<span class="docscriptor-generated-marker">' not in html_text
 
 
 def test_document_accepts_document_settings() -> None:

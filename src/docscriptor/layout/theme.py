@@ -14,6 +14,10 @@ from docscriptor.core import (
     normalize_text_alignment,
     normalize_vertical_alignment,
 )
+from docscriptor.components.references import (
+    normalize_citation_format,
+    normalize_reference_format,
+)
 
 _UNSET = object()
 
@@ -448,6 +452,14 @@ class CaptionOptions:
 
 
 @dataclass(slots=True)
+class CitationOptions:
+    """Grouped citation and bibliography formatting defaults."""
+
+    citation_format: str = "numeric"
+    reference_format: str = "plain"
+
+
+@dataclass(slots=True)
 class GeneratedPageOptions:
     """Grouped generated-page titles and generated-page layout defaults."""
 
@@ -510,6 +522,7 @@ class Theme:
 
     typography: TypographyOptions
     captions: CaptionOptions
+    citation_options: CitationOptions
     generated_pages: GeneratedPageOptions
     page_numbers: PageNumberOptions
     title_matter: TitleMatterOptions
@@ -536,6 +549,8 @@ class Theme:
     figure_caption_label: str | None = None
     table_reference_label: str | None = None
     figure_reference_label: str | None = None
+    citation_format: str = "numeric"
+    reference_format: str = "plain"
     list_of_tables_title: str = "List of Tables"
     list_of_figures_title: str = "List of Figures"
     comments_title: str = "Comments"
@@ -568,6 +583,7 @@ class Theme:
         *options: object,
         typography: TypographyOptions | None = None,
         captions: CaptionOptions | None = None,
+        citation_options: CitationOptions | None = None,
         generated_pages: GeneratedPageOptions | None = None,
         page_numbers: PageNumberOptions | None = None,
         title_matter: TitleMatterOptions | None = None,
@@ -594,6 +610,8 @@ class Theme:
         figure_caption_label: str | None | object = _UNSET,
         table_reference_label: str | None | object = _UNSET,
         figure_reference_label: str | None | object = _UNSET,
+        citation_format: str | object = _UNSET,
+        reference_format: str | object = _UNSET,
         list_of_tables_title: str | object = _UNSET,
         list_of_figures_title: str | object = _UNSET,
         comments_title: str | object = _UNSET,
@@ -622,6 +640,7 @@ class Theme:
         option_groups = {
             TypographyOptions: None,
             CaptionOptions: None,
+            CitationOptions: None,
             GeneratedPageOptions: None,
             PageNumberOptions: None,
             TitleMatterOptions: None,
@@ -639,14 +658,15 @@ class Theme:
             if matching_type is None:
                 raise TypeError(
                     "Theme positional options must be TypographyOptions, "
-                    "CaptionOptions, GeneratedPageOptions, PageNumberOptions, "
-                    "TitleMatterOptions, or BlockOptions"
+                    "CaptionOptions, CitationOptions, GeneratedPageOptions, "
+                    "PageNumberOptions, TitleMatterOptions, or BlockOptions"
                 )
             option_groups[matching_type] = option
 
         keyword_groups = {
             TypographyOptions: typography,
             CaptionOptions: captions,
+            CitationOptions: citation_options,
             GeneratedPageOptions: generated_pages,
             PageNumberOptions: page_numbers,
             TitleMatterOptions: title_matter,
@@ -662,6 +682,7 @@ class Theme:
 
         self.typography = option_groups[TypographyOptions] or TypographyOptions()
         self.captions = option_groups[CaptionOptions] or CaptionOptions()
+        self.citation_options = option_groups[CitationOptions] or CitationOptions()
         self.generated_pages = option_groups[GeneratedPageOptions] or GeneratedPageOptions()
         self.page_numbers = option_groups[PageNumberOptions] or PageNumberOptions()
         self.title_matter = option_groups[TitleMatterOptions] or TitleMatterOptions()
@@ -672,6 +693,7 @@ class Theme:
             (BlockOptions, self.blocks),
             (TypographyOptions, self.typography),
             (CaptionOptions, self.captions),
+            (CitationOptions, self.citation_options),
             (GeneratedPageOptions, self.generated_pages),
             (PageNumberOptions, self.page_numbers),
             (TitleMatterOptions, self.title_matter),
@@ -706,6 +728,8 @@ class Theme:
             "figure_caption_label": figure_caption_label,
             "table_reference_label": table_reference_label,
             "figure_reference_label": figure_reference_label,
+            "citation_format": citation_format,
+            "reference_format": reference_format,
             "list_of_tables_title": list_of_tables_title,
             "list_of_figures_title": list_of_figures_title,
             "comments_title": comments_title,
@@ -767,6 +791,8 @@ class Theme:
             raise ValueError(
                 "figure_caption_position must be 'above' or 'below'"
             )
+        self.citation_format = normalize_citation_format(self.citation_format)
+        self.reference_format = normalize_reference_format(self.reference_format)
         if self.footnote_placement not in {"page", "document"}:
             raise ValueError(
                 "footnote_placement must be 'page' or 'document'"
@@ -814,6 +840,10 @@ class Theme:
             figure_caption_label=self.figure_caption_label,
             table_reference_label=self.table_reference_label,
             figure_reference_label=self.figure_reference_label,
+        )
+        self.citation_options = CitationOptions(
+            citation_format=self.citation_format,
+            reference_format=self.reference_format,
         )
         self.generated_pages = GeneratedPageOptions(
             list_of_tables_title=self.list_of_tables_title,
@@ -947,6 +977,7 @@ __all__ = [
     "BlockOptions",
     "BoxStyle",
     "CaptionOptions",
+    "CitationOptions",
     "GeneratedPageOptions",
     "HeadingNumbering",
     "ListStyle",

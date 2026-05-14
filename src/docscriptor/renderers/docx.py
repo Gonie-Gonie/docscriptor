@@ -67,6 +67,7 @@ from docscriptor.components.positioning import (
     TextBox,
     resolve_positioned_boxes,
 )
+from docscriptor.components.references import format_citation_label, reference_entry_marker
 from docscriptor.document import Document
 from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
 from docscriptor.core import DocscriptorError, PathLike, length_to_inches
@@ -1120,10 +1121,16 @@ class DocxRenderer:
                 )
                 continue
             if isinstance(fragment, Citation) and render_index is not None:
+                citation_entry = render_index.citation_entry(fragment.target)
+                citation_label = format_citation_label(
+                    citation_entry.source,
+                    citation_entry.number,
+                    theme.citation_format if theme is not None else "numeric",
+                )
                 self._append_hyperlink_runs(
                     paragraph,
-                    render_index.citation_anchor(fragment.target),
-                    [Text(f"[{render_index.citation_number(fragment.target)}]", style=fragment_style)],
+                    citation_entry.anchor,
+                    [Text(citation_label, style=fragment_style)],
                     internal=True,
                     style=fragment_style,
                     default_size=default_size,
@@ -2597,7 +2604,12 @@ class DocxRenderer:
         if isinstance(fragment, Citation):
             if render_index is None:
                 return fragment.plain_text()
-            return f"[{render_index.citation_number(fragment.target)}]"
+            citation_entry = render_index.citation_entry(fragment.target)
+            return format_citation_label(
+                citation_entry.source,
+                citation_entry.number,
+                theme.citation_format if theme is not None else "numeric",
+            )
         if isinstance(fragment, Hyperlink):
             return fragment.plain_text()
         if isinstance(fragment, InlineChip):
@@ -2801,9 +2813,17 @@ class DocxRenderer:
             paragraph = word_document.add_paragraph()
             paragraph.paragraph_format.left_indent = Inches(0.3)
             paragraph.paragraph_format.first_line_indent = Inches(-0.3)
+            marker = reference_entry_marker(
+                entry.number,
+                citation_format=theme.citation_format,
+                reference_format=theme.reference_format,
+            )
+            fragments = entry.source.reference_fragments(theme.reference_format)
+            if marker:
+                fragments = [Text(f"{marker} ")] + fragments
             self._append_runs(
                 paragraph,
-                [Text(f"[{entry.number}] ")] + entry.source.reference_fragments(),
+                fragments,
                 default_size=theme.body_font_size,
                 theme=theme,
                 render_index=render_index,

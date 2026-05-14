@@ -13,6 +13,91 @@ if TYPE_CHECKING:
     from docscriptor.layout.theme import TextStyle
 
 
+_CITATION_FORMAT_ALIASES = {
+    "numeric": "numeric",
+    "numbered": "numeric",
+    "ieee": "numeric",
+    "author-year": "author-year",
+    "authoryear": "author-year",
+    "apa": "apa",
+    "mla": "mla",
+    "chicago": "chicago",
+}
+
+_REFERENCE_FORMAT_ALIASES = {
+    "default": "plain",
+    "plain": "plain",
+    "numeric": "numbered",
+    "numbered": "numbered",
+    "apa": "apa",
+    "mla": "mla",
+    "chicago": "chicago",
+    "ieee": "ieee",
+}
+
+
+def normalize_citation_format(value: str) -> str:
+    """Return the canonical name for an inline citation format."""
+
+    if not isinstance(value, str):
+        raise TypeError("citation_format must be a string")
+    key = re.sub(r"[\s_]+", "-", value.strip().lower())
+    if key not in _CITATION_FORMAT_ALIASES:
+        supported = ", ".join(sorted(_CITATION_FORMAT_ALIASES))
+        raise ValueError(
+            f"Unsupported citation_format: {value!r}. Supported values: {supported}"
+        )
+    return _CITATION_FORMAT_ALIASES[key]
+
+
+def normalize_reference_format(value: str) -> str:
+    """Return the canonical name for a bibliography entry format."""
+
+    if not isinstance(value, str):
+        raise TypeError("reference_format must be a string")
+    key = re.sub(r"[\s_]+", "-", value.strip().lower())
+    if key not in _REFERENCE_FORMAT_ALIASES:
+        supported = ", ".join(sorted(_REFERENCE_FORMAT_ALIASES))
+        raise ValueError(
+            f"Unsupported reference_format: {value!r}. Supported values: {supported}"
+        )
+    return _REFERENCE_FORMAT_ALIASES[key]
+
+
+def format_citation_label(
+    source: CitationSource,
+    number: int,
+    citation_format: str,
+) -> str:
+    """Format the visible inline citation label for a cited source."""
+
+    resolved_format = normalize_citation_format(citation_format)
+    if resolved_format == "numeric":
+        return f"[{number}]"
+
+    author = _short_author_label(source)
+    if resolved_format == "mla":
+        return f"({author})"
+    if resolved_format == "chicago":
+        return f"({author} {_citation_year(source)})"
+    return f"({author}, {_citation_year(source)})"
+
+
+def reference_entry_marker(
+    number: int,
+    *,
+    citation_format: str,
+    reference_format: str,
+) -> str:
+    """Return the visible marker prefix for a references-page entry."""
+
+    resolved_citation_format = normalize_citation_format(citation_format)
+    resolved_reference_format = normalize_reference_format(reference_format)
+    if resolved_citation_format == "numeric" or resolved_reference_format in {"numbered", "ieee"}:
+        return f"[{number}]"
+    return ""
+
+
 @dataclass(slots=True, init=False)
 class CitationSource:
     """Structured bibliography metadata for a single reference entry."""
@@ -47,60 +132,27 @@ class CitationSource:
         self.url = url
         self.note = note
 
-    def format_reference(self) -> str:
+    def format_reference(self, reference_format: str = "plain") -> str:
         """Format the entry as a plain bibliography string."""
 
-        segments: list[str] = []
-        if self.authors:
-            segments.append(", ".join(self.authors))
-        elif self.organization:
-            segments.append(self.organization)
-        segments.append(self.title)
-        if self.publisher:
-            segments.append(self.publisher)
-        if self.year:
-            segments.append(self.year)
-        if self.url:
-            segments.append(self.url)
-        if self.note:
-            segments.append(self.note)
-        cleaned = [segment.strip().rstrip(".") for segment in segments if segment]
-        return ". ".join(cleaned) + "."
+        return _format_reference_text(self, reference_format)
 
-    def reference_fragments(self) -> list[Text]:
+    def reference_fragments(self, reference_format: str = "plain") -> list[Text]:
         """Return renderer-friendly inline fragments for a reference entry."""
 
         from docscriptor.components.inline import Hyperlink, Text
 
+        text = self.format_reference(reference_format)
+        if not self.url or self.url not in text:
+            return [Text(text)]
+
+        before, after = text.split(self.url, 1)
         fragments: list[Text] = []
-        text_segments: list[str] = []
-        if self.authors:
-            text_segments.append(", ".join(self.authors))
-        elif self.organization:
-            text_segments.append(self.organization)
-        text_segments.append(self.title)
-        if self.publisher:
-            text_segments.append(self.publisher)
-        if self.year:
-            text_segments.append(self.year)
-        prefix = ". ".join(
-            segment.strip().rstrip(".")
-            for segment in text_segments
-            if segment
-        )
-        if prefix:
-            fragments.append(Text(f"{prefix}. "))
-        if self.url:
-            fragments.append(Hyperlink.external(self.url, self.url))
-            if self.note:
-                fragments.append(Text(f". {self.note.strip().rstrip('.')}.")) 
-            else:
-                fragments.append(Text("."))
-            return fragments
-        if self.note:
-            fragments.append(Text(f"{self.note.strip().rstrip('.')}.")) 
-        elif not fragments:
-            fragments.append(Text(""))
+        if before:
+            fragments.append(Text(before))
+        fragments.append(Hyperlink.external(self.url, self.url))
+        if after:
+            fragments.append(Text(after))
         return fragments
 
     def cite(self, *, style: TextStyle | None = None) -> Citation:
@@ -193,6 +245,214 @@ def coerce_citation_library(
     return CitationLibrary(value)
 
 
+def _format_reference_text(source: CitationSource, reference_format: str) -> str:
+    resolved_format = normalize_reference_format(reference_format)
+    if resolved_format in {"plain", "numbered"}:
+        return _format_plain_reference(source)
+    if resolved_format == "apa":
+        return _format_apa_reference(source)
+    if resolved_format == "mla":
+        return _format_mla_reference(source)
+    if resolved_format == "chicago":
+        return _format_chicago_reference(source)
+    if resolved_format == "ieee":
+        return _format_ieee_reference(source)
+    raise ValueError(f"Unsupported reference_format: {reference_format!r}")
+
+
+def _format_plain_reference(source: CitationSource) -> str:
+    return _join_reference_segments(
+        _display_author_text(source),
+        source.title,
+        source.publisher,
+        source.year,
+        source.url,
+        source.note,
+    )
+
+
+def _format_apa_reference(source: CitationSource) -> str:
+    return _join_reference_segments(
+        _apa_author_text(source),
+        f"({source.year or 'n.d.'})",
+        source.title,
+        source.publisher,
+        source.url,
+        source.note,
+    )
+
+
+def _format_mla_reference(source: CitationSource) -> str:
+    title = _clean_reference_segment(source.title)
+    quoted_title = f'"{title}"' if title else None
+    return _join_reference_segments(
+        _mla_author_text(source),
+        quoted_title,
+        source.publisher,
+        source.year,
+        source.url,
+        source.note,
+    )
+
+
+def _format_chicago_reference(source: CitationSource) -> str:
+    publication = _join_comma_segments(source.publisher, source.year)
+    return _join_reference_segments(
+        _mla_author_text(source),
+        source.title,
+        publication,
+        source.url,
+        source.note,
+    )
+
+
+def _format_ieee_reference(source: CitationSource) -> str:
+    title = _clean_reference_segment(source.title)
+    quoted_title = f'"{title}"' if title else None
+    publication = _join_comma_segments(source.publisher, source.year)
+    return _join_reference_segments(
+        _display_author_text(source),
+        quoted_title,
+        publication,
+        source.url,
+        source.note,
+    )
+
+
+def _join_reference_segments(*segments: str | None) -> str:
+    cleaned = [
+        cleaned_segment
+        for segment in segments
+        if (cleaned_segment := _clean_reference_segment(segment)) is not None
+    ]
+    if not cleaned:
+        return ""
+    return ". ".join(cleaned) + "."
+
+
+def _join_comma_segments(*segments: str | None) -> str | None:
+    cleaned = [
+        cleaned_segment
+        for segment in segments
+        if (cleaned_segment := _clean_reference_segment(segment)) is not None
+    ]
+    if not cleaned:
+        return None
+    return ", ".join(cleaned)
+
+
+def _clean_reference_segment(segment: str | None) -> str | None:
+    if segment is None:
+        return None
+    cleaned = " ".join(str(segment).split()).strip().rstrip(".")
+    return cleaned or None
+
+
+def _display_author_text(source: CitationSource) -> str | None:
+    if source.authors:
+        return ", ".join(source.authors)
+    return source.organization
+
+
+def _apa_author_text(source: CitationSource) -> str | None:
+    if source.authors:
+        return _join_apa_author_names(source.authors)
+    return source.organization
+
+
+def _mla_author_text(source: CitationSource) -> str | None:
+    if source.authors:
+        names = [_invert_person_name(author) for author in source.authors]
+        if len(names) == 1:
+            return names[0]
+        return ", ".join(names[:-1]) + f", and {names[-1]}"
+    return source.organization
+
+
+def _join_apa_author_names(authors: Sequence[str]) -> str:
+    names = [_apa_person_name(author) for author in authors if author.strip()]
+    if not names:
+        return ""
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        return f"{names[0]}, & {names[1]}"
+    return ", ".join(names[:-1]) + f", & {names[-1]}"
+
+
+def _apa_person_name(name: str) -> str:
+    cleaned = _clean_reference_segment(name)
+    if cleaned is None:
+        return ""
+    if "," in cleaned:
+        surname, given = (part.strip() for part in cleaned.split(",", 1))
+        initials = _initials(given)
+        return f"{surname}, {initials}" if initials else surname
+
+    parts = cleaned.split()
+    if len(parts) == 1:
+        return cleaned
+    surname = parts[-1]
+    initials = _initials(" ".join(parts[:-1]))
+    return f"{surname}, {initials}" if initials else surname
+
+
+def _invert_person_name(name: str) -> str:
+    cleaned = _clean_reference_segment(name)
+    if cleaned is None:
+        return ""
+    if "," in cleaned:
+        return cleaned
+    parts = cleaned.split()
+    if len(parts) == 1:
+        return cleaned
+    return f"{parts[-1]}, {' '.join(parts[:-1])}"
+
+
+def _initials(given_names: str) -> str:
+    initials: list[str] = []
+    for part in re.split(r"\s+", given_names.strip()):
+        for piece in part.split("-"):
+            cleaned = re.sub(r"[^A-Za-z]", "", piece)
+            if cleaned:
+                initials.append(f"{cleaned[0].upper()}.")
+    return " ".join(initials)
+
+
+def _short_author_label(source: CitationSource) -> str:
+    if source.authors:
+        surnames = [_family_name(author) for author in source.authors if author.strip()]
+        if len(surnames) == 1:
+            return surnames[0]
+        if len(surnames) == 2:
+            return f"{surnames[0]} & {surnames[1]}"
+        return f"{surnames[0]} et al."
+    if source.organization:
+        return source.organization
+    return _short_title_label(source.title)
+
+
+def _family_name(name: str) -> str:
+    cleaned = _clean_reference_segment(name)
+    if cleaned is None:
+        return ""
+    if "," in cleaned:
+        return cleaned.split(",", 1)[0].strip()
+    return cleaned.split()[-1]
+
+
+def _short_title_label(title: str) -> str:
+    cleaned = _clean_reference_segment(title) or "Untitled"
+    words = cleaned.split()
+    if len(words) <= 3:
+        return cleaned
+    return " ".join(words[:3])
+
+
+def _citation_year(source: CitationSource) -> str:
+    return source.year or "n.d."
+
+
 def _parse_bibtex_entries(source: str) -> list[tuple[str, dict[str, str]]]:
     entries: list[tuple[str, dict[str, str]]] = []
     cursor = 0
@@ -268,4 +528,8 @@ __all__ = [
     "CitationLibrary",
     "CitationSource",
     "coerce_citation_library",
+    "format_citation_label",
+    "normalize_citation_format",
+    "normalize_reference_format",
+    "reference_entry_marker",
 ]

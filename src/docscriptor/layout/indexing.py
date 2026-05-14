@@ -132,6 +132,21 @@ class RenderIndex:
             raise DocscriptorError(f"Unknown citation key: {target!r}")
         return self.citation_numbers[target]
 
+    def citation_entry(self, target: CitationSource | str) -> CitationReferenceEntry:
+        """Return the indexed citation entry for a source or key."""
+
+        number = self.citation_number(target)
+        try:
+            entry = self.citations[number - 1]
+        except IndexError as exc:
+            raise DocscriptorError(f"Unknown citation number: {number!r}") from exc
+        if entry.number == number:
+            return entry
+        for entry in self.citations:
+            if entry.number == number:
+                return entry
+        raise DocscriptorError(f"Unknown citation number: {number!r}")
+
     def comment_number(self, target: Comment) -> int:
         """Return the assigned inline comment number."""
 

@@ -52,6 +52,7 @@ from docscriptor.components.positioning import (
     TextBox,
     resolve_positioned_boxes,
 )
+from docscriptor.components.references import format_citation_label, reference_entry_marker
 from docscriptor.core import DocscriptorError, PathLike, length_to_inches
 from docscriptor.document import Document
 from docscriptor.components.equations import SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
@@ -744,9 +745,17 @@ class HtmlRenderer:
         entries = "".join(
             (
                 f'<p class="docscriptor-generated-entry" id="{escape(entry.anchor)}">'
-                f'<span class="docscriptor-generated-marker">[{entry.number}]</span> '
+                + (
+                    f'<span class="docscriptor-generated-marker">{escape(marker)}</span> '
+                    if (marker := reference_entry_marker(
+                        entry.number,
+                        citation_format=context.theme.citation_format,
+                        reference_format=context.theme.reference_format,
+                    ))
+                    else ""
+                )
                 + self._inline_html(
-                    entry.source.reference_fragments(),
+                    entry.source.reference_fragments(context.theme.reference_format),
                     context.theme,
                     context.render_index,
                 )
@@ -1358,11 +1367,16 @@ class HtmlRenderer:
                 internal=True,
             )
         if isinstance(fragment, Citation):
-            citation_number = render_index.citation_number(fragment.target)
+            citation_entry = render_index.citation_entry(fragment.target)
+            citation_label = format_citation_label(
+                citation_entry.source,
+                citation_entry.number,
+                theme.citation_format,
+            )
             return self._link_html(
-                f"citation_{citation_number}",
+                citation_entry.anchor,
                 self._styled_text_html(
-                    f"[{citation_number}]",
+                    citation_label,
                     fragment,
                     theme,
                     base_bold=base_bold,
@@ -1540,7 +1554,12 @@ class HtmlRenderer:
                 return "".join(item.plain_text() for item in fragment.label)
             return self._resolve_block_reference(fragment.target, theme, render_index)
         if isinstance(fragment, Citation):
-            return f"[{render_index.citation_number(fragment.target)}]"
+            citation_entry = render_index.citation_entry(fragment.target)
+            return format_citation_label(
+                citation_entry.source,
+                citation_entry.number,
+                theme.citation_format,
+            )
         if isinstance(fragment, Hyperlink):
             return fragment.plain_text()
         if isinstance(fragment, Comment):
