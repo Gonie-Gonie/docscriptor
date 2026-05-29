@@ -6,18 +6,22 @@ It is aimed at report, documentation, and manuscript workflows where content alr
 
 ## Install
 
-Docscriptor is not published on PyPI yet, so `pip install docscriptor` will not work at the moment.
-
-For normal use, install it directly from GitHub:
+For normal use, install Docscriptor from PyPI:
 
 ```powershell
-pip install "docscriptor @ git+https://github.com/Gonie-Gonie/docscriptor.git"
+pip install docscriptor
 ```
 
 To upgrade later:
 
 ```powershell
-pip install --upgrade "docscriptor @ git+https://github.com/Gonie-Gonie/docscriptor.git"
+pip install --upgrade docscriptor
+```
+
+If you need the optional dependencies used by the bundled examples:
+
+```powershell
+pip install "docscriptor[examples]"
 ```
 
 If you want to work from a repository checkout, run the bundled example scripts, or contribute locally:
@@ -259,6 +263,8 @@ Create and push a release tag like this:
 .\scripts\release.ps1 0.3.0
 ```
 
-That pushes `v0.3.0`, and the GitHub release workflow builds the wheel/sdist artifacts plus the two example PDFs and attaches them to the matching GitHub Release automatically.
+That pushes `v0.3.0`, and the GitHub release workflow runs the test suite, builds the wheel/sdist artifacts, renders the two example PDFs, attaches them to the matching GitHub Release, and uploads the Python distributions to PyPI.
 
 If you want a curated release body instead of GitHub's generated notes, add a file such as `release-notes/v0.3.0.md` before pushing the tag.
+
+PyPI publishing uses Trusted Publishing through the `pypi` GitHub environment. The PyPI project or pending publisher must trust repository `Gonie-Gonie/docscriptor`, workflow `.github/workflows/release.yml`, and environment `pypi`.

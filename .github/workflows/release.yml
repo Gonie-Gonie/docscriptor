@@ -5,12 +5,12 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-
 jobs:
-  publish:
+  build-release:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
 
     steps:
       - name: Check out repository
@@ -28,6 +28,9 @@ jobs:
           python -m pip install --upgrade pip build
           python -m pip install -e ".[dev]"
 
+      - name: Run tests
+        run: python -m pytest
+
       - name: Build distributions
         run: python -m build
 
@@ -35,6 +38,12 @@ jobs:
         run: |
           python examples/usage_guide_example/main.py
           python examples/journal_paper_example/main.py
+
+      - name: Store Python distributions for PyPI job
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
 
       - name: Resolve release notes
         id: release_notes
@@ -67,3 +76,25 @@ jobs:
             artifacts/usage-guide/docscriptor-user-guide.pdf
             artifacts/journal-paper/docscriptor-development-philosophy.pdf
           generate_release_notes: true
+
+  publish-pypi:
+    name: Publish Python distribution to PyPI
+    needs: build-release
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/docscriptor
+
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download Python distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
