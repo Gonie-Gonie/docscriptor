@@ -9,14 +9,6 @@ sheet.
 from __future__ import annotations
 
 from pathlib import Path
-from textwrap import fill
-
-import matplotlib
-
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
-from matplotlib.patches import FancyBboxPatch
 
 from docscriptor import (
     Affiliation,
@@ -94,6 +86,10 @@ OUTPUT_DIR = Path("artifacts") / "usage-guide"
 EXAMPLE_DIR = Path(__file__).resolve().parent
 ASSET_DIR = EXAMPLE_DIR / "assets"
 LOGO_PATH = ASSET_DIR / "docscriptor-logo.png"
+PIPELINE_DIAGRAM_PATH = ASSET_DIR / "pipeline-diagram.png"
+AUTHOR_LAYOUT_DIAGRAM_PATH = ASSET_DIR / "author-layout-diagram.png"
+RENDERER_BEHAVIOR_DIAGRAM_PATH = ASSET_DIR / "renderer-behavior-diagram.png"
+CLI_WORKFLOW_DIAGRAM_PATH = ASSET_DIR / "cli-workflow-diagram.png"
 
 RELATED_WORK = CitationLibrary(
     [
@@ -665,364 +661,33 @@ document.save_all("artifacts/manuscript", stem="article-draft")
 """
 
 
-def _wrapped_lines(lines: list[str], *, width: int) -> list[str]:
-    wrapped: list[str] = []
-    for line in lines:
-        for segment in line.splitlines():
-            wrapped.extend(
-                fill(
-                    segment,
-                    width=width,
-                    break_long_words=False,
-                    break_on_hyphens=False,
-                ).splitlines()
-            )
-    return wrapped
-
-
-def _add_card(
-    axis: object,
-    x: float,
-    y: float,
-    width: float,
-    height: float,
-    color_value: str,
-    title: str,
-    body: list[str],
-    *,
-    wrap_width: int = 22,
-) -> None:
-    patch = FancyBboxPatch(
-        (x, y),
-        width,
-        height,
-        boxstyle="round,pad=0.02,rounding_size=0.03",
-        linewidth=1.2,
-        edgecolor="#4F6274",
-        facecolor=color_value,
-    )
-    axis.add_patch(patch)
-    axis.text(
-        x + width / 2,
-        y + height - 0.065,
-        title,
-        ha="center",
-        va="top",
-        fontsize=9.8,
-        weight="bold",
-        color="#173042",
-        clip_on=True,
-    )
-    wrapped = _wrapped_lines(body, width=wrap_width)
-    top = y + height - 0.18
-    bottom = y + 0.10
-    available = max(top - bottom, 0.01)
-    step = min(0.07, max(available / max(len(wrapped) - 1, 1), 0.045))
-    used = step * max(len(wrapped) - 1, 0)
-    start = bottom + (available + used) / 2 if used <= available else top
-    for index, line in enumerate(wrapped):
-        axis.text(
-            x + 0.03,
-            start - (index * step),
-            line,
-            ha="left",
-            va="top",
-            fontsize=8.0,
-            color="#223847",
-            clip_on=True,
-        )
-
-
-def build_pipeline_figure():
-    """Create a process diagram that explains the module's core value."""
-
-    figure, axis = plt.subplots(figsize=(8.8, 3.5))
-    axis.set_xlim(0, 1)
-    axis.set_ylim(0, 1)
-    axis.axis("off")
-
-    _add_card(
-        axis,
-        0.04,
-        0.24,
-        0.19,
-        0.52,
-        "#EAF3FB",
-        "Inputs",
-        [
-            "Data tables",
-            "Images",
-            "Citations",
-        ],
-        wrap_width=16,
-    )
-    _add_card(
-        axis,
-        0.29,
-        0.19,
-        0.21,
-        0.60,
-        "#F8F2E9",
-        "Python Document Tree",
-        [
-            "Document",
-            "Sections",
-            "Tables and figures",
-            "Notes and comments",
-        ],
-        wrap_width=18,
-    )
-    _add_card(
-        axis,
-        0.55,
-        0.24,
-        0.18,
-        0.52,
-        "#EDF6EC",
-        "Index",
-        [
-            "Headings",
-            "Captions",
-            "References",
-            "Generated pages",
-        ],
-        wrap_width=16,
-    )
-    _add_card(
-        axis,
-        0.78,
-        0.24,
-        0.17,
-        0.52,
-        "#FCEEE8",
-        "Outputs",
-        [
-            "Review DOCX",
-            "Stable PDF",
-            "Shareable HTML",
-        ],
-        wrap_width=15,
-    )
-
-    arrow_kwargs = {"arrowstyle": "->", "lw": 2.0, "color": "#48627A"}
-    axis.annotate("", xy=(0.29, 0.51), xytext=(0.23, 0.51), arrowprops=arrow_kwargs)
-    axis.annotate("", xy=(0.55, 0.51), xytext=(0.50, 0.51), arrowprops=arrow_kwargs)
-    axis.annotate("", xy=(0.78, 0.51), xytext=(0.73, 0.51), arrowprops=arrow_kwargs)
-    axis.text(
-        0.5,
-        0.94,
-        "One authored structure keeps evidence, layout intent, and exports aligned.",
-        ha="center",
-        fontsize=10.5,
-        color="#193040",
-    )
-    figure.tight_layout()
-    return figure
-
-
-def build_author_layout_figure():
-    """Create a comparison figure for author-display strategies."""
-
-    figure, axis = plt.subplots(figsize=(8.8, 3.7))
-    axis.set_xlim(0, 1)
-    axis.set_ylim(0, 1)
-    axis.axis("off")
-
-    _add_card(
-        axis,
-        0.04,
-        0.19,
-        0.28,
-        0.64,
-        "#EEF4FB",
-        "Journal Default",
-        [
-            "Hyeong-Gon Jo [1]*",
-            "Codex [2]",
-            "[1] Seoul National University",
-            "[2] OpenAI",
-            "* Corresponding author",
-        ],
-        wrap_width=28,
-    )
-
-    _add_card(
-        axis,
-        0.36,
-        0.19,
-        0.28,
-        0.64,
-        "#F8F2E8",
-        "Stacked Profiles",
-        [
-            "Docscriptor Contributors",
-            "Documentation workflow",
-            "Maintainers and release editors",
-            "",
-            "Hyeong-Gon Jo",
-            "Repository steward",
-        ],
-        wrap_width=28,
-    )
-
-    _add_card(
-        axis,
-        0.68,
-        0.19,
-        0.28,
-        0.64,
-        "#EDF7EC",
-        "Manual Front Matter",
-        [
-            "DocumentSettings(",
-            "  metadata_author=",
-            "  'Team Name'",
-            ")",
-            "",
-            "Build the visible cover with",
-            "ordinary unnumbered sections.",
-        ],
-        wrap_width=28,
-    )
-    axis.text(
-        0.5,
-        0.94,
-        "Choose the author model that matches the visible title matter.",
-        ha="center",
-        fontsize=10.5,
-        color="#193040",
-    )
-
-    figure.tight_layout()
-    return figure
-
-
-def build_renderer_behavior_figure():
-    """Create a renderer comparison figure for notes and references."""
-
-    figure, axis = plt.subplots(figsize=(8.8, 3.6))
-    axis.set_xlim(0, 1)
-    axis.set_ylim(0, 1)
-    axis.axis("off")
-
-    columns = [
-        ("DOCX", "#EAF3FB", ["Editable review copy", "Native page footnotes", "Office-friendly fields"]),
-        ("PDF", "#F8F2E8", ["Stable pagination", "Portable note page", "Print-ready captions"]),
-        ("HTML", "#EDF7EC", ["Fast browser sharing", "Portable note page", "Anchor navigation"]),
-    ]
-    for index, (title, color_value, lines) in enumerate(columns):
-        x = 0.055 + (index * 0.31)
-        _add_card(axis, x, 0.24, 0.25, 0.52, color_value, title, lines, wrap_width=23)
-
-    axis.text(
-        0.5,
-        0.94,
-        "Renderer behavior is shared where possible and explicit where it differs.",
-        ha="center",
-        fontsize=10.5,
-        color="#1A3345",
-    )
-    figure.tight_layout()
-    return figure
-
-
-def build_cli_workflow_figure():
-    """Create a compact diagram for CLI validation and rendering."""
-
-    figure, axis = plt.subplots(figsize=(8.8, 3.6))
-    axis.set_xlim(0, 1)
-    axis.set_ylim(0, 1)
-    axis.axis("off")
-
-    steps = [
-        (
-            "Author Source",
-            "# report.py\nbuild_document()",
-            "README.md",
-            "notebook.ipynb",
-            "#EAF3FB",
-        ),
-        (
-            "Workflow API",
-            "load_document",
-            "validate_source",
-            "render_document",
-            "#F8F2E8",
-        ),
-        (
-            "CLI Commands",
-            "build",
-            "convert",
-            "validate",
-            "#EDF7EC",
-        ),
-        (
-            "Artifacts",
-            "DOCX",
-            "PDF",
-            "HTML",
-            "#FCEEE8",
-        ),
-    ]
-    for index, (title, first, second, third, color_value) in enumerate(steps):
-        x = 0.04 + index * 0.24
-        _add_card(
-            axis,
-            x,
-            0.24,
-            0.185,
-            0.50,
-            color_value,
-            title,
-            [first, second, third],
-            wrap_width=18,
-        )
-        if index < len(steps) - 1:
-            axis.annotate(
-                "",
-                xy=(x + 0.225, 0.50),
-                xytext=(x + 0.185, 0.50),
-                arrowprops={"arrowstyle": "->", "lw": 1.8, "color": "#48627A"},
-            )
-    axis.text(
-        0.5,
-        0.93,
-        "The CLI stays thin over the same workflow API used by Python callers.",
-        ha="center",
-        fontsize=10.5,
-        color="#1A3345",
-    )
-    figure.tight_layout()
-    return figure
-
-
 def build_usage_guide_document() -> Document:
     """Build a detailed reference-style usage guide."""
 
     logo_figure = Figure(LOGO_PATH, width=1.8)
     pipeline_figure = Figure(
-        build_pipeline_figure(),
+        PIPELINE_DIAGRAM_PATH,
         caption=Paragraph(
             "Core authoring pipeline from project inputs to synchronized DOCX, PDF, and HTML outputs."
         ),
         width=6.5,
     )
     author_layout_figure = Figure(
-        build_author_layout_figure(),
+        AUTHOR_LAYOUT_DIAGRAM_PATH,
         caption=Paragraph(
             "Three practical author-display strategies: journal-style default, stacked guide profiles, and fully manual front matter."
         ),
         width=6.5,
     )
     renderer_behavior_figure = Figure(
-        build_renderer_behavior_figure(),
+        RENDERER_BEHAVIOR_DIAGRAM_PATH,
         caption=Paragraph(
             "Renderer-specific behavior for notes, review workflows, and cross-reference stability."
         ),
         width=6.5,
     )
     cli_workflow_figure = Figure(
-        build_cli_workflow_figure(),
+        CLI_WORKFLOW_DIAGRAM_PATH,
         caption=Paragraph(
             "Command-line builds, conversions, and validation all call the same high-level workflow API."
         ),

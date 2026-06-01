@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from textwrap import fill
 
 import matplotlib
 
@@ -11,7 +10,6 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib.patches import FancyBboxPatch
 
 from docscriptor import (
     Affiliation,
@@ -39,160 +37,7 @@ EXAMPLE_DIR = Path(__file__).resolve().parent
 ASSET_DIR = EXAMPLE_DIR / "assets"
 RESULTS_CSV_PATH = ASSET_DIR / "benchmark_results.csv"
 ABLATION_CSV_PATH = ASSET_DIR / "ablation_results.csv"
-
-
-def _wrapped_lines(lines: list[str], *, width: int) -> list[str]:
-    wrapped: list[str] = []
-    for line in lines:
-        for segment in line.splitlines():
-            wrapped.extend(
-                fill(
-                    segment,
-                    width=width,
-                    break_long_words=False,
-                    break_on_hyphens=False,
-                ).splitlines()
-            )
-    return wrapped
-
-
-def _add_box(
-    axis: object,
-    x: float,
-    y: float,
-    width: float,
-    height: float,
-    color_value: str,
-    title: str,
-    lines: list[str],
-    *,
-    wrap_width: int = 21,
-) -> None:
-    patch = FancyBboxPatch(
-        (x, y),
-        width,
-        height,
-        boxstyle="round,pad=0.02,rounding_size=0.03",
-        linewidth=1.2,
-        edgecolor="#455E74",
-        facecolor=color_value,
-    )
-    axis.add_patch(patch)
-    axis.text(
-        x + width / 2,
-        y + height - 0.065,
-        title,
-        ha="center",
-        va="top",
-        fontsize=9.8,
-        weight="bold",
-        color="#183244",
-        clip_on=True,
-    )
-    wrapped = _wrapped_lines(lines, width=wrap_width)
-    top = y + height - 0.18
-    bottom = y + 0.10
-    available = max(top - bottom, 0.01)
-    step = min(0.07, max(available / max(len(wrapped) - 1, 1), 0.045))
-    used = step * max(len(wrapped) - 1, 0)
-    start = bottom + (available + used) / 2 if used <= available else top
-    for index, line in enumerate(wrapped):
-        axis.text(
-            x + 0.03,
-            start - (index * step),
-            line,
-            ha="left",
-            va="top",
-            fontsize=8.0,
-            color="#23394A",
-            clip_on=True,
-        )
-
-
-def build_traceability_figure():
-    """Create a diagram showing the manuscript workflow being studied."""
-
-    figure, axis = plt.subplots(figsize=(8.8, 3.5))
-    axis.set_xlim(0, 1)
-    axis.set_ylim(0, 1)
-    axis.axis("off")
-
-    _add_box(
-        axis,
-        0.05,
-        0.24,
-        0.19,
-        0.52,
-        "#EAF3FB",
-        "Evidence",
-        [
-            "CSV metrics",
-            "Static assets",
-            "Citations",
-        ],
-        wrap_width=16,
-    )
-    _add_box(
-        axis,
-        0.29,
-        0.19,
-        0.21,
-        0.60,
-        "#F8F2E8",
-        "Authoring",
-        [
-            "DataFrame tables",
-            "Matplotlib figures",
-            "Structured sections",
-            "Notes",
-        ],
-        wrap_width=18,
-    )
-    _add_box(
-        axis,
-        0.55,
-        0.24,
-        0.18,
-        0.52,
-        "#EDF7EC",
-        "Checks",
-        [
-            "Numbering",
-            "References",
-            "Bibliography",
-        ],
-        wrap_width=15,
-    )
-    _add_box(
-        axis,
-        0.78,
-        0.24,
-        0.17,
-        0.52,
-        "#FCEDE7",
-        "Outputs",
-        [
-            "Review DOCX",
-            "Submission PDF",
-            "Share HTML",
-        ],
-        wrap_width=15,
-    )
-
-    arrow_kwargs = {"arrowstyle": "->", "lw": 2.0, "color": "#48627A"}
-    axis.annotate("", xy=(0.29, 0.51), xytext=(0.24, 0.51), arrowprops=arrow_kwargs)
-    axis.annotate("", xy=(0.55, 0.51), xytext=(0.50, 0.51), arrowprops=arrow_kwargs)
-    axis.annotate("", xy=(0.78, 0.51), xytext=(0.73, 0.51), arrowprops=arrow_kwargs)
-    axis.text(
-        0.5,
-        0.94,
-        "Claims remain downstream of the evidence that supports them.",
-        ha="center",
-        fontsize=10.5,
-        color="#183244",
-    )
-    figure.tight_layout()
-    return figure
+TRACEABILITY_DIAGRAM_PATH = ASSET_DIR / "traceability-diagram.png"
 
 
 def build_quality_latency_figure(results_df: pd.DataFrame):
@@ -324,7 +169,7 @@ def build_journal_paper_document() -> Document:
     )
 
     traceability_figure = Figure(
-        build_traceability_figure(),
+        TRACEABILITY_DIAGRAM_PATH,
         caption=Paragraph(
             "Traceability pipeline used in the study, linking evidence sources, authored structure, checks, and submission outputs."
         ),
@@ -354,7 +199,7 @@ def build_journal_paper_document() -> Document:
             Paragraph(
                 "This example models a journal submission workflow in which prose, tables, figures, and citations are assembled from ordinary Python code. Benchmark tables are loaded from CSV files with ",
                 code("pandas.read_csv"),
-                ", explanatory figures are generated with ",
+                ", benchmark figures are generated with ",
                 code("matplotlib"),
                 ", and DOCX, PDF, and HTML outputs are rendered from the same source document. The workflow follows the reproducibility discipline discussed in ",
                 manuscript_sources.cite("reproducible-research"),
