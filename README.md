@@ -198,10 +198,11 @@ The default behavior is intentionally conventional:
 
 ## Example Scripts
 
-The repository includes three standalone example directories:
+The repository includes four standalone example directories:
 
 - `examples/usage_guide_example/`
 - `examples/journal_paper_example/`
+- `examples/native_benchmark_report/`
 - `examples/release_notes_digest/`
 
 Run them directly from the repository checkout:
@@ -209,6 +210,7 @@ Run them directly from the repository checkout:
 ```powershell
 .\.venv\Scripts\python.exe .\examples\usage_guide_example\main.py
 .\.venv\Scripts\python.exe .\examples\journal_paper_example\main.py
+.\.venv\Scripts\python.exe .\examples\native_benchmark_report\main.py
 .\.venv\Scripts\python.exe .\examples\release_notes_digest\main.py
 ```
 
@@ -217,18 +219,21 @@ What they show:
 - `usage_guide_example` is a detailed guide that keeps almost all assembly in one `main.py` so the source stays easy to read; it now covers the core authoring model, validation, CLI workflows, theorem-like countable blocks, layout controls, imports, presets, and renderer differences
 - the usage guide includes Markdown and notebook import patterns that bring existing authored files into normal docscriptor document objects
 - `journal_paper_example` shows a longer manuscript-style workflow with article-style sections, unnumbered abstract/highlights/acknowledgements, CSV-backed tables, and matplotlib figures inserted directly from Python objects
+- `native_benchmark_report` shows a compact Python-native workflow where a script generates an in-memory workload, benchmarks several callables, turns structured result objects into tables and prose, and exports one report bundle
 - `release_notes_digest` collects `release-notes/*.md`, sorts semantic versions from filenames, imports the Markdown bodies, and builds a release-note document with a version-management table and runbook
 
 By default they write outputs under:
 
 - `artifacts/usage-guide/`
 - `artifacts/journal-paper/`
+- `artifacts/native-benchmark-report/`
 - `artifacts/release-notes/`
 
 The main exported filenames are:
 
 - `artifacts/usage-guide/docscriptor-user-guide.pdf`
 - `artifacts/journal-paper/docscriptor-development-philosophy.pdf`
+- `artifacts/native-benchmark-report/native-python-benchmark.pdf`
 - `artifacts/release-notes/docscriptor-release-notes.pdf`
 
 ## Project Layout
