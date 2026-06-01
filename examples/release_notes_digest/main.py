@@ -247,21 +247,29 @@ def build_release_notes_document(
     )
 
 
-def build_release_notes(output_dir: str | Path) -> tuple[Path, Path]:
+def build_release_notes(
+    output_dir: str | Path,
+    *,
+    verbose: bool = False,
+) -> tuple[Path, Path]:
     """Build the release-note digest and export it to DOCX, PDF, and HTML."""
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     document = build_release_notes_document()
-    outputs = document.save_all(output_path, stem="docscriptor-release-notes")
+    outputs = document.save_all(
+        output_path,
+        stem="docscriptor-release-notes",
+        verbose=verbose,
+    )
     return outputs["docx"], outputs["pdf"]
 
 
 def main() -> None:
     """Build the release-note digest into the default example output directory."""
 
-    docx_path, pdf_path = build_release_notes(OUTPUT_DIR)
+    docx_path, pdf_path = build_release_notes(OUTPUT_DIR, verbose=True)
     html_path = OUTPUT_DIR / "docscriptor-release-notes.html"
     print(f"Wrote {docx_path}")
     print(f"Wrote {pdf_path}")

@@ -1732,21 +1732,29 @@ def build_usage_guide_document() -> Document:
     )
 
 
-def build_usage_guide(output_dir: str | Path) -> tuple[Path, Path]:
+def build_usage_guide(
+    output_dir: str | Path,
+    *,
+    verbose: bool = False,
+) -> tuple[Path, Path]:
     """Build the usage guide example and export it to DOCX, PDF, and HTML."""
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     document = build_usage_guide_document()
-    outputs = document.save_all(output_path, stem="docscriptor-user-guide")
+    outputs = document.save_all(
+        output_path,
+        stem="docscriptor-user-guide",
+        verbose=verbose,
+    )
     return outputs["docx"], outputs["pdf"]
 
 
 def main() -> None:
     """Build the guide into the default example output directory."""
 
-    docx_path, pdf_path = build_usage_guide(OUTPUT_DIR)
+    docx_path, pdf_path = build_usage_guide(OUTPUT_DIR, verbose=True)
     html_path = OUTPUT_DIR / "docscriptor-user-guide.html"
     print(f"Wrote {docx_path}")
     print(f"Wrote {pdf_path}")

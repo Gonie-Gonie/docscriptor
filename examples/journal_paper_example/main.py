@@ -421,21 +421,29 @@ def build_journal_paper_document() -> Document:
     )
 
 
-def build_journal_paper(output_dir: str | Path) -> tuple[Path, Path]:
+def build_journal_paper(
+    output_dir: str | Path,
+    *,
+    verbose: bool = False,
+) -> tuple[Path, Path]:
     """Build the journal paper example and export it to DOCX, PDF, and HTML."""
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     document = build_journal_paper_document()
-    outputs = document.save_all(output_path, stem="docscriptor-development-philosophy")
+    outputs = document.save_all(
+        output_path,
+        stem="docscriptor-development-philosophy",
+        verbose=verbose,
+    )
     return outputs["docx"], outputs["pdf"]
 
 
 def main() -> None:
     """Build the paper into the default example output directory."""
 
-    docx_path, pdf_path = build_journal_paper(OUTPUT_DIR)
+    docx_path, pdf_path = build_journal_paper(OUTPUT_DIR, verbose=True)
     html_path = OUTPUT_DIR / "docscriptor-development-philosophy.html"
     print(f"Wrote {docx_path}")
     print(f"Wrote {pdf_path}")

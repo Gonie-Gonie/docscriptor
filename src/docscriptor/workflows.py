@@ -92,6 +92,7 @@ def render_document(
     stem: str,
     formats: Iterable[str] | None = None,
     validate: bool = True,
+    verbose: bool = False,
 ) -> RenderedOutputs:
     """Render a document to one or more output formats."""
 
@@ -103,6 +104,7 @@ def render_document(
         stem=stem,
         formats=normalized_formats,
         validate=validate,
+        verbose=verbose,
     )
     return RenderedOutputs(outputs)
 
@@ -116,6 +118,7 @@ def build_python_document(
     factory: str | None = None,
     validate: bool = True,
     chdir: bool = True,
+    verbose: bool = False,
 ) -> RenderedOutputs:
     """Load a Python-authored document and render it."""
 
@@ -129,6 +132,7 @@ def build_python_document(
             stem=stem or source_path.stem,
             formats=formats,
             validate=validate,
+            verbose=verbose,
         )
 
 
@@ -140,6 +144,7 @@ def convert_source(
     stem: str | None = None,
     title: str | None = None,
     validate: bool = True,
+    verbose: bool = False,
 ) -> RenderedOutputs:
     """Convert Markdown or notebook source into rendered document outputs."""
 
@@ -151,6 +156,7 @@ def convert_source(
         stem=stem or source_path.stem,
         formats=formats,
         validate=validate,
+        verbose=verbose,
     )
 
 

@@ -214,16 +214,24 @@ def build_document():
     )
 
 
-def build(output_dir: str | Path = OUTPUT_DIR) -> dict[str, Path]:
+def build(
+    output_dir: str | Path = OUTPUT_DIR,
+    *,
+    verbose: bool = False,
+) -> dict[str, Path]:
     """Render the example into the template artifact directory."""
 
-    return build_document().save_all(output_dir, stem="journal-article-template")
+    return build_document().save_all(
+        output_dir,
+        stem="journal-article-template",
+        verbose=verbose,
+    )
 
 
 def main() -> None:
     """Build the example from the command line."""
 
-    for path in build().values():
+    for path in build(verbose=True).values():
         print(f"Wrote {path}")
 
 

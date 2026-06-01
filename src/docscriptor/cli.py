@@ -119,6 +119,11 @@ def _add_render_options(
         action="store_true",
         help="Skip validation before rendering.",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print slow major build steps.",
+    )
 
 
 def _run_build(args: argparse.Namespace) -> int:
@@ -131,6 +136,7 @@ def _run_build(args: argparse.Namespace) -> int:
         factory=args.factory,
         validate=not args.no_validate,
         chdir=not args.no_chdir,
+        verbose=args.verbose,
     )
     _print_outputs(outputs.outputs)
     return 0
@@ -145,6 +151,7 @@ def _run_convert(args: argparse.Namespace) -> int:
         stem=args.stem,
         title=args.title,
         validate=not args.no_validate,
+        verbose=args.verbose,
     )
     _print_outputs(outputs.outputs)
     return 0

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 from typing import Iterable, Sequence, TYPE_CHECKING
 
 from docscriptor.compatibility import normalize_output_format, normalize_output_formats
@@ -196,6 +197,7 @@ class Document:
         stem: str | None = None,
         formats: Sequence[str] = ("docx", "pdf", "html"),
         validate: bool = True,
+        verbose: bool = False,
     ) -> dict[str, Path]:
         """Render the document to multiple output formats.
 
@@ -206,6 +208,8 @@ class Document:
             formats: Iterable of output formats. Supported values are
                 ``"docx"``, ``"pdf"``, and ``"html"`` with or without a
                 leading dot.
+            verbose: Print slow major steps. Steps under one second are omitted,
+                and at most ten progress lines are printed.
 
         Returns:
             A mapping from normalized format name to the written path.
@@ -214,15 +218,29 @@ class Document:
         directory = Path(output_dir)
         output_stem = stem or self._default_output_stem()
         normalized_formats = normalize_output_formats(formats)
+        progress_lines = 0
+
+        def report_step(label: str, start: float) -> None:
+            nonlocal progress_lines
+            elapsed = perf_counter() - start
+            if not verbose or elapsed < 1.0 or progress_lines >= 10:
+                return
+            print(f"{label} ({elapsed:.1f}s)")
+            progress_lines += 1
+
         if validate:
+            start = perf_counter()
             self._ensure_valid(normalized_formats)
+            report_step("Validated document", start)
 
         outputs: dict[str, Path] = {}
         for output_format in normalized_formats:
+            start = perf_counter()
             outputs[output_format] = self.save(
                 directory / f"{output_stem}.{output_format}",
                 validate=False,
             )
+            report_step(f"Rendered {output_format.upper()}", start)
         return outputs
 
     def _default_output_stem(self) -> str:

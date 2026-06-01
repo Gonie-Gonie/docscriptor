@@ -94,6 +94,7 @@ def test_cli_build_python_document(tmp_path: Path, capsys) -> None:
             str(output_dir),
             "--to",
             "html",
+            "--verbose",
         ]
     )
 

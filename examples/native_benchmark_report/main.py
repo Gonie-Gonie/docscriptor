@@ -245,16 +245,24 @@ def build_benchmark_document() -> Document:
     )
 
 
-def build_native_benchmark_report(output_dir: str | Path) -> tuple[Path, Path]:
+def build_native_benchmark_report(
+    output_dir: str | Path,
+    *,
+    verbose: bool = False,
+) -> tuple[Path, Path]:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    outputs = build_benchmark_document().save_all(output_path, stem="native-python-benchmark")
+    outputs = build_benchmark_document().save_all(
+        output_path,
+        stem="native-python-benchmark",
+        verbose=verbose,
+    )
     return outputs["docx"], outputs["pdf"]
 
 
 def main() -> None:
-    docx_path, pdf_path = build_native_benchmark_report(OUTPUT_DIR)
+    docx_path, pdf_path = build_native_benchmark_report(OUTPUT_DIR, verbose=True)
     html_path = OUTPUT_DIR / "native-python-benchmark.html"
     print(f"Wrote {docx_path}")
     print(f"Wrote {pdf_path}")

@@ -214,6 +214,8 @@ Run them directly from the repository checkout:
 .\.venv\Scripts\python.exe .\examples\release_notes_digest\main.py
 ```
 
+Direct example scripts print slow major render steps. Imported build functions stay quiet by default; pass `verbose=True` when you want the same progress messages.
+
 What they show:
 
 - `usage_guide_example` is a detailed guide that keeps almost all assembly in one `main.py` so the source stays easy to read; it now covers the core authoring model, validation, CLI workflows, theorem-like countable blocks, layout controls, imports, presets, and renderer differences

@@ -10,18 +10,25 @@ import journal_article_template
 OUTPUT_DIR = Path("artifacts") / "template"
 
 
-def build_all(output_dir: str | Path = OUTPUT_DIR) -> dict[str, dict[str, Path]]:
+def build_all(
+    output_dir: str | Path = OUTPUT_DIR,
+    *,
+    verbose: bool = False,
+) -> dict[str, dict[str, Path]]:
     """Render all template preset examples into one artifact directory."""
 
     return {
-        "journal_article_template": journal_article_template.build(output_dir),
+        "journal_article_template": journal_article_template.build(
+            output_dir,
+            verbose=verbose,
+        ),
     }
 
 
 def main() -> None:
     """Build all template examples from the command line."""
 
-    for outputs in build_all().values():
+    for outputs in build_all(verbose=True).values():
         for path in outputs.values():
             print(f"Wrote {path}")
 
