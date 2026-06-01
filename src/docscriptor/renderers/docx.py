@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
@@ -205,6 +206,7 @@ class DocxRenderer:
         *,
         number_label: str | None = None,
         anchor: str | None = None,
+        toc: bool = False,
     ) -> None:
         """Render a heading into the current DOCX container."""
 
@@ -216,6 +218,7 @@ class DocxRenderer:
             number_label=number_label,
             anchor=anchor,
             render_index=context.render_index,
+            toc=toc,
         )
 
     def render_part(
@@ -232,7 +235,7 @@ class DocxRenderer:
             self._ensure_page_break(word_document)
 
         number_label = context.render_index.heading_number(block) if block.numbered else None
-        anchor = context.render_index.heading_anchor(block) if block.numbered else None
+        anchor = context.render_index.heading_anchor(block)
         if number_label:
             self._add_title_line(
                 word_document,
@@ -253,7 +256,7 @@ class DocxRenderer:
             space_after=0,
             anchor=anchor,
         )
-        if number_label:
+        if block.toc:
             self._append_toc_entry_field(
                 title_paragraph,
                 self._flatten_fragments(
@@ -942,6 +945,7 @@ class DocxRenderer:
         number_label: str | None = None,
         anchor: str | None = None,
         render_index: RenderIndex | None = None,
+        toc: bool = False,
     ) -> None:
         paragraph = self._add_paragraph(container)
         paragraph.style = "Title" if level == 0 else f"Heading {min(level, 9)}"
@@ -961,7 +965,7 @@ class DocxRenderer:
         )
         if anchor is not None:
             self._add_bookmark(paragraph, anchor)
-        if number_label is not None:
+        if toc:
             self._append_toc_entry_field(
                 paragraph,
                 self._flatten_fragments(heading_fragments, theme, render_index),
@@ -1586,8 +1590,11 @@ class DocxRenderer:
         unit: str,
         *,
         word_document: WordDocument,
+        depth: int = 0,
     ) -> None:
         list_style = list_block.style or theme.list_style(ordered=isinstance(list_block, NumberedList))
+        if depth:
+            list_style = replace(list_style, indent=list_style.indent + depth * 0.25)
         for index, item in enumerate(list_block.items):
             paragraph = self._add_paragraph(container)
             self._apply_paragraph_style(paragraph, item.style, theme, unit)
@@ -1601,6 +1608,16 @@ class DocxRenderer:
                 marker_run = paragraph.add_run(f"{marker} ")
                 self._apply_run_style(marker_run, Text("").style, default_size=theme.body_font_size)
             self._append_runs(paragraph, item.content, theme=theme, render_index=render_index, word_document=word_document)
+            for child_list in list_block.item_children[index]:
+                self._render_list(
+                    container,
+                    child_list,
+                    theme,
+                    render_index,
+                    unit,
+                    word_document=word_document,
+                    depth=depth + 1,
+                )
 
     def _render_code_block(
         self,

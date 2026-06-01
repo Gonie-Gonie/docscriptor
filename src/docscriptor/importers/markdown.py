@@ -13,11 +13,12 @@ from docscriptor.components.blocks import (
     Chapter,
     CodeBlock,
     Divider,
+    MAX_SECTION_LEVEL,
+    MIN_SECTION_LEVEL,
     NumberedList,
     Paragraph,
     Section,
-    Subsection,
-    Subsubsection,
+    section_for_level,
 )
 from docscriptor.components.inline import Text
 from docscriptor.components.markup import markup
@@ -37,7 +38,7 @@ _THEMATIC_BREAK_RE = re.compile(
     r"^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$"
 )
 _LIST_RE = re.compile(
-    r"^(?P<indent> {0,3})(?P<marker>(?P<number>\d{1,9})[.)]|[-+*])[ \t]+(?P<body>.*)$"
+    r"^(?P<indent> *)(?P<marker>(?P<number>\d{1,9})[.)]|[-+*])[ \t]+(?P<body>.*)$"
 )
 _TASK_RE = re.compile(r"^\[([ xX])\][ \t]+(.*)$")
 _LINK_REFERENCE_RE = re.compile(
@@ -59,18 +60,38 @@ class _Heading:
 _MarkdownEvent = Block | _Heading
 
 
-def parse_markdown(source: str) -> list[Block]:
+def parse_markdown(
+    source: str,
+    *,
+    numbered: bool = True,
+    toc: bool | None = None,
+    heading_level_shift: int = 0,
+) -> list[Block]:
     """Parse Markdown text into docscriptor block objects.
 
     The parser targets the Markdown and GitHub Flavored Markdown constructs that
     map cleanly to docscriptor's renderer-neutral model: headings, paragraphs,
     lists, task-list markers, block quotes, code blocks, thematic breaks,
     tables, local images, links, autolinks, emphasis, inline code, and
-    strikethrough.
+    strikethrough. Pass ``numbered=False`` when imported headings should render
+    without generated heading numbers. Pass ``toc=True`` to keep those headings
+    in generated contents pages. Pass ``heading_level_shift=1`` to import
+    headings one level lower, or ``heading_level_shift=-1`` to promote them one
+    level.
     """
 
-    parser = _MarkdownParser(source)
-    return _build_heading_hierarchy(parser.parse())
+    parser = _MarkdownParser(
+        source,
+        numbered=numbered,
+        toc=toc,
+        heading_level_shift=heading_level_shift,
+    )
+    return _build_heading_hierarchy(
+        parser.parse(),
+        numbered=numbered,
+        toc=toc,
+        heading_level_shift=heading_level_shift,
+    )
 
 
 def from_markdown(
@@ -79,30 +100,57 @@ def from_markdown(
     title: str | None = None,
     settings: DocumentSettings | None = None,
     citations: CitationLibrary | Sequence[CitationSource] | str | None = None,
+    numbered: bool = True,
+    toc: bool | None = None,
+    heading_level_shift: int = 0,
 ) -> Document:
     """Create a ``Document`` from Markdown text.
 
     When ``title`` is not supplied, the first level-1 heading becomes the
     document title and is not repeated as a chapter. If no level-1 heading is
-    present, the title defaults to ``"Markdown Document"``.
+    present, the title defaults to ``"Markdown Document"``. Pass
+    ``numbered=False`` when imported headings should render without generated
+    heading numbers. Pass ``toc=True`` to keep those headings in generated
+    contents pages. Pass ``heading_level_shift=1`` to import headings one level
+    lower, or ``heading_level_shift=-1`` to promote them one level.
     """
 
-    parser = _MarkdownParser(source)
+    parser = _MarkdownParser(
+        source,
+        numbered=numbered,
+        toc=toc,
+        heading_level_shift=heading_level_shift,
+    )
     events = parser.parse()
     document_title = title or _consume_first_h1_title(events) or "Markdown Document"
     return Document(
         document_title,
-        _build_heading_hierarchy(events),
+        _build_heading_hierarchy(
+            events,
+            numbered=numbered,
+            toc=toc,
+            heading_level_shift=heading_level_shift,
+        ),
         settings=settings,
         citations=citations,
     )
 
 
 class _MarkdownParser:
-    def __init__(self, source: str) -> None:
+    def __init__(
+        self,
+        source: str,
+        *,
+        numbered: bool = True,
+        toc: bool | None = None,
+        heading_level_shift: int = 0,
+    ) -> None:
         normalized_source = source.replace("\r\n", "\n").replace("\r", "\n")
         self.lines = normalized_source.split("\n")
         self.references = _collect_link_references(self.lines)
+        self.numbered = numbered
+        self.toc = toc
+        self.heading_level_shift = heading_level_shift
 
     def parse(self) -> list[_MarkdownEvent]:
         events: list[_MarkdownEvent] = []
@@ -241,23 +289,54 @@ class _MarkdownParser:
                 content = content[1:]
             quote_lines.append(content)
             index += 1
-        children = parse_markdown("\n".join(quote_lines))
+        children = parse_markdown(
+            "\n".join(quote_lines),
+            numbered=self.numbered,
+            toc=self.toc,
+            heading_level_shift=self.heading_level_shift,
+        )
         return Box(*children), index
 
     def _parse_list(self, index: int) -> tuple[BulletList | NumberedList, int] | None:
         first_match = _LIST_RE.match(self.lines[index])
         if first_match is None:
             return None
+        if _is_indented_code_line(self.lines[index]):
+            return None
+
+        return self._parse_list_at(index, len(first_match.group("indent")))
+
+    def _parse_list_at(
+        self,
+        index: int,
+        list_indent: int,
+    ) -> tuple[BulletList | NumberedList, int]:
+        first_match = _LIST_RE.match(self.lines[index])
+        if first_match is None:
+            raise ValueError("Expected a list item")
 
         ordered = first_match.group("number") is not None
         start = int(first_match.group("number") or 1)
         items: list[Paragraph] = []
+        item_children: list[list[BulletList | NumberedList]] = []
         has_task_marker = False
 
         while index < len(self.lines):
             match = _LIST_RE.match(self.lines[index])
-            if match is None or (match.group("number") is not None) != ordered:
+            if match is None:
                 break
+            current_indent = len(match.group("indent"))
+            if current_indent < list_indent:
+                break
+            if current_indent > list_indent:
+                if not items:
+                    break
+                child_list, index = self._parse_list_at(index, current_indent)
+                item_children[-1].append(child_list)
+                continue
+            if (match.group("number") is not None) != ordered:
+                break
+
             item_lines = [match.group("body")]
             index += 1
 
@@ -265,7 +344,8 @@ class _MarkdownParser:
                 line = self.lines[index]
                 if _is_blank(line):
                     break
-                if _LIST_RE.match(line):
+                next_match = _LIST_RE.match(line)
+                if next_match is not None:
                     break
                 if self._is_block_start(index) and not _is_list_continuation(line):
                     break
@@ -285,16 +365,27 @@ class _MarkdownParser:
                     markup(item_text, references=self.references),
                 )
             )
+            item_children.append([])
+
+            while index < len(self.lines):
+                child_match = _LIST_RE.match(self.lines[index])
+                if child_match is None:
+                    break
+                child_indent = len(child_match.group("indent"))
+                if child_indent <= list_indent:
+                    break
+                child_list, index = self._parse_list_at(index, child_indent)
+                item_children[-1].append(child_list)
 
             if index < len(self.lines) and _is_blank(self.lines[index]):
                 break
 
         if has_task_marker:
             task_style = ListStyle(marker_format="none", suffix="")
-            return BulletList(*items, style=task_style), index
+            return BulletList(*items, style=task_style, item_children=item_children), index
         if ordered:
-            return NumberedList(*items, start=start), index
-        return BulletList(*items), index
+            return NumberedList(*items, start=start, item_children=item_children), index
+        return BulletList(*items, item_children=item_children), index
 
     def _parse_table(self, index: int) -> tuple[Table, int] | None:
         if index + 1 >= len(self.lines):
@@ -379,20 +470,32 @@ class _MarkdownParser:
         )
 
 
-def _build_heading_hierarchy(events: list[_MarkdownEvent]) -> list[Block]:
+def _build_heading_hierarchy(
+    events: list[_MarkdownEvent],
+    *,
+    numbered: bool,
+    toc: bool | None,
+    heading_level_shift: int,
+) -> list[Block]:
     root: list[Block] = []
     stack: list[tuple[int, Section]] = []
 
     for event in events:
         if isinstance(event, _Heading):
-            section = _section_for_heading(event)
-            while stack and stack[-1][0] >= event.level:
+            level = _shift_heading_level(event.level, heading_level_shift)
+            section = _section_for_heading(
+                event,
+                level=level,
+                numbered=numbered,
+                toc=toc,
+            )
+            while stack and stack[-1][0] >= level:
                 stack.pop()
             if stack:
                 stack[-1][1].children.append(section)
             else:
                 root.append(section)
-            stack.append((event.level, section))
+            stack.append((level, section))
             continue
 
         if stack:
@@ -403,14 +506,25 @@ def _build_heading_hierarchy(events: list[_MarkdownEvent]) -> list[Block]:
     return root
 
 
-def _section_for_heading(heading: _Heading) -> Section:
-    if heading.level == 1:
-        return Chapter(heading.title)
-    if heading.level == 3:
-        return Subsection(heading.title)
-    if heading.level == 4:
-        return Subsubsection(heading.title)
-    return Section(heading.title, level=heading.level)
+def _section_for_heading(
+    heading: _Heading,
+    *,
+    level: int,
+    numbered: bool,
+    toc: bool | None,
+) -> Section:
+    return section_for_level(heading.title, level=level, numbered=numbered, toc=toc)
+
+
+def _shift_heading_level(level: int, heading_level_shift: int) -> int:
+    shifted_level = level + heading_level_shift
+    if shifted_level < MIN_SECTION_LEVEL or shifted_level > MAX_SECTION_LEVEL:
+        raise ValueError(
+            f"Markdown heading level {level} cannot be shifted by "
+            f"{heading_level_shift}; supported heading levels are "
+            f"{MIN_SECTION_LEVEL}..{MAX_SECTION_LEVEL}"
+        )
+    return shifted_level
 
 
 def _consume_first_h1_title(events: list[_MarkdownEvent]) -> str | None:

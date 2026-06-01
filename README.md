@@ -152,6 +152,8 @@ The default behavior is intentionally conventional:
 - Use `Shape(...)`, `TextBox(...)`, and `ImageBox(...)` with `Document(..., page_items=[...])` for page-positioned overlays that do not move the body text. Use `placement="inline"` when the same objects should sit in the text flow like Word's inline drawing mode.
 - Use `DocumentSettings(...)` for document-wide choices: authors, subtitle, page size, margins, units, and theme defaults.
 - Use `Document.from_markdown(...)` when a Markdown file should become a full document. Use `parse_markdown(...)` when you want a list of blocks that can be inserted, reordered, wrapped in sections, or combined with tables and figures.
+- Use `Document.from_markdown(..., numbered=False, toc=True)` when imported headings should keep their source titles without generated numbers but still appear in a generated table of contents.
+- Use `heading_level_shift=1` or `heading_level_shift=-1` with `Document.from_markdown(...)` or `parse_markdown(...)` when imported Markdown should be demoted or promoted before it is inserted into a larger outline. Use `shift_heading_levels(...)` when already-created `Chapter(...)`/`Section(...)` objects need the same adjustment; paragraphs and other non-heading blocks stay unchanged, and shifts beyond the supported heading range fail.
 - Use `Document.from_ipynb(...)` when a notebook should become a full document. Use `parse_ipynb(...)` when notebook cells should be merged into a larger report; markdown cells become normal document structure, code cells become `CodeBlock(...)`, and textual outputs can be included or filtered.
 - Use `document.save_all("artifacts")` when a workflow normally needs DOCX, PDF, and HTML together.
 
@@ -181,16 +183,18 @@ The default behavior is intentionally conventional:
 
 ## Example Scripts
 
-The repository includes two standalone example directories:
+The repository includes three standalone example directories:
 
 - `examples/usage_guide_example/`
 - `examples/journal_paper_example/`
+- `examples/release_notes_digest/`
 
 Run them directly from the repository checkout:
 
 ```powershell
 .\.venv\Scripts\python.exe .\examples\usage_guide_example\main.py
 .\.venv\Scripts\python.exe .\examples\journal_paper_example\main.py
+.\.venv\Scripts\python.exe .\examples\release_notes_digest\main.py
 ```
 
 What they show:
@@ -198,16 +202,19 @@ What they show:
 - `usage_guide_example` is a detailed guide that keeps almost all assembly in one `main.py` so the source stays easy to read
 - the usage guide includes Markdown and notebook import patterns that bring existing authored files into normal docscriptor document objects
 - `journal_paper_example` shows a longer manuscript-style workflow with article-style sections, unnumbered abstract/highlights/acknowledgements, CSV-backed tables, and matplotlib figures inserted directly from Python objects
+- `release_notes_digest` collects `release-notes/*.md`, sorts semantic versions from filenames, imports the Markdown bodies, and builds a release-note document with a version-management table and runbook
 
 By default they write outputs under:
 
 - `artifacts/usage-guide/`
 - `artifacts/journal-paper/`
+- `artifacts/release-notes/`
 
 The main exported filenames are:
 
 - `artifacts/usage-guide/docscriptor-user-guide.pdf`
 - `artifacts/journal-paper/docscriptor-development-philosophy.pdf`
+- `artifacts/release-notes/docscriptor-release-notes.pdf`
 
 ## Project Layout
 
@@ -263,8 +270,10 @@ Create and push a release tag like this:
 .\scripts\release.ps1 0.3.0
 ```
 
-That pushes `v0.3.0`, and the GitHub release workflow runs the test suite, builds the wheel/sdist artifacts, renders the two example PDFs, attaches them to the matching GitHub Release, and uploads the Python distributions to PyPI.
+That pushes `v0.3.0`, and the GitHub release workflow runs the test suite, builds the wheel/sdist artifacts, renders the example PDFs, attaches them to the matching GitHub Release, and uploads the Python distributions to PyPI.
 
 If you want a curated release body instead of GitHub's generated notes, add a file such as `release-notes/v0.3.0.md` before pushing the tag.
+
+The `examples/release_notes_digest/` script demonstrates the same convention as a document workflow: it scans the semantic-versioned Markdown files under `release-notes/`, builds an index, includes the version-management rules, and imports each release body into one DOCX/PDF/HTML bundle.
 
 PyPI publishing uses Trusted Publishing through the `pypi` GitHub environment. The PyPI project or pending publisher must trust repository `Gonie-Gonie/docscriptor`, workflow `.github/workflows/release.yml`, and environment `pypi`.

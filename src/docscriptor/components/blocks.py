@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Sequence
 
 from docscriptor.components.base import Block, BlockInput, coerce_blocks
 from docscriptor.components.equations import equation_plain_text
@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 
 CodeLanguagePosition = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
+MIN_SECTION_LEVEL = 1
+MAX_SECTION_LEVEL = 6
 
 
 @dataclass(slots=True, init=False)
@@ -115,6 +117,7 @@ class ListBlock(Block):
     """Shared implementation for bullet and ordered lists."""
 
     items: list[Paragraph]
+    item_children: list[list["ListBlock"]]
     ordered: bool
     style: ListStyle | None
 
@@ -130,8 +133,15 @@ class ListBlock(Block):
         start: int | None = None,
         indent: float | None = None,
         marker_gap: float | None = None,
+        item_children: Sequence[Sequence["ListBlock"]] | None = None,
     ) -> None:
         self.items = [coerce_list_item(item) for item in items if item is not None]
+        if item_children is None:
+            self.item_children = [[] for _ in self.items]
+        else:
+            self.item_children = [list(children) for children in item_children]
+            if len(self.item_children) != len(self.items):
+                raise ValueError("item_children must match the number of list items")
         self.ordered = ordered
         self.style = list_style_with_overrides(
             style,
@@ -182,6 +192,7 @@ class BulletList(ListBlock):
         start: int | None = None,
         indent: float | None = None,
         marker_gap: float | None = None,
+        item_children: Sequence[Sequence[ListBlock]] | None = None,
     ) -> None:
         super().__init__(
             *items,
@@ -194,6 +205,7 @@ class BulletList(ListBlock):
             start=start,
             indent=indent,
             marker_gap=marker_gap,
+            item_children=item_children,
         )
 
 
@@ -211,6 +223,7 @@ class NumberedList(ListBlock):
         start: int | None = None,
         indent: float | None = None,
         marker_gap: float | None = None,
+        item_children: Sequence[Sequence[ListBlock]] | None = None,
     ) -> None:
         super().__init__(
             *items,
@@ -223,6 +236,7 @@ class NumberedList(ListBlock):
             start=start,
             indent=indent,
             marker_gap=marker_gap,
+            item_children=item_children,
         )
 
 
@@ -649,6 +663,7 @@ class Part(Block):
     title: list[Text]
     children: list[Block]
     numbered: bool
+    toc: bool
     level: int
 
     def __init__(
@@ -656,10 +671,12 @@ class Part(Block):
         title: InlineInput,
         *children: BlockInput,
         numbered: bool = True,
+        toc: bool | None = None,
     ) -> None:
         self.title = coerce_inlines((title,))
         self.children = coerce_blocks(children)
         self.numbered = numbered
+        self.toc = numbered if toc is None else bool(toc)
         self.level = 0
 
     def plain_title(self) -> str:
@@ -769,6 +786,7 @@ class Section(Block):
     children: list[Block]
     level: int
     numbered: bool
+    toc: bool
 
     def __init__(
         self,
@@ -776,6 +794,7 @@ class Section(Block):
         *children: BlockInput,
         level: int = 2,
         numbered: bool = True,
+        toc: bool | None = None,
     ) -> None:
         if level < 1:
             raise ValueError("Section level must be >= 1")
@@ -783,6 +802,7 @@ class Section(Block):
         self.children = coerce_blocks(children)
         self.level = level
         self.numbered = numbered
+        self.toc = numbered if toc is None else bool(toc)
 
     def plain_title(self) -> str:
         """Return the title without styling metadata."""
@@ -805,11 +825,8 @@ class Section(Block):
                 if self.numbered
                 else None
             ),
-            anchor=(
-                context.render_index.heading_anchor(self)
-                if self.numbered
-                else None
-            ),
+            anchor=context.render_index.heading_anchor(self),
+            toc=self.toc,
         )
         for child in self.children:
             child.render_to_docx(renderer, container, context)
@@ -837,8 +854,9 @@ class Chapter(Section):
         title: InlineInput,
         *children: BlockInput,
         numbered: bool = True,
+        toc: bool | None = None,
     ) -> None:
-        super().__init__(title, *children, level=1, numbered=numbered)
+        super().__init__(title, *children, level=1, numbered=numbered, toc=toc)
 
 
 class Subsection(Section):
@@ -849,8 +867,9 @@ class Subsection(Section):
         title: InlineInput,
         *children: BlockInput,
         numbered: bool = True,
+        toc: bool | None = None,
     ) -> None:
-        super().__init__(title, *children, level=3, numbered=numbered)
+        super().__init__(title, *children, level=3, numbered=numbered, toc=toc)
 
 
 class Subsubsection(Section):
@@ -861,8 +880,103 @@ class Subsubsection(Section):
         title: InlineInput,
         *children: BlockInput,
         numbered: bool = True,
+        toc: bool | None = None,
     ) -> None:
-        super().__init__(title, *children, level=4, numbered=numbered)
+        super().__init__(title, *children, level=4, numbered=numbered, toc=toc)
+
+
+def section_for_level(
+    title: InlineInput,
+    *children: BlockInput,
+    level: int,
+    numbered: bool = True,
+    toc: bool | None = None,
+    min_level: int = MIN_SECTION_LEVEL,
+    max_level: int = MAX_SECTION_LEVEL,
+) -> Section:
+    """Create the section-like object that best matches a heading level."""
+
+    _validate_section_level(level, min_level=min_level, max_level=max_level)
+    if level == 1:
+        return Chapter(title, *children, numbered=numbered, toc=toc)
+    if level == 3:
+        return Subsection(title, *children, numbered=numbered, toc=toc)
+    if level == 4:
+        return Subsubsection(title, *children, numbered=numbered, toc=toc)
+    return Section(title, *children, level=level, numbered=numbered, toc=toc)
+
+
+def shift_heading_levels(
+    blocks: Sequence[Block],
+    delta: int,
+    *,
+    min_level: int = MIN_SECTION_LEVEL,
+    max_level: int = MAX_SECTION_LEVEL,
+) -> list[Block]:
+    """Return blocks with section heading levels shifted by ``delta``.
+
+    Paragraphs and non-heading blocks are returned unchanged. Section-like
+    blocks are rebuilt at their new levels, and nested section children are
+    shifted recursively.
+    """
+
+    return [
+        shift_heading_level(
+            block,
+            delta,
+            min_level=min_level,
+            max_level=max_level,
+        )
+        for block in blocks
+    ]
+
+
+def shift_heading_level(
+    block: Block,
+    delta: int,
+    *,
+    min_level: int = MIN_SECTION_LEVEL,
+    max_level: int = MAX_SECTION_LEVEL,
+) -> Block:
+    """Return one block with section heading levels shifted by ``delta``."""
+
+    if not isinstance(block, Section):
+        return block
+
+    shifted_level = block.level + delta
+    _validate_section_level(shifted_level, min_level=min_level, max_level=max_level)
+    shifted_children = shift_heading_levels(
+        block.children,
+        delta,
+        min_level=min_level,
+        max_level=max_level,
+    )
+    return section_for_level(
+        block.title,
+        shifted_children,
+        level=shifted_level,
+        numbered=block.numbered,
+        toc=block.toc,
+        min_level=min_level,
+        max_level=max_level,
+    )
+
+
+def _validate_section_level(
+    level: int,
+    *,
+    min_level: int,
+    max_level: int,
+) -> None:
+    if min_level < 1:
+        raise ValueError("min_level must be >= 1 for section headings")
+    if max_level < min_level:
+        raise ValueError("max_level must be >= min_level")
+    if level < min_level or level > max_level:
+        raise ValueError(
+            f"Heading level {level} is outside the supported range "
+            f"{min_level}..{max_level}"
+        )
 
 
 CellInput = Paragraph | InlineInput
@@ -885,6 +999,8 @@ __all__ = [
     "ColumnSpan",
     "Divider",
     "Equation",
+    "MAX_SECTION_LEVEL",
+    "MIN_SECTION_LEVEL",
     "MultiColumn",
     "NumberedList",
     "PageBreak",
@@ -896,4 +1012,7 @@ __all__ = [
     "VerticalSpace",
     "coerce_cell",
     "coerce_list_item",
+    "section_for_level",
+    "shift_heading_level",
+    "shift_heading_levels",
 ]

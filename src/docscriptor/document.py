@@ -63,6 +63,9 @@ class Document:
         title: str | None = None,
         settings: DocumentSettings | None = None,
         citations: CitationLibrary | Sequence[CitationSource] | str | None = None,
+        numbered: bool = True,
+        toc: bool | None = None,
+        heading_level_shift: int = 0,
     ) -> Document:
         """Create a document from Markdown text."""
 
@@ -73,6 +76,9 @@ class Document:
             title=title,
             settings=settings,
             citations=citations,
+            numbered=numbered,
+            toc=toc,
+            heading_level_shift=heading_level_shift,
         )
 
     @classmethod

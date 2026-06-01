@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from html import escape
 from io import BytesIO
 from pathlib import Path
@@ -540,7 +541,7 @@ class PdfRenderer:
             ),
             title_style,
         )
-        if block.numbered and anchor is not None:
+        if block.toc and anchor is not None:
             paragraph._docscriptor_toc_entry = (
                 block.level,
                 self._flatten_fragments(
@@ -594,7 +595,7 @@ class PdfRenderer:
         theme = context.theme
         render_index = context.render_index
         number_label = render_index.heading_number(block) if block.numbered else None
-        anchor = render_index.heading_anchor(block) if block.numbered else None
+        anchor = render_index.heading_anchor(block)
         story: list[object] = []
 
         toc_flowable: object | None = None
@@ -623,7 +624,7 @@ class PdfRenderer:
         story.append(title)
         if toc_flowable is None:
             toc_flowable = title
-        if block.numbered and render_index.heading_anchor(block) is not None:
+        if block.toc and render_index.heading_anchor(block) is not None:
             toc_flowable._docscriptor_toc_entry = (
                 block.level,
                 self._flatten_fragments(
@@ -1672,6 +1673,9 @@ class PdfRenderer:
         styles: object,
         render_index: RenderIndex,
         unit: str,
+        *,
+        depth: int = 0,
+        add_trailing_spacer: bool = True,
     ) -> list[object]:
         item_style = self._paragraph_style(
             ParagraphStyle(space_after=3),
@@ -1686,6 +1690,8 @@ class PdfRenderer:
             spaceAfter=3,
         )
         list_style = block.style or theme.list_style(ordered=isinstance(block, NumberedList))
+        if depth:
+            list_style = replace(list_style, indent=list_style.indent + depth * 0.22)
         marker_width = max(list_style.indent * inch, 0.35 * inch)
         rows: list[list[object]] = []
         for index, item in enumerate(block.items):
@@ -1703,7 +1709,25 @@ class PdfRenderer:
                 ),
                 item_style,
             )
-            rows.append([marker_paragraph, content_paragraph])
+            child_flowables: list[object] = [content_paragraph]
+            for child_list in block.item_children[index]:
+                child_flowables.extend(
+                    self._render_list(
+                        child_list,
+                        theme,
+                        styles,
+                        render_index,
+                        unit,
+                        depth=depth + 1,
+                        add_trailing_spacer=False,
+                    )
+                )
+            rows.append(
+                [
+                    marker_paragraph,
+                    child_flowables if len(child_flowables) > 1 else content_paragraph,
+                ]
+            )
         table = RLTable(rows, colWidths=[marker_width, None], hAlign="LEFT")
         table.setStyle(
             TableStyle(
@@ -1717,7 +1741,10 @@ class PdfRenderer:
                 ]
             )
         )
-        return [table, Spacer(1, 8)]
+        flowables: list[object] = [table]
+        if add_trailing_spacer:
+            flowables.append(Spacer(1, 8))
+        return flowables
 
     def _render_box(self, block: Box, theme: Theme, styles: object, render_index: RenderIndex, settings: object, unit: str) -> list[object]:
         body_style = self._paragraph_style(ParagraphStyle(space_after=0), theme, styles["BodyText"])

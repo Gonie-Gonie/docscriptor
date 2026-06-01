@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from base64 import b64encode
+from dataclasses import replace
 from html import escape
 from io import BytesIO
 from mimetypes import guess_type
@@ -159,7 +160,7 @@ class HtmlRenderer:
         """Render a part separator page and its child blocks into HTML."""
 
         number_label = context.render_index.heading_number(block) if block.numbered else None
-        anchor = context.render_index.heading_anchor(block) if block.numbered else None
+        anchor = context.render_index.heading_anchor(block)
         anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
         label_html = (
             '<p class="docscriptor-part-label">'
@@ -203,14 +204,29 @@ class HtmlRenderer:
     ) -> str:
         """Render a list block into HTML."""
 
+        return self._render_list(block, context, depth=0)
+
+    def _render_list(
+        self,
+        block: BulletList | NumberedList,
+        context: HtmlRenderContext,
+        *,
+        depth: int,
+    ) -> str:
         list_style = block.style or context.theme.list_style(
             ordered=isinstance(block, NumberedList)
         )
+        if depth:
+            list_style = replace(list_style, indent=list_style.indent + depth * 0.22)
         items = []
         for index, item in enumerate(block.items):
             marker = escape(list_style.marker_for(index))
             anchor = context.render_index.block_anchor(item)
             anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
+            child_html = "".join(
+                self._render_list(child_list, context, depth=depth + 1)
+                for child_list in block.item_children[index]
+            )
             items.append(
                 (
                     '<div class="docscriptor-list-item" '
@@ -224,8 +240,9 @@ class HtmlRenderer:
                         context.render_index,
                     )
                     + "</p>"
-                    "</div>"
-                    "</div>"
+                    + child_html
+                    + "</div>"
+                    + "</div>"
                 )
             )
         list_class = "docscriptor-numbered-list" if isinstance(block, NumberedList) else "docscriptor-bullet-list"
@@ -425,7 +442,7 @@ class HtmlRenderer:
 
         heading_tag = self._heading_tag(block.level)
         number_label = context.render_index.heading_number(block) if block.numbered else None
-        anchor = context.render_index.heading_anchor(block) if block.numbered else None
+        anchor = context.render_index.heading_anchor(block)
         children_html = "".join(
             child.render_to_html(self, context)
             for child in block.children

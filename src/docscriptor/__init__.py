@@ -11,6 +11,8 @@ from docscriptor.components.blocks import (
     ColumnSpan,
     Divider,
     Equation,
+    MAX_SECTION_LEVEL,
+    MIN_SECTION_LEVEL,
     MultiColumn,
     NumberedList,
     PageBreak,
@@ -20,6 +22,9 @@ from docscriptor.components.blocks import (
     Subsection,
     Subsubsection,
     VerticalSpace,
+    section_for_level,
+    shift_heading_level,
+    shift_heading_levels,
 )
 from docscriptor.components.generated import CommentsPage, FigureList, ReferencesPage, TableList, TableOfContents, TocLevelStyle
 from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table, TableCell, TableCellStyle
@@ -138,6 +143,8 @@ __all__ = [
     "LineBreak",
     "ListStyle",
     "Math",
+    "MAX_SECTION_LEVEL",
+    "MIN_SECTION_LEVEL",
     "MultiColumn",
     "NumberedList",
     "PageNumberOptions",
@@ -195,6 +202,9 @@ __all__ = [
     "parse_ipynb",
     "parse_markdown",
     "parse_notebook",
+    "section_for_level",
+    "shift_heading_level",
+    "shift_heading_levels",
     "subscript",
     "superscript",
     "tag",

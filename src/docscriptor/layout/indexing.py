@@ -257,6 +257,15 @@ def _register_block_anchor(render_index: RenderIndex, block: object, prefix: str
     return anchor
 
 
+def _register_heading_anchor(render_index: RenderIndex, block: object) -> str:
+    anchor = render_index.heading_anchors.get(id(block))
+    if anchor is not None:
+        return anchor
+    anchor = f"heading_{len(render_index.heading_anchors) + 1}"
+    render_index.heading_anchors[id(block)] = anchor
+    return anchor
+
+
 def _index_blocks(
     blocks: Sequence[Block],
     render_index: RenderIndex,
@@ -274,11 +283,19 @@ def _index_blocks(
             _index_inlines(block.content, render_index, citations)
             continue
         if isinstance(block, (BulletList, NumberedList)):
-            for item in block.items:
+            for item, child_lists in zip(block.items, block.item_children):
                 if id(item) not in render_index.paragraph_numbers:
                     render_index.paragraph_numbers[id(item)] = len(render_index.paragraph_numbers) + 1
                 _register_block_anchor(render_index, item, "paragraph")
                 _index_inlines(item.content, render_index, citations)
+                _index_blocks(
+                    child_lists,
+                    render_index,
+                    citations,
+                    theme,
+                    heading_counters=heading_counters,
+                    part_counter=part_counter,
+                )
             continue
         if isinstance(block, CodeBlock):
             if id(block) not in render_index.code_block_numbers:
@@ -321,19 +338,21 @@ def _index_blocks(
             if block.numbered:
                 part_counter[0] += 1
                 number_label = theme.format_part_label(part_counter[0])
+                render_index.heading_numbers[id(block)] = number_label
+            anchor = (
+                _register_heading_anchor(render_index, block)
+                if (block.numbered or block.toc)
+                else None
+            )
+            if block.toc:
                 render_index.headings.append(
                     HeadingEntry(
                         level=block.level,
                         title=block.title,
                         number=number_label,
-                        anchor=f"heading_{len(render_index.headings) + 1}",
+                        anchor=anchor,
                     )
                 )
-                render_index.heading_anchors[id(block)] = (
-                    render_index.headings[-1].anchor or ""
-                )
-                if number_label is not None:
-                    render_index.heading_numbers[id(block)] = number_label
             _index_blocks(
                 block.children,
                 render_index,
@@ -355,19 +374,21 @@ def _index_blocks(
                 number_label = theme.format_heading_label(
                     current_counters[: block.level]
                 )
+                render_index.heading_numbers[id(block)] = number_label
+            anchor = (
+                _register_heading_anchor(render_index, block)
+                if (block.numbered or block.toc)
+                else None
+            )
+            if block.toc:
                 render_index.headings.append(
                     HeadingEntry(
                         level=block.level,
                         title=block.title,
                         number=number_label,
-                        anchor=f"heading_{len(render_index.headings) + 1}",
+                        anchor=anchor,
                     )
                 )
-                render_index.heading_anchors[id(block)] = (
-                    render_index.headings[-1].anchor or ""
-                )
-                if number_label is not None:
-                    render_index.heading_numbers[id(block)] = number_label
             _index_blocks(
                 block.children,
                 render_index,
