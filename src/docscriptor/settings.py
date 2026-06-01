@@ -125,7 +125,7 @@ class PageMargins:
 class DocumentSettings:
     """Document-level metadata and rendering configuration."""
 
-    author: str | None
+    metadata_author: str | None
     summary: str | None
     subtitle: list[Text] | None
     authors: tuple[Author, ...]
@@ -140,7 +140,7 @@ class DocumentSettings:
     def __init__(
         self,
         *,
-        author: str | None = None,
+        metadata_author: str | None = None,
         summary: str | None = None,
         subtitle: InlineInput | None = None,
         authors: Sequence[AuthorInput] | None = None,
@@ -152,7 +152,7 @@ class DocumentSettings:
         page_items: Sequence[PositionedItem] | None = None,
         theme: Theme | None = None,
     ) -> None:
-        self.author = author
+        self.metadata_author = metadata_author
         self.summary = summary
         self.subtitle = coerce_inlines((subtitle,)) if subtitle is not None else None
         self.authors = coerce_authors(authors)
@@ -205,8 +205,8 @@ class DocumentSettings:
     def resolved_author(self) -> str | None:
         """Return the metadata author string used in file properties."""
 
-        if self.author is not None:
-            return self.author
+        if self.metadata_author is not None:
+            return self.metadata_author
         if not self.authors:
             return None
         return "; ".join(author.name for author in self.authors)

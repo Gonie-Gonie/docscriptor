@@ -249,7 +249,7 @@ def build_render_index(document: Document) -> RenderIndex:
         document.body.children,
         render_index,
         document.citations,
-        document.theme,
+        document.settings.theme,
         heading_counters=[],
         part_counter=[0],
     )

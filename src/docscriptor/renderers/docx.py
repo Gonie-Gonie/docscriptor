@@ -155,16 +155,17 @@ class DocxRenderer:
         self._rendered_native_footnotes: set[int] = set()
         render_index = build_render_index(document)
         self._configure_document(word_document, document)
+        settings = document.settings
         context = DocxRenderContext(
-            theme=document.theme,
+            theme=settings.theme,
             render_index=render_index,
-            settings=document.settings,
-            unit=document.settings.unit,
+            settings=settings,
+            unit=settings.unit,
             word_document=word_document,
         )
         self._render_page_items(word_document, document, context)
         front_children, main_children = document.split_top_level_children()
-        has_front_matter = document.cover_page or bool(front_children)
+        has_front_matter = settings.cover_page or bool(front_children)
 
         self._render_title_matter(
             word_document,
@@ -172,14 +173,14 @@ class DocxRenderer:
             context,
         )
 
-        if document.cover_page and front_children:
+        if settings.cover_page and front_children:
             self._ensure_page_break(word_document)
 
         if has_front_matter:
             self._render_top_level_children(word_document, front_children, context)
             if main_children:
                 section = word_document.add_section(WD_SECTION.NEW_PAGE)
-                self._configure_section_page_box(section, document.settings)
+                self._configure_section_page_box(section, settings)
                 self._render_top_level_children(word_document, main_children, context)
         else:
             self._render_top_level_children(word_document, main_children, context)
@@ -187,10 +188,10 @@ class DocxRenderer:
         if self._should_auto_render_footnotes_page(document, render_index):
             self.render_footnotes_page(FootnotesPage(), context)
 
-        if document.theme.show_page_numbers:
+        if settings.theme.show_page_numbers:
             self._configure_page_number_sections(
                 word_document,
-                document.theme,
+                settings.theme,
                 has_front_matter=has_front_matter,
                 has_main_matter=bool(main_children) or not has_front_matter,
             )
@@ -640,44 +641,47 @@ class DocxRenderer:
         )
 
     def _configure_document(self, word_document: WordDocument, document: Document) -> None:
+        settings = document.settings
+        theme = settings.theme
         properties = word_document.core_properties
         properties.title = document.title
-        if document.author:
-            properties.author = document.author
-        if document.summary:
-            properties.subject = document.summary
+        author = settings.resolved_author()
+        if author:
+            properties.author = author
+        if settings.summary:
+            properties.subject = settings.summary
         self._enable_field_updates(word_document)
 
         normal_style = word_document.styles["Normal"]
-        normal_style.font.name = document.theme.body_font_name
-        normal_style.font.size = Pt(document.theme.body_font_size)
+        normal_style.font.name = theme.body_font_name
+        normal_style.font.size = Pt(theme.body_font_size)
         normal_style.font.color.rgb = RGBColor(0, 0, 0)
         footer_style = word_document.styles["Footer"]
-        footer_style.font.name = document.theme.body_font_name
-        footer_style.font.size = Pt(document.theme.page_number_font_size)
+        footer_style.font.name = theme.body_font_name
+        footer_style.font.size = Pt(theme.page_number_font_size)
         footer_style.font.color.rgb = RGBColor(0, 0, 0)
         for section in word_document.sections:
-            self._configure_section_page_box(section, document.settings)
+            self._configure_section_page_box(section, settings)
 
         self._configure_named_style(
             word_document,
             "Title",
-            font_name=document.theme.body_font_name,
-            font_size=document.theme.title_font_size,
+            font_name=theme.body_font_name,
+            font_size=theme.title_font_size,
             bold=True,
             italic=False,
         )
         for level in range(1, 5):
-            bold, italic = document.theme.heading_emphasis(level)
+            bold, italic = theme.heading_emphasis(level)
             self._configure_named_style(
                 word_document,
                 f"Heading {level}",
-                font_name=document.theme.body_font_name,
-                font_size=document.theme.heading_size(level),
+                font_name=theme.body_font_name,
+                font_size=theme.heading_size(level),
                 bold=bold,
                 italic=italic,
             )
-        self._set_page_background(word_document, document.theme.page_background_color)
+        self._set_page_background(word_document, theme.page_background_color)
 
     def _enable_field_updates(self, word_document: WordDocument) -> None:
         settings = word_document.settings.element
@@ -747,10 +751,10 @@ class DocxRenderer:
             bold=True,
             space_after=12,
         )
-        if document.subtitle is not None:
+        if document.settings.subtitle is not None:
             self._add_title_line(
                 word_document,
-                document.subtitle,
+                document.settings.subtitle,
                 font_size=max(context.theme.body_font_size + 1, 12),
                 alignment=context.theme.subtitle_alignment,
                 italic=True,
@@ -859,8 +863,8 @@ class DocxRenderer:
         render_index: RenderIndex,
     ) -> bool:
         return (
-            document.theme.footnote_placement == "document"
-            and document.theme.auto_footnotes_page
+            document.settings.theme.footnote_placement == "document"
+            and document.settings.theme.auto_footnotes_page
             and bool(render_index.footnotes)
             and not any(isinstance(child, FootnotesPage) for child in document.body.children)
         )

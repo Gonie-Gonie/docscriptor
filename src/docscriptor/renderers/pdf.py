@@ -428,43 +428,44 @@ class PdfRenderer:
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         self._pending_float_flowables = []
+        settings = document.settings
 
         pdf = DocscriptorPdfTemplate(
             str(path),
             pagesize=(
-                document.settings.page_width_in_inches() * inch,
-                document.settings.page_height_in_inches() * inch,
+                settings.page_width_in_inches() * inch,
+                settings.page_height_in_inches() * inch,
             ),
             title=document.title,
-            author=document.author,
-            leftMargin=document.settings.page_margins.left_in_inches(document.settings.unit) * inch,
-            rightMargin=document.settings.page_margins.right_in_inches(document.settings.unit) * inch,
-            topMargin=document.settings.page_margins.top_in_inches(document.settings.unit) * inch,
-            bottomMargin=document.settings.page_margins.bottom_in_inches(document.settings.unit) * inch,
+            author=settings.resolved_author(),
+            leftMargin=settings.page_margins.left_in_inches(settings.unit) * inch,
+            rightMargin=settings.page_margins.right_in_inches(settings.unit) * inch,
+            topMargin=settings.page_margins.top_in_inches(settings.unit) * inch,
+            bottomMargin=settings.page_margins.bottom_in_inches(settings.unit) * inch,
         )
         story: list[object] = []
         styles = getSampleStyleSheet()
         render_index = build_render_index(document)
         context = PdfRenderContext(
-            theme=document.theme,
+            theme=settings.theme,
             render_index=render_index,
-            settings=document.settings,
-            unit=document.settings.unit,
+            settings=settings,
+            unit=settings.unit,
             styles=styles,
         )
 
         front_children, main_children = document.split_top_level_children()
-        has_front_matter = document.cover_page or bool(front_children)
+        has_front_matter = settings.cover_page or bool(front_children)
 
         story.extend(self._render_title_matter(document, context))
-        if document.cover_page and front_children:
+        if settings.cover_page and front_children:
             story.append(RLPageBreak())
 
         story.extend(
             self._render_top_level_children(
                 front_children,
                 context,
-                follows_existing_content=not document.cover_page,
+                follows_existing_content=not settings.cover_page,
             )
         )
         if has_front_matter and main_children:
@@ -497,7 +498,7 @@ class PdfRenderer:
         )
         if self._story_has_indexing_flowable(story):
             pdf.multiBuild(story, onFirstPage=page_callback, onLaterPages=page_callback)
-        elif document.theme.show_page_numbers or document.theme.page_background_color != "FFFFFF":
+        elif settings.theme.show_page_numbers or settings.theme.page_background_color != "FFFFFF":
             pdf.build(story, onFirstPage=page_callback, onLaterPages=page_callback)
         else:
             pdf.build(story)
@@ -1146,10 +1147,10 @@ class PdfRenderer:
                 space_after=18,
             )
         ]
-        if document.subtitle is not None:
+        if document.settings.subtitle is not None:
             story.append(
                 self._title_paragraph(
-                    document.subtitle,
+                    document.settings.subtitle,
                     theme,
                     styles,
                     style_name="DocscriptorSubtitle",
@@ -1287,7 +1288,7 @@ class PdfRenderer:
         render_index: RenderIndex,
     ) -> bool:
         return (
-            document.theme.auto_footnotes_page
+            document.settings.theme.auto_footnotes_page
             and bool(render_index.footnotes)
             and not any(isinstance(child, FootnotesPage) for child in document.body.children)
         )
@@ -3039,7 +3040,7 @@ class PdfRenderer:
         *,
         has_front_matter: bool,
     ):
-        theme = document.theme
+        theme = document.settings.theme
         font_name = self._resolve_font(theme.body_font_name, False, False)
 
         def draw_page(canvas: object, doc: object) -> None:

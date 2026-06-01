@@ -8,12 +8,8 @@ from typing import Iterable, Sequence, TYPE_CHECKING
 
 from docscriptor.compatibility import normalize_output_format, normalize_output_formats
 from docscriptor.components.base import BlockInput, Body
-from docscriptor.components.inline import Text
-from docscriptor.components.people import Author, AuthorInput, coerce_authors
-from docscriptor.components.positioning import PositionedItem, coerce_positioned_items
 from docscriptor.components.references import CitationLibrary, CitationSource, coerce_citation_library
 from docscriptor.core import PathLike
-from docscriptor.layout.theme import Theme
 from docscriptor.settings import DocumentSettings
 
 if TYPE_CHECKING:
@@ -28,9 +24,8 @@ class Document:
         title: Document title rendered at the top of the output.
         *children: Top-level blocks. Mutually exclusive with ``body=...``.
         body: Optional pre-built ``Body`` container.
-        page_items: Optional page-positioned drawing items rendered independently
-            of the text flow.
-        settings: Optional grouped document metadata and rendering settings.
+        settings: Optional document metadata, page geometry, overlays, and
+            rendering settings.
         citations: Bibliography metadata supplied as a library, a sequence of
             ``CitationSource`` objects, or BibTeX text.
     """
@@ -45,7 +40,6 @@ class Document:
         title: str,
         *children: BlockInput,
         body: Body | None = None,
-        page_items: Sequence[PositionedItem] | None = None,
         settings: DocumentSettings | None = None,
         citations: CitationLibrary | Sequence[CitationSource] | str | None = None,
     ) -> None:
@@ -55,8 +49,6 @@ class Document:
         self.title = title
         self.body = body if body is not None else Body(*children)
         self.settings = settings or DocumentSettings()
-        if page_items is not None:
-            self.settings.page_items = coerce_positioned_items(page_items)
         self.citations = coerce_citation_library(citations)
 
     @classmethod
@@ -114,76 +106,6 @@ class Document:
             include_raw=include_raw,
             code_language=code_language,
         )
-
-    @property
-    def author(self) -> str | None:
-        return self.settings.resolved_author()
-
-    @author.setter
-    def author(self, value: str | None) -> None:
-        self.settings.author = value
-
-    @property
-    def summary(self) -> str | None:
-        return self.settings.summary
-
-    @summary.setter
-    def summary(self, value: str | None) -> None:
-        self.settings.summary = value
-
-    @property
-    def subtitle(self) -> list[Text] | None:
-        return self.settings.subtitle
-
-    @subtitle.setter
-    def subtitle(self, value: list[Text] | None) -> None:
-        self.settings.subtitle = value
-
-    @property
-    def authors(self) -> tuple[Author, ...]:
-        return self.settings.authors
-
-    @authors.setter
-    def authors(self, value: Sequence[AuthorInput]) -> None:
-        self.settings.authors = coerce_authors(value)
-
-    @property
-    def cover_page(self) -> bool:
-        return self.settings.cover_page
-
-    @cover_page.setter
-    def cover_page(self, value: bool) -> None:
-        self.settings.cover_page = value
-
-    @property
-    def unit(self) -> str:
-        return self.settings.unit
-
-    @unit.setter
-    def unit(self, value: str) -> None:
-        from docscriptor.core import normalize_length_unit
-
-        self.settings.unit = normalize_length_unit(value)
-
-    def get_page_width(self, scale: float = 1.0, *, unit: str | None = None) -> float:
-        return self.settings.get_page_width(scale, unit=unit)
-
-    def get_page_height(self, scale: float = 1.0, *, unit: str | None = None) -> float:
-        return self.settings.get_page_height(scale, unit=unit)
-
-    def get_text_width(self, scale: float = 1.0, *, unit: str | None = None) -> float:
-        return self.settings.get_text_width(scale, unit=unit)
-
-    def get_text_height(self, scale: float = 1.0, *, unit: str | None = None) -> float:
-        return self.settings.get_text_height(scale, unit=unit)
-
-    @property
-    def theme(self) -> Theme:
-        return self.settings.theme
-
-    @theme.setter
-    def theme(self, value: Theme) -> None:
-        self.settings.theme = value
 
     def split_top_level_children(self) -> tuple[list[object], list[object]]:
         """Split top-level blocks into front matter and main matter.

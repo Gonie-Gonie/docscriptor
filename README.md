@@ -70,7 +70,7 @@ report = Document(
             ),
         ),
     ),
-    settings=DocumentSettings(author="Docscriptor"),
+    settings=DocumentSettings(metadata_author="Docscriptor"),
 )
 
 report.save("artifacts/hello.docx")
@@ -163,8 +163,8 @@ The default behavior is intentionally conventional:
 - Use `Theme(citation_format="apa", reference_format="apa")` when inline citations and the generated references page should follow an author-year style. Numeric citation output remains the default.
 - Use advanced `placement=...` hints on tables and figures only when needed. Supported values include `here`, `tbp`/`float`, `top`, `bottom`, and `page`.
 - Use `Box(...)` for callouts, evidence panels, and tcolorbox-like report sections that should stay editable in Word.
-- Use `Shape(...)`, `TextBox(...)`, and `ImageBox(...)` with `Document(..., page_items=[...])` for page-positioned overlays that do not move the body text. Use `placement="inline"` when the same objects should sit in the text flow like Word's inline drawing mode.
-- Use `DocumentSettings(...)` for document-wide choices: authors, subtitle, page size, margins, units, and theme defaults.
+- Use `Shape(...)`, `TextBox(...)`, and `ImageBox(...)` with `DocumentSettings(page_items=[...])` for page-positioned overlays that do not move the body text. Use `placement="inline"` when the same objects should sit in the text flow like Word's inline drawing mode.
+- Use `DocumentSettings(...)` for document-wide choices: authors, subtitle, page size, margins, units, page overlays, and theme defaults.
 - Use `document.validate()` when you want a structured preflight check before rendering. The returned `ValidationResult` prints as a compact table, and each issue records whether it affects Word, PDF, HTML, or all outputs. `save(...)`, `save_docx(...)`, `save_pdf(...)`, `save_html(...)`, and `save_all(...)` validate before rendering by default and stop before writing when errors are found.
 - Use `Document.from_markdown(...)` when a Markdown file should become a full document. Use `parse_markdown(...)` when you want a list of blocks that can be inserted, reordered, wrapped in sections, or combined with tables and figures.
 - Use `Document.from_markdown(..., numbered=False, toc=True)` when imported headings should keep their source titles without generated numbers but still appear in a generated table of contents.

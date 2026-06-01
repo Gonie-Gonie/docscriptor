@@ -227,7 +227,7 @@ def build_release_notes_document(
             release_sections,
         ),
         settings=DocumentSettings(
-            author="Docscriptor Contributors",
+            metadata_author="Docscriptor Contributors",
             summary="Release-note digest generated from repository Markdown files",
             subtitle="Markdown import, semantic sorting, and release workflow documentation",
             theme=Theme(show_page_numbers=True, page_number_format="{page}"),

@@ -73,15 +73,16 @@ class HtmlRenderer:
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
+        settings = document.settings
         render_index = build_render_index(document)
         context = HtmlRenderContext(
-            theme=document.theme,
+            theme=settings.theme,
             render_index=render_index,
-            settings=document.settings,
-            unit=document.settings.unit,
+            settings=settings,
+            unit=settings.unit,
         )
         front_children, main_children = document.split_top_level_children()
-        has_front_matter = document.cover_page or bool(front_children)
+        has_front_matter = settings.cover_page or bool(front_children)
 
         body_parts = [
             '<div class="docscriptor-page-frame">',
@@ -90,7 +91,7 @@ class HtmlRenderer:
             self._render_title_matter(
                 document,
                 context,
-                page_break_after=document.cover_page and (bool(front_children) or bool(main_children)),
+                page_break_after=settings.cover_page and (bool(front_children) or bool(main_children)),
             ),
         ]
 
@@ -128,9 +129,9 @@ class HtmlRenderer:
                 '  <meta charset="utf-8" />',
                 '  <meta name="viewport" content="width=device-width, initial-scale=1" />',
                 f"  <title>{escape(document.title)}</title>",
-                f"  <meta name=\"description\" content=\"{escape(document.summary or document.title)}\" />",
+                f"  <meta name=\"description\" content=\"{escape(settings.summary or document.title)}\" />",
                 "  <style>",
-                self._stylesheet(document.settings),
+                self._stylesheet(settings),
                 "  </style>",
                 "</head>",
                 "<body>",
@@ -899,7 +900,7 @@ class HtmlRenderer:
         render_index: RenderIndex,
     ) -> bool:
         return (
-            document.theme.auto_footnotes_page
+            document.settings.theme.auto_footnotes_page
             and bool(render_index.footnotes)
             and not any(isinstance(child, FootnotesPage) for child in document.body.children)
         )
@@ -911,8 +912,9 @@ class HtmlRenderer:
         *,
         page_break_after: bool,
     ) -> str:
+        settings = document.settings
         classes = ["docscriptor-title-matter"]
-        if document.cover_page:
+        if settings.cover_page:
             classes.append("docscriptor-cover-page")
         if page_break_after:
             classes.append("docscriptor-page-break-after")
@@ -927,10 +929,10 @@ class HtmlRenderer:
                 theme=context.theme,
             )
         ]
-        if document.subtitle is not None:
+        if settings.subtitle is not None:
             lines.append(
                 self._title_line_html(
-                    document.subtitle,
+                    settings.subtitle,
                     font_size=max(context.theme.body_font_size + 1, 12),
                     alignment=context.theme.subtitle_alignment,
                     italic=True,

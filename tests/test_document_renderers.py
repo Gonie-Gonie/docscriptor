@@ -1304,9 +1304,9 @@ def test_page_items_render_without_affecting_document_flow(tmp_path: Path) -> No
     document = Document(
         "Page Item Test",
         Paragraph("Body text keeps its normal position."),
-        page_items=page_items,
         settings=DocumentSettings(
             page_size=PageSize.letter(),
+            page_items=page_items,
             theme=Theme(show_page_numbers=True),
         ),
     )
@@ -2410,7 +2410,7 @@ def test_citation_and_reference_formats_can_be_configured(tmp_path: Path) -> Non
 
 def test_document_accepts_document_settings() -> None:
     settings = DocumentSettings(
-        author="Docscriptor",
+        metadata_author="Docscriptor",
         summary="Settings test",
         subtitle="Grouped metadata",
         authors=[
@@ -2427,17 +2427,17 @@ def test_document_accepts_document_settings() -> None:
 
     document = Document("Configured", Paragraph("Body"), settings=settings)
 
-    assert document.author == "Docscriptor"
-    assert document.summary == "Settings test"
-    assert document.subtitle is not None
-    assert document.subtitle[0].plain_text() == "Grouped metadata"
-    assert document.authors[0].name == "Example Author"
-    assert document.authors[0].affiliations[0].formatted() == "Example Lab"
+    assert document.settings.resolved_author() == "Docscriptor"
+    assert document.settings.summary == "Settings test"
+    assert document.settings.subtitle is not None
+    assert document.settings.subtitle[0].plain_text() == "Grouped metadata"
+    assert document.settings.authors[0].name == "Example Author"
+    assert document.settings.authors[0].affiliations[0].formatted() == "Example Lab"
     assert document.settings.author_layout.mode == "stacked"
-    assert document.cover_page is True
-    assert document.unit == "cm"
-    assert round(document.get_text_width(), 2) == 15.92
-    assert document.theme.show_page_numbers is True
+    assert document.settings.cover_page is True
+    assert document.settings.unit == "cm"
+    assert round(document.settings.get_text_width(), 2) == 15.92
+    assert document.settings.theme.show_page_numbers is True
 
 
 def test_print_units_include_common_document_units() -> None:
@@ -2795,7 +2795,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
         CommentsPage(),
         ReferencesPage(),
         settings=DocumentSettings(
-            author="pytest",
+            metadata_author="pytest",
             summary="Renderer integration test",
             theme=Theme(
                 show_page_numbers=True,

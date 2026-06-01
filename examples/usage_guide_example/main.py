@@ -151,7 +151,7 @@ report = Document(
             Paragraph("This document was defined with ", bold("Python objects"), "."),
         ),
     ),
-    settings=DocumentSettings(author="Docscriptor"),
+    settings=DocumentSettings(metadata_author="Docscriptor"),
 )
 
 report.save("artifacts/hello.docx")
@@ -240,7 +240,7 @@ comparison = SubFigureGroup(
 Paragraph("The post-calibration case is shown in ", after.reference(), ".")
 """
 
-POSITIONED_DRAWING_SNIPPET = """from docscriptor import Document, ImageBox, Paragraph, Shape, TextBox
+POSITIONED_DRAWING_SNIPPET = """from docscriptor import Document, DocumentSettings, ImageBox, Paragraph, Shape, TextBox
 
 frame = Shape.rect(
     name="approval-frame",
@@ -259,10 +259,12 @@ document = Document(
         ImageBox("assets/docscriptor-logo.png", width=0.35, height=0.18, placement="inline"),
         " stays in the sentence flow.",
     ),
-    page_items=[
-        frame,
-        TextBox("Approval area", anchor="approval-frame", x=0.25, y=0.25, width=2.0, height=0.3),
-    ],
+    settings=DocumentSettings(
+        page_items=[
+            frame,
+            TextBox("Approval area", anchor="approval-frame", x=0.25, y=0.25, width=2.0, height=0.3),
+        ],
+    ),
 )
 """
 
@@ -856,7 +858,7 @@ def build_author_layout_figure():
         wrap_width=21,
     )
     axis.text(0.825, 0.36, "DocumentSettings(", ha="center", fontsize=9.0, color="#173042")
-    axis.text(0.825, 0.30, "author='Team Name')", ha="center", fontsize=9.0, color="#173042")
+    axis.text(0.825, 0.30, "metadata_author='Team Name')", ha="center", fontsize=9.0, color="#173042")
     axis.text(0.825, 0.22, "Use unnumbered sections for the visual cover.", ha="center", fontsize=8.4, color="#3E5869")
 
     figure.tight_layout()
@@ -1023,7 +1025,7 @@ def build_usage_guide_document() -> Document:
         rows=[
             ["Structured journal default", "Manuscripts and technical reports with compact title matter.", "DocumentSettings(authors=[...])"],
             ["Structured stacked profiles", "Guides, internal reports, and project documentation.", "DocumentSettings(authors=[...], author_layout=AuthorLayout(mode='stacked'))"],
-            ["Simple metadata string", "Short exports where file properties matter more than visible title blocks.", "DocumentSettings(author='Team Name')"],
+            ["Simple metadata string", "Short exports where file properties matter more than visible title blocks.", "DocumentSettings(metadata_author='Team Name')"],
             ["Manual front matter section", "Branded covers or institution-specific title pages.", "Keep metadata simple and author the visible cover with unnumbered sections."],
         ],
         caption="Author-display options from most automated to most manual.",
@@ -1102,7 +1104,7 @@ def build_usage_guide_document() -> Document:
     settings_options_table = Table(
         headers=["Object", "Options", "Scope"],
         rows=[
-            ["DocumentSettings", "author, summary, subtitle, authors, author_layout, cover_page", "Document metadata and title matter."],
+            ["DocumentSettings", "metadata_author, summary, subtitle, authors, author_layout, cover_page", "Document metadata and title matter."],
             ["DocumentSettings", "unit, page_size, page_margins, page_items", "Page geometry and page-positioned overlays."],
             ["DocumentSettings", "theme", "Document-wide renderer defaults shared by DOCX, PDF, and HTML."],
             ["PageSize", "width, height, unit", "Physical page box."],
@@ -1176,7 +1178,7 @@ def build_usage_guide_document() -> Document:
     drawing_placement_table = Table(
         headers=["Placement", "Use it for", "Anchor behavior"],
         rows=[
-            ["page_items", "Watermarks, trim guides, fixed approval areas, and form decoration.", "Coordinates start from page, margin/content, or a named Shape."],
+            ["DocumentSettings.page_items", "Watermarks, trim guides, fixed approval areas, and form decoration.", "Coordinates start from page, margin/content, or a named Shape."],
             ["placement='inline'", "Small logos, seals, badges, and simple shapes that should move with nearby prose.", "The object sits in the authored flow like directly inserted Word media."],
         ],
         caption="Coordinate-based drawings can be page overlays or inline flow objects.",
@@ -1422,7 +1424,7 @@ def build_usage_guide_document() -> Document:
                 CodeBlock(AUTHOR_LAYOUT_SNIPPET, language="python"),
                 Paragraph(
                     "If even the stacked layout is still too opinionated, keep ",
-                    code("DocumentSettings(author='Team Name')"),
+                    code("DocumentSettings(metadata_author='Team Name')"),
                     " for metadata and author the visible cover with ordinary unnumbered sections instead. That preserves a clean file property string while leaving the page design fully under document control."
                 ),
             ),
@@ -1792,7 +1794,7 @@ def build_usage_guide_document() -> Document:
                 "Positioned and inline drawing objects",
                 Paragraph(
                     "Use ",
-                    code("page_items"),
+                    code("DocumentSettings(page_items=...)"),
                     " for page-positioned shapes, text boxes, and image boxes that should not push body text around. Use ",
                     code("placement='inline'"),
                     " when the same object should behave more like directly inserted Word media."
@@ -1992,7 +1994,7 @@ def build_usage_guide_document() -> Document:
         CommentsPage(),
         ReferencesPage(),
         settings=DocumentSettings(
-            author="Docscriptor Contributors",
+            metadata_author="Docscriptor Contributors",
             summary="Detailed usage guide and API walkthrough",
             subtitle="Reference-style guide for structured Python document authoring",
             authors=[
