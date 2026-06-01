@@ -87,6 +87,19 @@ paths = report.save_all("artifacts")
 print(paths["docx"], paths["pdf"], paths["html"])
 ```
 
+## Command Line
+
+The installed package exposes a `docscriptor` command for common build and conversion workflows:
+
+```powershell
+docscriptor build report.py --out artifacts
+docscriptor convert README.md --to docx,pdf,html
+docscriptor convert notebook.ipynb --to pdf
+docscriptor validate report.py
+```
+
+`build` expects a Python file that exposes a `Document` as `document`, `doc`, or `report`, or a zero-argument factory such as `build_document()`. Use `--factory NAME` when the document object or builder has a different name. `convert` imports Markdown and Jupyter notebooks through the same parser APIs available in Python. Both commands validate before rendering by default and stop before writing outputs when validation errors are found.
+
 ## Why Not Just LaTeX?
 
 Docscriptor is not trying to replace every LaTeX workflow. It is meant for documents where Python already owns the data, plots, citations, or release process and where collaborators may still need DOCX.

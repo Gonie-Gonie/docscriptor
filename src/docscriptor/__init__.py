@@ -92,6 +92,15 @@ from docscriptor.settings import (
     Theme,
 )
 from docscriptor.validation import DocumentValidationError, ValidationIssue, ValidationResult
+from docscriptor.workflows import (
+    RenderedOutputs,
+    build_python_document,
+    convert_source,
+    load_document,
+    load_python_document,
+    render_document,
+    validate_source,
+)
 
 
 def _resolve_version() -> str:
@@ -159,6 +168,7 @@ __all__ = [
     "Part",
     "ParagraphStyle",
     "ReferencesPage",
+    "RenderedOutputs",
     "Section",
     "Shape",
     "SubFigure",
@@ -185,10 +195,12 @@ __all__ = [
     "__version__",
     "badge",
     "bold",
+    "build_python_document",
     "code",
     "color",
     "cite",
     "comment",
+    "convert_source",
     "footnote",
     "from_ipynb",
     "from_markdown",
@@ -198,9 +210,12 @@ __all__ = [
     "keyboard",
     "link",
     "line_break",
+    "load_document",
+    "load_python_document",
     "math",
     "prescript",
     "reference",
+    "render_document",
     "status",
     "strike",
     "strikethrough",
@@ -215,6 +230,7 @@ __all__ = [
     "subscript",
     "superscript",
     "tag",
+    "validate_source",
 ]
 
 for _module_name in ("components", "core", "document", "layout", "settings"):

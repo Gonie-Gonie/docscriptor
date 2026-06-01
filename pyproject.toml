@@ -52,6 +52,9 @@ Repository = "https://github.com/Gonie-Gonie/docscriptor"
 Documentation = "https://github.com/Gonie-Gonie/docscriptor#readme"
 Issues = "https://github.com/Gonie-Gonie/docscriptor/issues"
 
+[project.scripts]
+docscriptor = "docscriptor.cli:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 

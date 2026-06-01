@@ -31,6 +31,7 @@ This file is the shared memory for ongoing work on this repository. Keep it read
 - `Shape`, `TextBox`, and `ImageBox` also support `placement="inline"` so users can insert drawing objects into the body flow in a Word-like "in line with text" mode, similar to direct LaTeX `includegraphics` usage.
 - Table authors should choose whether a table may split, not whether it is a normal table or longtable. `Table(split=True)` means here/in-source-order and splittable; `split=False` keeps short tables together but still auto-splits very long tables with repeated headers where possible. `placement=...` on tables and figures is an advanced hint for here/float/top/bottom/page-like behavior.
 - Documents now have `validate()` as a preflight API. Validation returns a structured `ValidationResult` that prints as a table, records format scope (`docx`, `pdf`, `html`), and is run automatically before `save*` rendering. Keep future renderer-specific caveats connected to `docscriptor.compatibility` and validation issues rather than scattering ad hoc checks in renderers.
+- The CLI entry point is `docscriptor.cli:main`, with `build`, `convert`, and `validate` subcommands. Keep CLI behavior thin over `docscriptor.workflows` so Python API and command-line behavior stay aligned.
 - Release versioning rule: bump the minor version when backward compatibility is not guaranteed; bump only the patch version when backward compatibility is preserved.
 
 ## Local Environment Notes
