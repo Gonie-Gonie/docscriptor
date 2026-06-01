@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import json
+from base64 import b64encode
 from pathlib import Path
 
-from docscriptor import Document, from_ipynb, parse_ipynb
+from docscriptor import Document, Figure, ImageData, Table, from_ipynb, parse_ipynb
 from docscriptor.components.blocks import Chapter, CodeBlock, Paragraph, Section
+
+_TINY_PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0"
+    b"\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82"
+)
 
 
 def _sample_notebook() -> dict[str, object]:
@@ -140,3 +147,54 @@ def test_parse_ipynb_can_filter_code_markdown_and_outputs() -> None:
         not isinstance(child, CodeBlock)
         for child in markdown_only[0].children[1].children
     )
+
+
+def test_parse_ipynb_imports_markdown_and_image_outputs_as_editable_blocks() -> None:
+    notebook = {
+        "nbformat": 4,
+        "nbformat_minor": 5,
+        "metadata": {"language_info": {"name": "python"}},
+        "cells": [
+            {
+                "cell_type": "markdown",
+                "metadata": {},
+                "source": "# Output Report\n\n## Results\n",
+            },
+            {
+                "cell_type": "code",
+                "execution_count": 1,
+                "metadata": {},
+                "source": "display(summary)",
+                "outputs": [
+                    {
+                        "output_type": "display_data",
+                        "data": {
+                            "text/markdown": "| Metric | Value |\n| --- | ---: |\n| score | 0.98 |",
+                        },
+                        "metadata": {},
+                    },
+                    {
+                        "output_type": "display_data",
+                        "data": {
+                            "image/png": b64encode(_TINY_PNG).decode("ascii"),
+                            "text/plain": "<Figure size 100x100>",
+                        },
+                        "metadata": {},
+                    },
+                ],
+            },
+        ],
+    }
+
+    blocks = parse_ipynb(notebook)
+
+    chapter = blocks[0]
+    assert isinstance(chapter, Chapter)
+    results = chapter.children[0]
+    assert isinstance(results, Section)
+    assert isinstance(results.children[1], Table)
+    figure = results.children[2]
+    assert isinstance(figure, Figure)
+    assert isinstance(figure.image_source, ImageData)
+    assert figure.image_source.data == _TINY_PNG
+    assert figure.format == "png"

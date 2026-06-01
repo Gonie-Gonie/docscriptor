@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Iterable, Literal, TYPE_CHECKING
 
 from docscriptor.components.base import Block
 from docscriptor.components.inline import InlineInput, Text, coerce_inlines
+from docscriptor.components.media import ImageData, coerce_image_source
 from docscriptor.core import PathLike, normalize_color, normalize_length_unit
 
 if TYPE_CHECKING:
@@ -265,11 +265,7 @@ class ImageBox(Block):
             raise ValueError("ImageBox width and height must be >= 0")
         if fit not in {"contain", "stretch"}:
             raise ValueError(f"Unsupported ImageBox fit: {fit!r}")
-        self.image_source = (
-            Path(image_source)
-            if isinstance(image_source, (str, Path))
-            else image_source
-        )
+        self.image_source = coerce_image_source(image_source)
         self.x = x
         self.y = y
         self.width = width
@@ -277,7 +273,11 @@ class ImageBox(Block):
         self.anchor = _normalize_anchor(anchor)
         self.placement = placement
         self.fit = fit
-        self.format = format
+        self.format = (
+            self.image_source.format
+            if isinstance(self.image_source, ImageData) and format == "png"
+            else format
+        )
         self.dpi = dpi
         self.unit = normalize_length_unit(unit) if unit is not None else None
         self.z_index = z_index

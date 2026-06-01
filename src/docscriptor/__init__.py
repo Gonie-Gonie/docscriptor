@@ -41,14 +41,34 @@ from docscriptor.components.blocks import (
     shift_heading_level,
     shift_heading_levels,
 )
-from docscriptor.components.generated import CommentsPage, FigureList, ReferencesPage, TableList, TableOfContents, TocLevelStyle
-from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table, TableCell, TableCellStyle
+from docscriptor.components.generated import (
+    CommentsPage,
+    FigureList,
+    ReferencesPage,
+    TableList,
+    TableOfContents,
+    TocLevelStyle,
+)
+from docscriptor.components.media import (
+    Figure,
+    ImageData,
+    SubFigure,
+    SubFigureGroup,
+    Table,
+    TableCell,
+    TableCellStyle,
+)
 from docscriptor.components.markup import markup
 from docscriptor.components.people import Affiliation, Author, AuthorLayout
 from docscriptor.components.references import CitationLibrary, CitationSource
 from docscriptor.components.positioning import ImageBox, Shape, TextBox
 from docscriptor.document import Document
-from docscriptor.importers.markdown import from_markdown, parse_markdown
+from docscriptor.importers.markdown import (
+    from_markdown,
+    from_markdown_file,
+    parse_markdown,
+    parse_markdown_file,
+)
 from docscriptor.importers.notebook import (
     from_ipynb,
     from_notebook,
@@ -171,6 +191,7 @@ __all__ = [
     "GeneratedPageOptions",
     "HeadingNumbering",
     "ImageBox",
+    "ImageData",
     "InlineChip",
     "InlineChipStyle",
     "LineBreak",
@@ -232,6 +253,7 @@ __all__ = [
     "footnote",
     "from_ipynb",
     "from_markdown",
+    "from_markdown_file",
     "from_notebook",
     "highlight",
     "italic",
@@ -251,6 +273,7 @@ __all__ = [
     "styled",
     "parse_ipynb",
     "parse_markdown",
+    "parse_markdown_file",
     "parse_notebook",
     "section_for_level",
     "shift_heading_level",

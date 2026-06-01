@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 from typing import Literal, Mapping, Sequence, TYPE_CHECKING
 
@@ -27,6 +28,53 @@ if TYPE_CHECKING:
 MediaPlacement = Literal["auto", "here", "float", "top", "bottom", "page"]
 TableSplit = bool | Literal["auto"]
 DEFAULT_LONG_TABLE_ROW_THRESHOLD = 12
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class ImageData:
+    """In-memory image bytes usable anywhere a figure image source is accepted."""
+
+    data: bytes
+    format: str
+
+    def __init__(
+        self,
+        data: bytes | bytearray | memoryview | BytesIO,
+        *,
+        format: str = "png",
+    ) -> None:
+        if isinstance(data, BytesIO):
+            image_bytes = data.getvalue()
+        else:
+            image_bytes = bytes(data)
+        normalized_format = format.strip().lower().lstrip(".")
+        if not image_bytes:
+            raise ValueError("ImageData requires non-empty image bytes")
+        if not normalized_format:
+            raise ValueError("ImageData format must not be empty")
+        object.__setattr__(self, "data", image_bytes)
+        object.__setattr__(self, "format", normalized_format)
+
+    def savefig(self, target: object, **_: object) -> None:
+        """Write the image bytes to a file-like target.
+
+        Renderers already understand ``savefig``-compatible sources for plots;
+        this adapter lets imported notebook images reuse that same path.
+        """
+
+        target.write(self.data)
+
+
+def coerce_image_source(source: PathLike | object) -> object:
+    """Normalize path-like or in-memory image inputs for media components."""
+
+    if isinstance(source, ImageData):
+        return source
+    if isinstance(source, (bytes, bytearray, memoryview, BytesIO)):
+        return ImageData(source)
+    if isinstance(source, (str, Path)):
+        return Path(source)
+    return source
 
 
 def normalize_media_placement(value: str | None) -> MediaPlacement:
@@ -785,17 +833,17 @@ class Figure(Block):
         dpi: int | None = 150,
         placement: str | None = None,
     ) -> None:
-        self.image_source = (
-            Path(image_source)
-            if isinstance(image_source, (str, Path))
-            else image_source
-        )
+        self.image_source = coerce_image_source(image_source)
         self.caption = coerce_cell(caption) if caption is not None else None
         self.width = width
         self.height = height
         self.unit = normalize_length_unit(unit) if unit is not None else None
         self.identifier = identifier
-        self.format = format
+        self.format = (
+            self.image_source.format
+            if isinstance(self.image_source, ImageData) and format == "png"
+            else format
+        )
         self.dpi = dpi
         self.placement = normalize_media_placement(placement)
 
@@ -870,17 +918,17 @@ class SubFigure:
         dpi: int | None = 150,
         label: str | None = None,
     ) -> None:
-        self.image_source = (
-            Path(image_source)
-            if isinstance(image_source, (str, Path))
-            else image_source
-        )
+        self.image_source = coerce_image_source(image_source)
         self.caption = coerce_cell(caption) if caption is not None else None
         self.width = width
         self.height = height
         self.unit = normalize_length_unit(unit) if unit is not None else None
         self.identifier = identifier
-        self.format = format
+        self.format = (
+            self.image_source.format
+            if isinstance(self.image_source, ImageData) and format == "png"
+            else format
+        )
         self.dpi = dpi
         self.label = label
 
@@ -993,6 +1041,7 @@ class SubFigureGroup(Block):
 
 __all__ = [
     "Figure",
+    "ImageData",
     "MediaPlacement",
     "SubFigure",
     "SubFigureGroup",
@@ -1005,6 +1054,7 @@ __all__ = [
     "TablePlacement",
     "TableSplit",
     "build_table_layout",
+    "coerce_image_source",
     "coerce_table_cell",
     "coerce_table_cell_style",
     "normalize_media_placement",

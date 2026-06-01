@@ -63,6 +63,7 @@ class Document:
         numbered: bool = True,
         toc: bool | None = None,
         heading_level_shift: int = 0,
+        base_dir: str | Path | None = None,
     ) -> Document:
         """Create a document from Markdown text."""
 
@@ -70,6 +71,33 @@ class Document:
 
         return from_markdown(
             source,
+            title=title,
+            settings=settings,
+            citations=citations,
+            numbered=numbered,
+            toc=toc,
+            heading_level_shift=heading_level_shift,
+            base_dir=base_dir,
+        )
+
+    @classmethod
+    def from_markdown_file(
+        cls,
+        path: str | Path,
+        *,
+        title: str | None = None,
+        settings: DocumentSettings | None = None,
+        citations: CitationLibrary | Sequence[CitationSource] | str | None = None,
+        numbered: bool = True,
+        toc: bool | None = None,
+        heading_level_shift: int = 0,
+    ) -> Document:
+        """Create a document from a Markdown file."""
+
+        from docscriptor.importers.markdown import from_markdown_file
+
+        return from_markdown_file(
+            path,
             title=title,
             settings=settings,
             citations=citations,
@@ -91,6 +119,9 @@ class Document:
         include_markdown: bool = True,
         include_raw: bool = True,
         code_language: str | None = None,
+        numbered: bool = True,
+        toc: bool | None = None,
+        heading_level_shift: int = 0,
     ) -> Document:
         """Create a document from a Jupyter notebook."""
 
@@ -106,6 +137,9 @@ class Document:
             include_markdown=include_markdown,
             include_raw=include_raw,
             code_language=code_language,
+            numbered=numbered,
+            toc=toc,
+            heading_level_shift=heading_level_shift,
         )
 
     def split_top_level_children(self) -> tuple[list[object], list[object]]:

@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
+from base64 import b64decode
 from collections.abc import Mapping, Sequence as SequenceABC
 from os import PathLike as OsPathLike
 from pathlib import Path
 from typing import Sequence
 
 from docscriptor.components.base import Block
-from docscriptor.components.blocks import Chapter, CodeBlock, Paragraph, Section
+from docscriptor.components.blocks import Chapter, CodeBlock, Section
+from docscriptor.components.media import Figure, ImageData
 from docscriptor.components.references import CitationLibrary, CitationSource
 from docscriptor.document import Document
 from docscriptor.importers.markdown import parse_markdown
@@ -27,6 +29,10 @@ def parse_ipynb(
     include_markdown: bool = True,
     include_raw: bool = True,
     code_language: str | None = None,
+    numbered: bool = True,
+    toc: bool | None = None,
+    heading_level_shift: int = 0,
+    base_dir: str | OsPathLike[str] | None = None,
 ) -> list[Block]:
     """Parse a Jupyter notebook into docscriptor block objects.
 
@@ -37,6 +43,7 @@ def parse_ipynb(
 
     notebook = _load_notebook(source)
     language = code_language or _notebook_language(notebook) or "python"
+    markdown_base_dir = Path(base_dir) if base_dir is not None else _source_base_dir(source)
     blocks: list[Block] = []
     heading_stack: list[Section] = []
 
@@ -46,7 +53,13 @@ def parse_ipynb(
 
         if cell_type == "markdown":
             if include_markdown and cell_source.strip():
-                for block in parse_markdown(cell_source):
+                for block in parse_markdown(
+                    cell_source,
+                    numbered=numbered,
+                    toc=toc,
+                    heading_level_shift=heading_level_shift,
+                    base_dir=markdown_base_dir,
+                ):
                     _append_notebook_block(blocks, heading_stack, block)
             continue
 
@@ -58,7 +71,13 @@ def parse_ipynb(
                     CodeBlock(cell_source.rstrip("\n"), language=language),
                 )
             if include_outputs:
-                for block in _cell_output_blocks(cell):
+                for block in _cell_output_blocks(
+                    cell,
+                    numbered=numbered,
+                    toc=toc,
+                    heading_level_shift=heading_level_shift,
+                    base_dir=markdown_base_dir,
+                ):
                     _append_notebook_block(blocks, heading_stack, block)
             continue
 
@@ -87,6 +106,10 @@ def from_ipynb(
     include_markdown: bool = True,
     include_raw: bool = True,
     code_language: str | None = None,
+    numbered: bool = True,
+    toc: bool | None = None,
+    heading_level_shift: int = 0,
+    base_dir: str | OsPathLike[str] | None = None,
 ) -> Document:
     """Create a ``Document`` from a Jupyter notebook.
 
@@ -96,6 +119,7 @@ def from_ipynb(
     """
 
     notebook = _load_notebook(source)
+    markdown_base_dir = Path(base_dir) if base_dir is not None else _source_base_dir(source)
     blocks = parse_ipynb(
         notebook,
         include_outputs=include_outputs,
@@ -103,6 +127,10 @@ def from_ipynb(
         include_markdown=include_markdown,
         include_raw=include_raw,
         code_language=code_language,
+        numbered=numbered,
+        toc=toc,
+        heading_level_shift=heading_level_shift,
+        base_dir=markdown_base_dir,
     )
     document_title = title
     if document_title is None:
@@ -131,6 +159,16 @@ def _load_notebook(source: NotebookSource) -> Mapping[str, object]:
         return notebook
 
     raise TypeError(f"Unsupported notebook source: {type(source)!r}")
+
+
+def _source_base_dir(source: NotebookSource) -> Path | None:
+    if isinstance(source, Mapping):
+        return None
+    if isinstance(source, str) and source.lstrip().startswith("{"):
+        return None
+    if isinstance(source, (str, OsPathLike)):
+        return Path(source).parent
+    return None
 
 
 def _notebook_cells(notebook: Mapping[str, object]) -> list[Mapping[str, object]]:
@@ -227,7 +265,14 @@ def _extend_stack_to_trailing_heading(
         heading_stack.append(current)
 
 
-def _cell_output_blocks(cell: Mapping[str, object]) -> list[Block]:
+def _cell_output_blocks(
+    cell: Mapping[str, object],
+    *,
+    numbered: bool,
+    toc: bool | None,
+    heading_level_shift: int,
+    base_dir: Path | None,
+) -> list[Block]:
     outputs = cell.get("outputs", [])
     if not isinstance(outputs, SequenceABC) or isinstance(outputs, (str, bytes)):
         return []
@@ -236,42 +281,90 @@ def _cell_output_blocks(cell: Mapping[str, object]) -> list[Block]:
     for output in outputs:
         if not isinstance(output, Mapping):
             continue
-        text = _output_text(output)
-        if not text.strip():
-            continue
-        blocks.append(
-            CodeBlock(
-                text.rstrip("\n"),
-                language="text",
-                show_language=False,
+        blocks.extend(
+            _output_blocks(
+                output,
+                numbered=numbered,
+                toc=toc,
+                heading_level_shift=heading_level_shift,
+                base_dir=base_dir,
             )
         )
     return blocks
 
 
-def _output_text(output: Mapping[str, object]) -> str:
+def _output_blocks(
+    output: Mapping[str, object],
+    *,
+    numbered: bool,
+    toc: bool | None,
+    heading_level_shift: int,
+    base_dir: Path | None,
+) -> list[Block]:
     output_type = str(output.get("output_type", "")).strip()
 
     if output_type == "stream":
-        return _join_source(output.get("text", ""))
+        return _plain_output_blocks(_join_source(output.get("text", "")))
 
     if output_type in {"display_data", "execute_result"}:
         data = output.get("data")
         if isinstance(data, Mapping):
-            for mime_type in ("text/plain", "text/markdown"):
-                if mime_type in data:
-                    return _join_source(data[mime_type])
-        return ""
+            if "text/markdown" in data:
+                markdown = _join_source(data["text/markdown"])
+                if markdown.strip():
+                    return parse_markdown(
+                        markdown,
+                        numbered=numbered,
+                        toc=toc,
+                        heading_level_shift=heading_level_shift,
+                        base_dir=base_dir,
+                    )
+            image = _output_image(data)
+            if image is not None:
+                return [image]
+            if "text/plain" in data:
+                return _plain_output_blocks(_join_source(data["text/plain"]))
+        return []
 
     if output_type == "error":
         traceback = output.get("traceback")
         if isinstance(traceback, SequenceABC) and not isinstance(traceback, (str, bytes)):
-            return "\n".join(str(line) for line in traceback)
+            return _plain_output_blocks("\n".join(str(line) for line in traceback))
         ename = str(output.get("ename", "")).strip()
         evalue = str(output.get("evalue", "")).strip()
-        return ": ".join(part for part in (ename, evalue) if part)
+        return _plain_output_blocks(": ".join(part for part in (ename, evalue) if part))
 
-    return ""
+    return []
+
+
+def _plain_output_blocks(text: str) -> list[Block]:
+    if not text.strip():
+        return []
+    return [
+        CodeBlock(
+            text.rstrip("\n"),
+            language="text",
+            show_language=False,
+        )
+    ]
+
+
+def _output_image(data: Mapping[str, object]) -> Figure | None:
+    for mime_type, image_format in (
+        ("image/png", "png"),
+        ("image/jpeg", "jpeg"),
+        ("image/jpg", "jpeg"),
+    ):
+        if mime_type not in data:
+            continue
+        encoded = _join_source(data[mime_type])
+        if not encoded.strip():
+            return None
+        return Figure(
+            ImageData(b64decode(encoded), format=image_format),
+            format=image_format,
+        )
+    return None
 
 
 parse_notebook = parse_ipynb

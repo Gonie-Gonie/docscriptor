@@ -50,9 +50,9 @@ def load_document(
     if resolved_type == "python":
         return load_python_document(source_path, factory=factory, chdir=chdir)
     if resolved_type == "markdown":
-        from docscriptor.importers.markdown import from_markdown
+        from docscriptor.importers.markdown import from_markdown_file
 
-        return from_markdown(source_path.read_text(encoding="utf-8"), title=title)
+        return from_markdown_file(source_path, title=title)
     if resolved_type == "notebook":
         from docscriptor.importers.notebook import from_ipynb
 

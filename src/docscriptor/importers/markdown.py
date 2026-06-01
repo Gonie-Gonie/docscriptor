@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from os import PathLike as OsPathLike
+from pathlib import Path
 from typing import Sequence
 
 from docscriptor.components.base import Block
@@ -66,6 +68,7 @@ def parse_markdown(
     numbered: bool = True,
     toc: bool | None = None,
     heading_level_shift: int = 0,
+    base_dir: str | OsPathLike[str] | None = None,
 ) -> list[Block]:
     """Parse Markdown text into docscriptor block objects.
 
@@ -85,6 +88,7 @@ def parse_markdown(
         numbered=numbered,
         toc=toc,
         heading_level_shift=heading_level_shift,
+        base_dir=base_dir,
     )
     return _build_heading_hierarchy(
         parser.parse(),
@@ -103,6 +107,7 @@ def from_markdown(
     numbered: bool = True,
     toc: bool | None = None,
     heading_level_shift: int = 0,
+    base_dir: str | OsPathLike[str] | None = None,
 ) -> Document:
     """Create a ``Document`` from Markdown text.
 
@@ -120,6 +125,7 @@ def from_markdown(
         numbered=numbered,
         toc=toc,
         heading_level_shift=heading_level_shift,
+        base_dir=base_dir,
     )
     events = parser.parse()
     document_title = title or _consume_first_h1_title(events) or "Markdown Document"
@@ -136,6 +142,57 @@ def from_markdown(
     )
 
 
+def parse_markdown_file(
+    path: str | OsPathLike[str],
+    *,
+    numbered: bool = True,
+    toc: bool | None = None,
+    heading_level_shift: int = 0,
+) -> list[Block]:
+    """Parse a Markdown file into editable docscriptor blocks.
+
+    Local image paths are resolved relative to the Markdown file.
+    """
+
+    source_path = Path(path)
+    return parse_markdown(
+        source_path.read_text(encoding="utf-8"),
+        numbered=numbered,
+        toc=toc,
+        heading_level_shift=heading_level_shift,
+        base_dir=source_path.parent,
+    )
+
+
+def from_markdown_file(
+    path: str | OsPathLike[str],
+    *,
+    title: str | None = None,
+    settings: DocumentSettings | None = None,
+    citations: CitationLibrary | Sequence[CitationSource] | str | None = None,
+    numbered: bool = True,
+    toc: bool | None = None,
+    heading_level_shift: int = 0,
+) -> Document:
+    """Create a ``Document`` from a Markdown file.
+
+    This keeps the imported body editable while resolving local assets relative
+    to the source file.
+    """
+
+    source_path = Path(path)
+    return from_markdown(
+        source_path.read_text(encoding="utf-8"),
+        title=title,
+        settings=settings,
+        citations=citations,
+        numbered=numbered,
+        toc=toc,
+        heading_level_shift=heading_level_shift,
+        base_dir=source_path.parent,
+    )
+
+
 class _MarkdownParser:
     def __init__(
         self,
@@ -144,6 +201,7 @@ class _MarkdownParser:
         numbered: bool = True,
         toc: bool | None = None,
         heading_level_shift: int = 0,
+        base_dir: str | OsPathLike[str] | None = None,
     ) -> None:
         normalized_source = source.replace("\r\n", "\n").replace("\r", "\n")
         self.lines = normalized_source.split("\n")
@@ -151,6 +209,7 @@ class _MarkdownParser:
         self.numbered = numbered
         self.toc = toc
         self.heading_level_shift = heading_level_shift
+        self.base_dir = Path(base_dir) if base_dir is not None else None
 
     def parse(self) -> list[_MarkdownEvent]:
         events: list[_MarkdownEvent] = []
@@ -294,6 +353,7 @@ class _MarkdownParser:
             numbered=self.numbered,
             toc=self.toc,
             heading_level_shift=self.heading_level_shift,
+            base_dir=self.base_dir,
         )
         return Box(*children), index
 
@@ -438,7 +498,8 @@ class _MarkdownParser:
                 Paragraph(markup(f"{alt_text}: {target}", references=self.references)),
                 index + 1,
             )
-        return Figure(target, caption=markup(alt_text, references=self.references)), index + 1
+        caption = markup(alt_text, references=self.references) if alt_text.strip() else None
+        return Figure(_resolve_local_path(target, self.base_dir), caption=caption), index + 1
 
     def _parse_paragraph(self, index: int) -> tuple[Paragraph, int]:
         paragraph_lines: list[str] = []
@@ -669,4 +730,16 @@ def _is_remote_url(value: str) -> bool:
     return value.startswith(("http://", "https://"))
 
 
-__all__ = ["from_markdown", "parse_markdown"]
+def _resolve_local_path(target: str, base_dir: Path | None) -> Path:
+    path = Path(target)
+    if path.is_absolute() or base_dir is None:
+        return path
+    return base_dir / path
+
+
+__all__ = [
+    "from_markdown",
+    "from_markdown_file",
+    "parse_markdown",
+    "parse_markdown_file",
+]

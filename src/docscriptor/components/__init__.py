@@ -37,6 +37,7 @@ _EXPORTS = {
     "Highlight": "docscriptor.components.inline",
     "Hyperlink": "docscriptor.components.inline",
     "ImageBox": "docscriptor.components.positioning",
+    "ImageData": "docscriptor.components.media",
     "InlineChip": "docscriptor.components.inline",
     "InlineChipStyle": "docscriptor.components.inline",
     "Italic": "docscriptor.components.inline",

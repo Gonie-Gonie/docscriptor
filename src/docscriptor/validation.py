@@ -10,6 +10,7 @@ from typing import Iterable, Literal, Sequence, TYPE_CHECKING
 from docscriptor.compatibility import (
     OUTPUT_FORMATS,
     OutputFormat,
+    compatibility_note,
     format_output_formats,
     normalize_output_formats,
 )
@@ -46,7 +47,7 @@ from docscriptor.components.inline import (
     Hyperlink,
     Text,
 )
-from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table
+from docscriptor.components.media import Figure, ImageData, SubFigure, SubFigureGroup, Table
 from docscriptor.components.positioning import ImageBox, Shape, TextBox
 from docscriptor.components.references import CitationSource
 from docscriptor.core import DocscriptorError
@@ -474,6 +475,9 @@ class _ValidationContext:
                 continue
             if isinstance(fragment, Footnote):
                 self._scan_inlines(fragment.note, f"{fragment_path}.note")
+                continue
+            if isinstance(fragment, (TextBox, Shape, ImageBox)):
+                self._collect_positioned_item(fragment, fragment_path)
 
     def _validate_title(self, title: Sequence[Text], path: str, message: str) -> None:
         if not _plain_text(title).strip():
@@ -523,6 +527,26 @@ class _ValidationContext:
                         "Table column widths must be greater than zero.",
                         f"{path}.column_widths[{index}]",
                     )
+            self._validate_table_width(table, path)
+        elif layout.column_count >= 8:
+            self._add(
+                "warning",
+                "many-table-columns",
+                f"Table has {layout.column_count} columns. Wide tables may wrap poorly "
+                "in fixed-page renderers; consider column_widths, split=True, or a "
+                "narrower table.",
+                path,
+                formats=("docx", "pdf"),
+            )
+
+        if table.caption is None:
+            self._add(
+                "warning",
+                "missing-table-caption",
+                "Captionless tables cannot appear in generated table lists and cannot be "
+                "referenced with an automatic table number.",
+                f"{path}.caption",
+            )
 
         for row_index, row in enumerate(table.header_rows):
             for cell_index, cell in enumerate(row):
@@ -564,11 +588,30 @@ class _ValidationContext:
                 f"{type(figure).__name__}.dpi must be greater than zero.",
                 f"{path}.dpi",
             )
+        self._validate_figure_size(figure, path)
         self._validate_image_source(figure.image_source, path)
         if figure.caption is not None:
             self._scan_inlines(figure.caption.content, f"{path}.caption")
+        else:
+            self._add(
+                "warning",
+                "missing-figure-caption",
+                f"Captionless {type(figure).__name__} objects cannot appear in generated "
+                "figure lists and cannot be referenced with an automatic figure number.",
+                f"{path}.caption",
+            )
 
     def _validate_image_source(self, source: object, path: str) -> None:
+        if isinstance(source, ImageData):
+            if not source.data:
+                self._add(
+                    "error",
+                    "empty-image-data",
+                    "ImageData must contain non-empty bytes.",
+                    f"{path}.image_source",
+                )
+            return
+
         if isinstance(source, Path):
             if not source.exists():
                 self._add(
@@ -757,14 +800,7 @@ class _ValidationContext:
         for page, path in self.generated_pages:
             if isinstance(page, TableOfContents):
                 if page.show_page_numbers:
-                    self._add(
-                        "warning",
-                        "html-toc-page-numbers",
-                        "HTML output does not have stable rendered page numbers, "
-                        "so the TOC is link-only there.",
-                        path,
-                        formats=("html",),
-                    )
+                    self._add_compatibility_warning("html-toc-page-numbers", path)
                 if not any(page.includes_level(entry.level) for entry in render_index.headings):
                     self._add(
                         "warning",
@@ -812,6 +848,50 @@ class _ValidationContext:
                     "FootnotesPage has no footnotes to display.",
                     path,
                 )
+
+    def _validate_table_width(self, table: Table, path: str) -> None:
+        column_widths = table.column_widths_in_inches(self.document.settings.unit)
+        if column_widths is None:
+            return
+        table_width = sum(column_widths)
+        text_width = self.document.settings.text_width_in_inches()
+        if table_width <= text_width:
+            return
+        self._add(
+            "warning",
+            "wide-table",
+            f"Table width is {table_width:.2f}in, wider than the document text "
+            f"width of {text_width:.2f}in. Fixed-page renderers may wrap or clip it.",
+            path,
+            formats=("docx", "pdf"),
+        )
+
+    def _validate_figure_size(self, figure: Figure | SubFigure, path: str) -> None:
+        width = figure.width_in_inches(self.document.settings.unit)
+        if width is None:
+            return
+        text_width = self.document.settings.text_width_in_inches()
+        if width <= text_width:
+            return
+        self._add(
+            "warning",
+            "wide-figure",
+            f"{type(figure).__name__} width is {width:.2f}in, wider than the "
+            f"document text width of {text_width:.2f}in. Fixed-page renderers may scale "
+            "or overflow it.",
+            path,
+            formats=("docx", "pdf"),
+        )
+
+    def _add_compatibility_warning(self, code: str, path: str) -> None:
+        note = compatibility_note(code)
+        self._add(
+            "warning",
+            note.code,
+            note.message,
+            path,
+            formats=note.formats,
+        )
 
 
 def _plain_text(fragments: Sequence[Text]) -> str:

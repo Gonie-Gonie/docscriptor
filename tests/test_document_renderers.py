@@ -56,6 +56,7 @@ from docscriptor import (
     GeneratedPageOptions,
     HeadingNumbering,
     ImageBox,
+    ImageData,
     InlineChip,
     InlineChipStyle,
     Lemma,
@@ -756,6 +757,17 @@ def test_document_validate_reports_authoring_errors_and_blocks_render(
     assert not pdf_path.exists()
 
 
+def test_image_data_sources_render_without_temp_files(tmp_path: Path) -> None:
+    figure = Figure(ImageData(_build_sample_png()), caption="In-memory image.", width=1.0)
+    document = Document("Image Data", figure)
+
+    outputs = document.save_all(tmp_path, stem="image-data")
+
+    assert set(outputs) == {"docx", "pdf", "html"}
+    assert all(path.exists() for path in outputs.values())
+    assert "data:image/png;base64," in outputs["html"].read_text(encoding="utf-8")
+
+
 def test_document_validate_catches_reference_mistakes() -> None:
     orphan = Paragraph("Outside the document.")
     uncaptioned_table = Table(headers=["Area"], rows=[["Validation"]])
@@ -778,6 +790,51 @@ def test_document_validate_catches_reference_mistakes() -> None:
         assert "missing-reference-target" in str(exc)
     else:
         raise AssertionError("Expected validate(raise_on_error=True) to fail")
+
+
+def test_document_validate_reports_preflight_warnings(tmp_path: Path) -> None:
+    image_path = tmp_path / "plot.png"
+    _write_sample_image(image_path)
+    missing_inline_image = tmp_path / "missing-inline.png"
+    settings = DocumentSettings(
+        unit="in",
+        page_size=PageSize.letter(),
+        page_margins=PageMargins.all(1.0, unit="in"),
+    )
+    wide_table = Table(
+        headers=["A", "B"],
+        rows=[["wide", "table"]],
+        column_widths=[4.0, 4.0],
+        unit="in",
+    )
+    captionless_figure = Figure(image_path)
+    document = Document(
+        "Preflight",
+        wide_table,
+        captionless_figure,
+        Paragraph(
+            "Inline asset ",
+            ImageBox(
+                missing_inline_image,
+                placement="inline",
+                width=0.2,
+                height=0.2,
+            ),
+        ),
+        settings=settings,
+    )
+
+    result = document.validate()
+    warning_codes = {issue.code for issue in result.warnings}
+    error_codes = {issue.code for issue in result.errors}
+
+    assert warning_codes >= {
+        "missing-table-caption",
+        "missing-figure-caption",
+        "wide-table",
+    }
+    assert "missing-image-file" in error_codes
+    assert any(issue.formats == ("docx", "pdf") for issue in result.warnings if issue.code == "wide-table")
 
 
 def test_numbering_and_list_styles_are_customizable() -> None:
@@ -1072,6 +1129,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "CitationOptions")
     assert hasattr(docscriptor, "HeadingNumbering")
     assert hasattr(docscriptor, "ImageBox")
+    assert hasattr(docscriptor, "ImageData")
     assert hasattr(docscriptor, "ListStyle")
     assert hasattr(docscriptor, "Table")
     assert hasattr(docscriptor, "TableCell")
@@ -1117,6 +1175,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "footnote")
     assert hasattr(docscriptor, "from_ipynb")
     assert hasattr(docscriptor, "from_markdown")
+    assert hasattr(docscriptor, "from_markdown_file")
     assert hasattr(docscriptor, "from_notebook")
     assert hasattr(docscriptor, "math")
     assert hasattr(docscriptor, "prescript")
@@ -1140,6 +1199,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "superscript")
     assert hasattr(docscriptor, "parse_ipynb")
     assert hasattr(docscriptor, "parse_markdown")
+    assert hasattr(docscriptor, "parse_markdown_file")
     assert hasattr(docscriptor, "parse_notebook")
     assert hasattr(inline_components, "InlineChip")
     assert hasattr(inline_components, "InlineChipStyle")
@@ -1151,6 +1211,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(inline_components, "status")
     assert hasattr(inline_components, "keyboard")
     assert hasattr(inline_components, "reference")
+    assert ImageData(_build_sample_png()).data
 
     for removed_name in (
         "document",

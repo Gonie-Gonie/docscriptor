@@ -7,19 +7,28 @@ from docscriptor import (
     Box,
     Divider,
     Document,
+    Figure,
     Paragraph,
     Section,
     Subsection,
     Subsubsection,
     Table,
     TableOfContents,
+    from_markdown_file,
     from_markdown,
     parse_markdown,
+    parse_markdown_file,
     shift_heading_levels,
 )
 from docscriptor.components.inline import Hyperlink
 from docscriptor.components.markup import markup
 from docscriptor.layout.indexing import build_render_index
+
+_TINY_PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0"
+    b"\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82"
+)
 
 
 def test_parse_markdown_maps_commonmark_and_gfm_blocks() -> None:
@@ -114,6 +123,32 @@ Body paragraph.
 
     fallback_title = Document.from_markdown("Body only.")
     assert fallback_title.title == "Markdown Document"
+
+
+def test_markdown_file_import_resolves_local_images_as_editable_figures(tmp_path) -> None:
+    assets_dir = tmp_path / "assets"
+    assets_dir.mkdir()
+    image_path = assets_dir / "plot.png"
+    image_path.write_bytes(_TINY_PNG)
+    markdown_path = tmp_path / "report.md"
+    markdown_path.write_text(
+        "# Imported Report\n\n![Result chart](assets/plot.png)\n",
+        encoding="utf-8",
+    )
+
+    blocks = parse_markdown_file(markdown_path)
+    document = from_markdown_file(markdown_path)
+
+    assert document.title == "Imported Report"
+    assert len(blocks) == 1
+    chapter = blocks[0]
+    assert isinstance(chapter, Chapter)
+    figure = chapter.children[0]
+    assert isinstance(figure, Figure)
+    assert figure.image_source == image_path
+    assert figure.caption is not None
+    assert figure.caption.plain_text() == "Result chart"
+    assert document.validate().ok
 
 
 def test_markdown_import_can_keep_headings_unnumbered() -> None:
