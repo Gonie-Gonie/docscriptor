@@ -837,6 +837,38 @@ def test_document_validate_reports_preflight_warnings(tmp_path: Path) -> None:
     assert any(issue.formats == ("docx", "pdf") for issue in result.warnings if issue.code == "wide-table")
 
 
+def test_document_validate_treats_subfigure_group_caption_as_reference_target(
+    tmp_path: Path,
+) -> None:
+    image_path = tmp_path / "plot.png"
+    _write_sample_image(image_path)
+    grouped = SubFigureGroup(
+        SubFigure(image_path, width=1.0),
+        SubFigure(image_path, width=1.0),
+        caption="Grouped result.",
+    )
+    captionless_group = SubFigureGroup(
+        SubFigure(image_path, width=1.0),
+    )
+
+    valid_result = Document(
+        "Grouped",
+        Paragraph("See ", grouped.reference(), "."),
+        grouped,
+    ).validate()
+    warning_codes = {issue.code for issue in valid_result.warnings}
+    assert "missing-figure-caption" not in warning_codes
+    assert valid_result.ok
+
+    invalid_result = Document(
+        "Captionless Group",
+        Paragraph("See ", captionless_group.reference(), "."),
+        captionless_group,
+    ).validate()
+    assert "missing-figure-caption" in {issue.code for issue in invalid_result.warnings}
+    assert "uncaptioned-reference-target" in {issue.code for issue in invalid_result.errors}
+
+
 def test_numbering_and_list_styles_are_customizable() -> None:
     heading_numbering = HeadingNumbering(formats=("upper-roman", "lower-alpha"), prefix="[", suffix="]")
     ordered_style = ListStyle(marker_format="upper-roman", prefix="(", suffix=")")

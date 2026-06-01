@@ -5,7 +5,6 @@ from __future__ import annotations
 from base64 import b64encode
 from dataclasses import replace
 from html import escape
-from io import BytesIO
 from mimetypes import guess_type
 from pathlib import Path
 
@@ -44,7 +43,15 @@ from docscriptor.components.inline import (
     Math,
     Text,
 )
-from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table, TablePlacement, build_table_layout
+from docscriptor.components.media import (
+    Figure,
+    SubFigure,
+    SubFigureGroup,
+    Table,
+    TablePlacement,
+    build_table_layout,
+    image_source_to_bytes,
+)
 from docscriptor.components.people import AuthorTitleLine
 from docscriptor.components.positioning import (
     ImageBox,
@@ -1333,17 +1340,17 @@ class HtmlRenderer:
         source = image_box.image_source
         if isinstance(source, Path):
             image_bytes = source.read_bytes()
-            mime_type = guess_type(source.name)[0] or self._mime_type_for_format(source.suffix.lstrip(".") or image_box.format)
-        elif hasattr(source, "savefig"):
-            buffer = BytesIO()
-            save_kwargs: dict[str, object] = {"format": image_box.format}
-            if image_box.dpi is not None:
-                save_kwargs["dpi"] = image_box.dpi
-            source.savefig(buffer, **save_kwargs)
-            image_bytes = buffer.getvalue()
-            mime_type = self._mime_type_for_format(image_box.format)
+            mime_type = guess_type(source.name)[0] or self._mime_type_for_format(
+                source.suffix.lstrip(".") or image_box.format
+            )
         else:
-            raise TypeError(f"Unsupported image source for HTML positioned image rendering: {type(source)!r}")
+            image_bytes = image_source_to_bytes(
+                source,
+                image_format=image_box.format,
+                dpi=image_box.dpi,
+                usage="HTML positioned image rendering",
+            )
+            mime_type = self._mime_type_for_format(image_box.format)
         return f"data:{mime_type};base64,{b64encode(image_bytes).decode('ascii')}"
 
     def _fragment_html(
@@ -1714,17 +1721,17 @@ class HtmlRenderer:
         source = figure.image_source
         if isinstance(source, Path):
             image_bytes = source.read_bytes()
-            mime_type = guess_type(source.name)[0] or self._mime_type_for_format(source.suffix.lstrip(".") or figure.format)
-        elif hasattr(source, "savefig"):
-            buffer = BytesIO()
-            save_kwargs: dict[str, object] = {"format": figure.format}
-            if figure.dpi is not None:
-                save_kwargs["dpi"] = figure.dpi
-            source.savefig(buffer, **save_kwargs)
-            image_bytes = buffer.getvalue()
-            mime_type = self._mime_type_for_format(figure.format)
+            mime_type = guess_type(source.name)[0] or self._mime_type_for_format(
+                source.suffix.lstrip(".") or figure.format
+            )
         else:
-            raise TypeError(f"Unsupported figure source for HTML rendering: {type(source)!r}")
+            image_bytes = image_source_to_bytes(
+                source,
+                image_format=figure.format,
+                dpi=figure.dpi,
+                usage="HTML rendering",
+            )
+            mime_type = self._mime_type_for_format(figure.format)
         return f"data:{mime_type};base64,{b64encode(image_bytes).decode('ascii')}"
 
     def _mime_type_for_format(self, image_format: str) -> str:

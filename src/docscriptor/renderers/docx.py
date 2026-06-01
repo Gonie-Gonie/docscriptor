@@ -59,7 +59,14 @@ from docscriptor.components.inline import (
     Math,
     Text,
 )
-from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table, build_table_layout
+from docscriptor.components.media import (
+    Figure,
+    SubFigure,
+    SubFigureGroup,
+    Table,
+    build_table_layout,
+    image_source_to_buffer,
+)
 from docscriptor.components.people import AuthorTitleLine
 from docscriptor.components.positioning import (
     ImageBox,
@@ -2809,31 +2816,23 @@ class DocxRenderer:
         source = figure.image_source
         if isinstance(source, Path):
             return str(source)
-        if hasattr(source, "savefig"):
-            buffer = BytesIO()
-            save_kwargs: dict[str, object] = {
-                "format": figure.format,
-            }
-            if figure.dpi is not None:
-                save_kwargs["dpi"] = figure.dpi
-            source.savefig(buffer, **save_kwargs)
-            buffer.seek(0)
-            return buffer
-        raise TypeError(f"Unsupported figure source for DOCX rendering: {type(source)!r}")
+        return image_source_to_buffer(
+            source,
+            image_format=figure.format,
+            dpi=figure.dpi,
+            usage="DOCX rendering",
+        )
 
     def _image_box_picture_source(self, image_box: ImageBox) -> str | BytesIO:
         source = image_box.image_source
         if isinstance(source, Path):
             return str(source)
-        if hasattr(source, "savefig"):
-            buffer = BytesIO()
-            save_kwargs: dict[str, object] = {"format": image_box.format}
-            if image_box.dpi is not None:
-                save_kwargs["dpi"] = image_box.dpi
-            source.savefig(buffer, **save_kwargs)
-            buffer.seek(0)
-            return buffer
-        raise TypeError(f"Unsupported image source for DOCX positioned image rendering: {type(source)!r}")
+        return image_source_to_buffer(
+            source,
+            image_format=image_box.format,
+            dpi=image_box.dpi,
+            usage="DOCX positioned image rendering",
+        )
 
     def _image_box_relationship_id(self, container: object, image_box: ImageBox) -> str:
         part = getattr(container, "part", None)

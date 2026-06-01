@@ -50,7 +50,7 @@ from docscriptor.components.inline import (
 from docscriptor.components.media import Figure, ImageData, SubFigure, SubFigureGroup, Table
 from docscriptor.components.positioning import ImageBox, Shape, TextBox
 from docscriptor.components.references import CitationSource
-from docscriptor.core import DocscriptorError
+from docscriptor.core import DocscriptorError, length_to_inches
 
 if TYPE_CHECKING:
     from docscriptor.document import Document
@@ -103,27 +103,34 @@ class ValidationResult:
         self,
         formats: Iterable[str] | None = None,
     ) -> tuple[ValidationIssue, ...]:
+        requested_formats = set(normalize_output_formats(formats))
         return tuple(
             issue
             for issue in self.errors
-            if issue.applies_to(formats)
+            if _issue_matches_formats(issue, requested_formats)
         )
 
     def warnings_for(
         self,
         formats: Iterable[str] | None = None,
     ) -> tuple[ValidationIssue, ...]:
+        requested_formats = set(normalize_output_formats(formats))
         return tuple(
             issue
             for issue in self.warnings
-            if issue.applies_to(formats)
+            if _issue_matches_formats(issue, requested_formats)
         )
 
     def issues_for(
         self,
         formats: Iterable[str] | None = None,
     ) -> tuple[ValidationIssue, ...]:
-        return tuple(issue for issue in self.issues if issue.applies_to(formats))
+        requested_formats = set(normalize_output_formats(formats))
+        return tuple(
+            issue
+            for issue in self.issues
+            if _issue_matches_formats(issue, requested_formats)
+        )
 
     def ok_for(self, formats: Iterable[str] | None = None) -> bool:
         return not self.errors_for(formats)
@@ -406,12 +413,7 @@ class _ValidationContext:
 
         if isinstance(block, SubFigureGroup):
             self._register_referenceable(block, path)
-            for subfigure_index, subfigure in enumerate(block.subfigures):
-                subfigure_path = f"{path}.subfigures[{subfigure_index}]"
-                self._register_referenceable(subfigure, subfigure_path)
-                self._validate_figure(subfigure, subfigure_path)
-            if block.caption is not None:
-                self._scan_inlines(block.caption.content, f"{path}.caption")
+            self._validate_subfigure_group(block, path)
             return
 
         if isinstance(block, (TextBox, Shape, ImageBox)):
@@ -563,7 +565,13 @@ class _ValidationContext:
         if table.caption is not None:
             self._scan_inlines(table.caption.content, f"{path}.caption")
 
-    def _validate_figure(self, figure: Figure | SubFigure, path: str) -> None:
+    def _validate_figure(
+        self,
+        figure: Figure | SubFigure,
+        path: str,
+        *,
+        warn_missing_caption: bool = True,
+    ) -> None:
         for field_name in ("width", "height"):
             value = getattr(figure, field_name)
             if value is not None and value <= 0:
@@ -592,7 +600,7 @@ class _ValidationContext:
         self._validate_image_source(figure.image_source, path)
         if figure.caption is not None:
             self._scan_inlines(figure.caption.content, f"{path}.caption")
-        else:
+        elif warn_missing_caption:
             self._add(
                 "warning",
                 "missing-figure-caption",
@@ -600,6 +608,27 @@ class _ValidationContext:
                 "figure lists and cannot be referenced with an automatic figure number.",
                 f"{path}.caption",
             )
+
+    def _validate_subfigure_group(self, group: SubFigureGroup, path: str) -> None:
+        for subfigure_index, subfigure in enumerate(group.subfigures):
+            subfigure_path = f"{path}.subfigures[{subfigure_index}]"
+            self._register_referenceable(subfigure, subfigure_path)
+            self._validate_figure(
+                subfigure,
+                subfigure_path,
+                warn_missing_caption=False,
+            )
+        if group.caption is not None:
+            self._scan_inlines(group.caption.content, f"{path}.caption")
+        else:
+            self._add(
+                "warning",
+                "missing-figure-caption",
+                "Captionless SubFigureGroup objects cannot appear in generated figure "
+                "lists and cannot be referenced with an automatic figure number.",
+                f"{path}.caption",
+            )
+        self._validate_subfigure_group_size(group, path)
 
     def _validate_image_source(self, source: object, path: str) -> None:
         if isinstance(source, ImageData):
@@ -634,7 +663,8 @@ class _ValidationContext:
             self._add(
                 "error",
                 "unsupported-image-source",
-                "Image source must be a filesystem path or an object with savefig(...).",
+                "Image source must be a filesystem path, ImageData, or an object with "
+                "savefig(...).",
                 f"{path}.image_source",
             )
 
@@ -883,6 +913,34 @@ class _ValidationContext:
             formats=("docx", "pdf"),
         )
 
+    def _validate_subfigure_group_size(self, group: SubFigureGroup, path: str) -> None:
+        first_row = group.subfigures[: group.columns]
+        if not first_row:
+            return
+        widths = [
+            subfigure.width_in_inches(self.document.settings.unit)
+            for subfigure in first_row
+        ]
+        if any(width is None for width in widths):
+            return
+        group_width = sum(width for width in widths if width is not None)
+        group_width += length_to_inches(
+            group.column_gap,
+            group.unit or self.document.settings.unit,
+        ) * max(len(first_row) - 1, 0)
+        text_width = self.document.settings.text_width_in_inches()
+        if group_width <= text_width:
+            return
+        self._add(
+            "warning",
+            "wide-figure",
+            f"SubFigureGroup first row is {group_width:.2f}in wide, wider than the "
+            f"document text width of {text_width:.2f}in. Fixed-page renderers may "
+            "scale or overflow it.",
+            path,
+            formats=("docx", "pdf"),
+        )
+
     def _add_compatibility_warning(self, code: str, path: str) -> None:
         note = compatibility_note(code)
         self._add(
@@ -896,6 +954,13 @@ class _ValidationContext:
 
 def _plain_text(fragments: Sequence[Text]) -> str:
     return "".join(fragment.plain_text() for fragment in fragments)
+
+
+def _issue_matches_formats(
+    issue: ValidationIssue,
+    requested_formats: set[OutputFormat],
+) -> bool:
+    return any(output_format in requested_formats for output_format in issue.formats)
 
 
 def _format_issue_table(rows: Sequence[tuple[str, str, str, str, str]]) -> str:

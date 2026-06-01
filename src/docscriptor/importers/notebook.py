@@ -153,7 +153,7 @@ def _load_notebook(source: NotebookSource) -> Mapping[str, object]:
         if isinstance(source, str) and source.lstrip().startswith("{"):
             notebook = json.loads(source)
         else:
-            notebook = json.loads(Path(source).read_text(encoding="utf-8"))
+            notebook = json.loads(Path(source).resolve().read_text(encoding="utf-8"))
         if not isinstance(notebook, Mapping):
             raise TypeError("Notebook JSON must decode to an object")
         return notebook
@@ -167,7 +167,7 @@ def _source_base_dir(source: NotebookSource) -> Path | None:
     if isinstance(source, str) and source.lstrip().startswith("{"):
         return None
     if isinstance(source, (str, OsPathLike)):
-        return Path(source).parent
+        return Path(source).resolve().parent
     return None
 
 

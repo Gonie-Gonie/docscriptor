@@ -77,6 +77,47 @@ def coerce_image_source(source: PathLike | object) -> object:
     return source
 
 
+def image_source_to_buffer(
+    source: object,
+    *,
+    image_format: str,
+    dpi: int | None = None,
+    usage: str = "image rendering",
+) -> BytesIO:
+    """Render an in-memory or plot-like image source into a byte buffer."""
+
+    if isinstance(source, ImageData):
+        return BytesIO(source.data)
+    if hasattr(source, "savefig"):
+        buffer = BytesIO()
+        save_kwargs: dict[str, object] = {"format": image_format}
+        if dpi is not None:
+            save_kwargs["dpi"] = dpi
+        source.savefig(buffer, **save_kwargs)
+        buffer.seek(0)
+        return buffer
+    raise TypeError(f"Unsupported image source for {usage}: {type(source)!r}")
+
+
+def image_source_to_bytes(
+    source: object,
+    *,
+    image_format: str,
+    dpi: int | None = None,
+    usage: str = "image rendering",
+) -> bytes:
+    """Return raw image bytes from an in-memory or plot-like image source."""
+
+    if isinstance(source, ImageData):
+        return source.data
+    return image_source_to_buffer(
+        source,
+        image_format=image_format,
+        dpi=dpi,
+        usage=usage,
+    ).getvalue()
+
+
 def normalize_media_placement(value: str | None) -> MediaPlacement:
     """Normalize advanced table/figure placement options."""
 
@@ -1057,6 +1098,8 @@ __all__ = [
     "coerce_image_source",
     "coerce_table_cell",
     "coerce_table_cell_style",
+    "image_source_to_buffer",
+    "image_source_to_bytes",
     "normalize_media_placement",
     "normalize_table_split",
 ]

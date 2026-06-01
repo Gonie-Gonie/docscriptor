@@ -68,7 +68,14 @@ from docscriptor.components.inline import (
     Math,
     Text,
 )
-from docscriptor.components.media import Figure, SubFigure, SubFigureGroup, Table, build_table_layout
+from docscriptor.components.media import (
+    Figure,
+    SubFigure,
+    SubFigureGroup,
+    Table,
+    build_table_layout,
+    image_source_to_buffer,
+)
 from docscriptor.components.people import AuthorTitleLine
 from docscriptor.components.positioning import (
     ImageBox,
@@ -2180,31 +2187,25 @@ class PdfRenderer:
         source = block.image_source
         if isinstance(source, Path):
             return str(source)
-        if hasattr(source, "savefig"):
-            buffer = BytesIO()
-            save_kwargs: dict[str, object] = {
-                "format": block.format,
-            }
-            if block.dpi is not None:
-                save_kwargs["dpi"] = block.dpi
-            source.savefig(buffer, **save_kwargs)
-            buffer.seek(0)
-            return buffer
-        raise TypeError(f"Unsupported figure source for PDF rendering: {type(source)!r}")
+        return image_source_to_buffer(
+            source,
+            image_format=block.format,
+            dpi=block.dpi,
+            usage="PDF rendering",
+        )
 
     def _image_box_source(self, image_box: ImageBox) -> str | ImageReader:
         source = image_box.image_source
         if isinstance(source, Path):
             return str(source)
-        if hasattr(source, "savefig"):
-            buffer = BytesIO()
-            save_kwargs: dict[str, object] = {"format": image_box.format}
-            if image_box.dpi is not None:
-                save_kwargs["dpi"] = image_box.dpi
-            source.savefig(buffer, **save_kwargs)
-            buffer.seek(0)
-            return ImageReader(buffer)
-        raise TypeError(f"Unsupported image source for PDF positioned image rendering: {type(source)!r}")
+        return ImageReader(
+            image_source_to_buffer(
+                source,
+                image_format=image_box.format,
+                dpi=image_box.dpi,
+                usage="PDF positioned image rendering",
+            )
+        )
 
     def _inline_markup(
         self,

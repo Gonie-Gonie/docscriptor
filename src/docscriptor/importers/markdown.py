@@ -154,7 +154,7 @@ def parse_markdown_file(
     Local image paths are resolved relative to the Markdown file.
     """
 
-    source_path = Path(path)
+    source_path = Path(path).resolve()
     return parse_markdown(
         source_path.read_text(encoding="utf-8"),
         numbered=numbered,
@@ -180,7 +180,7 @@ def from_markdown_file(
     to the source file.
     """
 
-    source_path = Path(path)
+    source_path = Path(path).resolve()
     return from_markdown(
         source_path.read_text(encoding="utf-8"),
         title=title,
