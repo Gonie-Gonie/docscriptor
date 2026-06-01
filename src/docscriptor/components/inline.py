@@ -364,6 +364,9 @@ class BlockReference(Text):
 
 
 def _reference_label_prefix(target: object) -> str:
+    countable_block = _as_countable_block(target)
+    if countable_block is not None:
+        return countable_block.reference_label
     target_name = type(target).__name__
     if target_name == "Table":
         return "Table"
@@ -824,6 +827,8 @@ def coerce_inlines(values: Iterable[InlineInput]) -> list[Text]:
 
 
 def _is_referenceable(value: object) -> bool:
+    if _as_countable_block(value) is not None:
+        return True
     block_name = type(value).__name__
     return block_name in {
         "Box",
@@ -840,6 +845,16 @@ def _is_referenceable(value: object) -> bool:
         "Subsubsection",
         "Table",
     }
+
+
+def _as_countable_block(value: object) -> object | None:
+    try:
+        from docscriptor.components.blocks import CountableBlock
+    except ImportError:
+        return None
+    if isinstance(value, CountableBlock):
+        return value
+    return None
 
 
 def _is_positioned_inline(value: object) -> bool:

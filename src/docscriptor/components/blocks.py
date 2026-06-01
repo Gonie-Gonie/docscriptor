@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import TYPE_CHECKING, Literal, Sequence
 
 from docscriptor.components.base import Block, BlockInput, coerce_blocks
@@ -30,6 +31,8 @@ if TYPE_CHECKING:
 CodeLanguagePosition = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
 MIN_SECTION_LEVEL = 1
 MAX_SECTION_LEVEL = 6
+DEFAULT_COUNTABLE_COUNTER = "countable"
+THEOREM_COUNTER = "theorem"
 
 
 @dataclass(slots=True, init=False)
@@ -779,6 +782,150 @@ class Box(Block):
 
 
 @dataclass(slots=True, init=False)
+class CountableBlock(Block):
+    """A theorem-like block with document-wide numbering."""
+
+    kind: str
+    children: list[Block]
+    title: list[Text] | None
+    numbered: bool
+    counter: str | None
+    reference_label: str
+    label_suffix: str
+
+    def __init__(
+        self,
+        kind: str,
+        *children: BlockInput,
+        title: InlineInput | None = None,
+        numbered: bool = True,
+        counter: str | None = DEFAULT_COUNTABLE_COUNTER,
+        reference_label: str | None = None,
+        label_suffix: str = ".",
+    ) -> None:
+        normalized_kind = str(kind).strip()
+        if not normalized_kind:
+            raise ValueError("CountableBlock kind must not be empty")
+        if not isinstance(label_suffix, str):
+            raise TypeError("CountableBlock label_suffix must be a string")
+        normalized_counter = None if counter is None else str(counter).strip()
+        if numbered and not normalized_counter:
+            raise ValueError("Numbered CountableBlock objects require a non-empty counter")
+        normalized_reference_label = (
+            normalized_kind
+            if reference_label is None
+            else str(reference_label).strip()
+        )
+        if not normalized_reference_label:
+            raise ValueError("CountableBlock reference_label must not be empty")
+
+        self.kind = normalized_kind
+        self.children = coerce_blocks(children)
+        self.title = coerce_inlines((title,)) if title is not None else None
+        self.numbered = bool(numbered)
+        self.counter = normalized_counter if self.numbered else None
+        self.reference_label = normalized_reference_label
+        self.label_suffix = label_suffix
+
+    def heading_label(self, number: int | None) -> str:
+        """Return the visible heading label, including punctuation."""
+
+        if self.numbered and number is not None:
+            return f"{self.kind} {number}{self.label_suffix}"
+        return f"{self.kind}{self.label_suffix}"
+
+    def reference_text(self, number: int) -> str:
+        """Return the default inline reference label."""
+
+        return f"{self.reference_label} {number}"
+
+    def render_to_docx(
+        self,
+        renderer: object,
+        container: object,
+        context: DocxRenderContext,
+    ) -> None:
+        renderer.render_countable_block(container, self, context)
+
+    def render_to_pdf(
+        self,
+        renderer: object,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        return renderer.render_countable_block(self, context)
+
+    def render_to_html(
+        self,
+        renderer: object,
+        context: HtmlRenderContext,
+    ) -> str:
+        return renderer.render_countable_block(self, context)
+
+
+def countable_kind(
+    kind: str,
+    *,
+    counter: str | None = DEFAULT_COUNTABLE_COUNTER,
+    numbered: bool = True,
+    reference_label: str | None = None,
+    label_suffix: str = ".",
+) -> type[CountableBlock]:
+    """Create a reusable theorem-like block class without manual subclassing."""
+
+    normalized_kind = str(kind).strip()
+    if not normalized_kind:
+        raise ValueError("countable_kind kind must not be empty")
+
+    class CustomCountableBlock(CountableBlock):
+        def __init__(
+            self,
+            *children: BlockInput,
+            title: InlineInput | None = None,
+            numbered: bool = numbered,
+            counter: str | None = counter,
+            reference_label: str | None = reference_label,
+            label_suffix: str = label_suffix,
+        ) -> None:
+            super().__init__(
+                normalized_kind,
+                *children,
+                title=title,
+                numbered=numbered,
+                counter=counter,
+                reference_label=reference_label,
+                label_suffix=label_suffix,
+            )
+
+    CustomCountableBlock.__name__ = _countable_class_name(normalized_kind)
+    CustomCountableBlock.__qualname__ = CustomCountableBlock.__name__
+    CustomCountableBlock.__module__ = __name__
+    CustomCountableBlock.__doc__ = f"A preconfigured countable block for {normalized_kind}."
+    return CustomCountableBlock
+
+
+def _countable_class_name(kind: str) -> str:
+    pieces = re.findall(r"[A-Za-z0-9]+", kind)
+    name = "".join(piece[:1].upper() + piece[1:] for piece in pieces)
+    if not name or name[0].isdigit():
+        return "CustomCountableBlock"
+    return name
+
+
+Definition = countable_kind("Definition", counter=THEOREM_COUNTER)
+Lemma = countable_kind("Lemma", counter=THEOREM_COUNTER)
+Proposition = countable_kind("Proposition", counter=THEOREM_COUNTER)
+Theorem = countable_kind("Theorem", counter=THEOREM_COUNTER)
+Corollary = countable_kind("Corollary", counter=THEOREM_COUNTER)
+Proof = countable_kind("Proof", numbered=False, counter=None)
+Example = countable_kind("Example", counter=THEOREM_COUNTER)
+Remark = countable_kind("Remark", counter=THEOREM_COUNTER)
+Assumption = countable_kind("Assumption", counter=THEOREM_COUNTER)
+Axiom = countable_kind("Axiom", counter=THEOREM_COUNTER)
+Claim = countable_kind("Claim", counter=THEOREM_COUNTER)
+Conjecture = countable_kind("Conjecture", counter=THEOREM_COUNTER)
+
+
+@dataclass(slots=True, init=False)
 class Section(Block):
     """A titled section containing nested blocks."""
 
@@ -997,21 +1144,37 @@ __all__ = [
     "CellInput",
     "CodeBlock",
     "ColumnSpan",
+    "CountableBlock",
+    "DEFAULT_COUNTABLE_COUNTER",
+    "Definition",
     "Divider",
     "Equation",
+    "Example",
     "MAX_SECTION_LEVEL",
     "MIN_SECTION_LEVEL",
+    "Lemma",
     "MultiColumn",
     "NumberedList",
     "PageBreak",
     "Paragraph",
     "Part",
+    "Proof",
+    "Remark",
     "Section",
     "Subsection",
     "Subsubsection",
+    "THEOREM_COUNTER",
     "VerticalSpace",
+    "Assumption",
+    "Axiom",
+    "Claim",
+    "Conjecture",
+    "Corollary",
+    "Theorem",
+    "Proposition",
     "coerce_cell",
     "coerce_list_item",
+    "countable_kind",
     "section_for_level",
     "shift_heading_level",
     "shift_heading_levels",

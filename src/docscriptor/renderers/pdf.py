@@ -38,6 +38,7 @@ from docscriptor.components.blocks import (
     BulletList,
     CodeBlock,
     ColumnSpan,
+    CountableBlock,
     Divider,
     Equation,
     MultiColumn,
@@ -754,6 +755,38 @@ class PdfRenderer:
             context.render_index,
             context.settings,
             context.unit,
+        )
+
+    def render_countable_block(
+        self,
+        block: CountableBlock,
+        context: PdfRenderContext,
+    ) -> list[object]:
+        """Render a theorem-like countable block into PDF flowables."""
+
+        heading_style = self._paragraph_style(
+            ParagraphStyle(space_after=4, keep_with_next=True),
+            context.theme,
+            context.styles["BodyText"],
+            default_unit=context.unit,
+        )
+        heading_markup = (
+            self._anchor_markup(context.render_index.block_anchor(block))
+            + f"<b>{escape(block.heading_label(context.render_index.countable_number(block)))}</b>"
+        )
+        if block.title is not None:
+            heading_markup += " " + self._inline_markup(
+                block.title,
+                context.theme,
+                context.render_index,
+                base_font_name=heading_style.fontName,
+                base_size=heading_style.fontSize,
+                base_italic=True,
+            )
+        return [RLParagraph(heading_markup, heading_style)] + self._render_flow_children(
+            block.children,
+            context,
+            flush_trailing_floats=False,
         )
 
     def render_column_span(
@@ -2592,6 +2625,15 @@ class PdfRenderer:
             if number is None:
                 raise DocscriptorError("Box references require the target box to be included in the document")
             return f"Box {number}"
+
+        if isinstance(target, CountableBlock):
+            number = render_index.countable_number(target)
+            if number is None:
+                raise DocscriptorError(
+                    "CountableBlock references require the target to be numbered and included in the document, "
+                    "or the reference must provide a custom label"
+                )
+            return target.reference_text(number)
 
         raise DocscriptorError(f"Unsupported reference target: {type(target)!r}")
 

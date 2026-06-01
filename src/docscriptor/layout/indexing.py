@@ -11,6 +11,7 @@ from docscriptor.components.blocks import (
     BulletList,
     CodeBlock,
     ColumnSpan,
+    CountableBlock,
     Equation,
     MultiColumn,
     NumberedList,
@@ -79,6 +80,16 @@ class CaptionEntry:
 
 
 @dataclass(slots=True)
+class CountableEntry:
+    """A numbered theorem-like block entry."""
+
+    number: int
+    block: CountableBlock
+    counter: str
+    anchor: str
+
+
+@dataclass(slots=True)
 class RenderIndex:
     """Numbering and lookup information derived from a document tree."""
 
@@ -101,6 +112,9 @@ class RenderIndex:
     equation_numbers: dict[int, int] = field(default_factory=dict)
     code_block_numbers: dict[int, int] = field(default_factory=dict)
     box_numbers: dict[int, int] = field(default_factory=dict)
+    countables: list[CountableEntry] = field(default_factory=list)
+    countable_numbers: dict[int, int] = field(default_factory=dict)
+    countable_counters: dict[str, int] = field(default_factory=dict)
     block_anchors: dict[int, str] = field(default_factory=dict)
 
     def table_number(self, table: Table) -> int | None:
@@ -216,6 +230,11 @@ class RenderIndex:
 
         return self.box_numbers.get(id(target))
 
+    def countable_number(self, target: CountableBlock) -> int | None:
+        """Return the assigned number for a theorem-like block."""
+
+        return self.countable_numbers.get(id(target))
+
     def block_anchor(self, target: object) -> str | None:
         """Return the bookmark name for a generically anchored block."""
 
@@ -313,6 +332,31 @@ def _index_blocks(
             _register_block_anchor(render_index, block, "box")
             if block.title is not None:
                 _index_inlines(block.title, render_index, citations)
+            _index_blocks(
+                block.children,
+                render_index,
+                citations,
+                theme,
+                heading_counters=heading_counters,
+                part_counter=part_counter,
+            )
+            continue
+        if isinstance(block, CountableBlock):
+            anchor = _register_block_anchor(render_index, block, "countable")
+            if block.title is not None:
+                _index_inlines(block.title, render_index, citations)
+            if block.numbered and block.counter is not None and id(block) not in render_index.countable_numbers:
+                number = render_index.countable_counters.get(block.counter, 0) + 1
+                render_index.countable_counters[block.counter] = number
+                render_index.countable_numbers[id(block)] = number
+                render_index.countables.append(
+                    CountableEntry(
+                        number=number,
+                        block=block,
+                        counter=block.counter,
+                        anchor=anchor,
+                    )
+                )
             _index_blocks(
                 block.children,
                 render_index,
@@ -528,6 +572,7 @@ __all__ = [
     "CaptionEntry",
     "CitationReferenceEntry",
     "CommentReferenceEntry",
+    "CountableEntry",
     "FootnoteReferenceEntry",
     "HeadingEntry",
     "RenderIndex",

@@ -14,6 +14,7 @@ from docscriptor.components.blocks import (
     BulletList,
     CodeBlock,
     ColumnSpan,
+    CountableBlock,
     Divider,
     Equation,
     MultiColumn,
@@ -374,6 +375,38 @@ class HtmlRenderer:
             f'style="{self._box_css(block, context.theme, context.unit)}">'
             + title_html
             + children_html
+            + "</section>"
+        )
+
+    def render_countable_block(
+        self,
+        block: CountableBlock,
+        context: HtmlRenderContext,
+    ) -> str:
+        """Render a theorem-like countable block into HTML."""
+
+        number = context.render_index.countable_number(block)
+        anchor = context.render_index.block_anchor(block)
+        anchor_attr = f' id="{escape(anchor)}"' if anchor else ""
+        title_html = (
+            ' <span class="docscriptor-countable-title">'
+            + self._inline_html(
+                block.title,
+                context.theme,
+                context.render_index,
+                base_italic=True,
+            )
+            + "</span>"
+            if block.title is not None
+            else ""
+        )
+        return (
+            f'<section{anchor_attr} class="docscriptor-countable-block docscriptor-countable-{escape(block.kind.lower().replace(" ", "-"))}">'
+            '<p class="docscriptor-countable-heading">'
+            f'<strong class="docscriptor-countable-label">{escape(block.heading_label(number))}</strong>'
+            + title_html
+            + "</p>"
+            + self._render_children(block.children, context)
             + "</section>"
         )
 
@@ -1653,6 +1686,15 @@ class HtmlRenderer:
                 raise DocscriptorError("Box references require the target box to be included in the document")
             return f"Box {number}"
 
+        if isinstance(target, CountableBlock):
+            number = render_index.countable_number(target)
+            if number is None:
+                raise DocscriptorError(
+                    "CountableBlock references require the target to be numbered and included in the document, "
+                    "or the reference must provide a custom label"
+                )
+            return target.reference_text(number)
+
         raise DocscriptorError(f"Unsupported reference target: {type(target)!r}")
 
     def _block_reference_anchor(
@@ -2137,6 +2179,20 @@ body {{
 }}
 .docscriptor-box {{
   overflow: hidden;
+}}
+.docscriptor-countable-block {{
+  margin: 0 0 10pt;
+}}
+.docscriptor-countable-heading {{
+  margin: 0 0 4pt;
+  break-after: avoid;
+  page-break-after: avoid;
+}}
+.docscriptor-countable-label {{
+  font-weight: 700;
+}}
+.docscriptor-countable-title {{
+  font-style: italic;
 }}
 .docscriptor-table-wrapper {{
 }}

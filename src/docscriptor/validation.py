@@ -19,6 +19,7 @@ from docscriptor.components.blocks import (
     BulletList,
     CodeBlock,
     ColumnSpan,
+    CountableBlock,
     Divider,
     Equation,
     MultiColumn,
@@ -318,6 +319,31 @@ class _ValidationContext:
                     path,
                     parent_level=parent_level,
                 )
+            return
+
+        if isinstance(block, CountableBlock):
+            self._register_referenceable(block, path)
+            if not str(block.kind).strip():
+                self._add(
+                    "error",
+                    "blank-countable-kind",
+                    "CountableBlock kind must not be empty.",
+                    f"{path}.kind",
+                )
+            if block.numbered and not str(block.counter or "").strip():
+                self._add(
+                    "error",
+                    "blank-countable-counter",
+                    "Numbered CountableBlock objects require a non-empty counter.",
+                    f"{path}.counter",
+                )
+            if block.title is not None:
+                self._scan_inlines(block.title, f"{path}.title")
+            self._collect_blocks(
+                block.children,
+                path,
+                parent_level=parent_level,
+            )
             return
 
         if isinstance(block, (ColumnSpan, MultiColumn)):
@@ -701,6 +727,18 @@ class _ValidationContext:
                     "unanchored-labeled-reference",
                     "This labeled heading reference has no internal anchor. "
                     "Set toc=True or numbered=True if it should link to the heading.",
+                    path,
+                )
+            return
+
+        if isinstance(target, CountableBlock):
+            if target.numbered:
+                return
+            if not has_custom_label:
+                self._add(
+                    "error",
+                    "unnumbered-countable-reference",
+                    "Unnumbered CountableBlock references require a custom label.",
                     path,
                 )
             return

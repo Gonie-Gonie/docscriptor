@@ -22,8 +22,10 @@ from docscriptor.core import length_to_inches
 from docscriptor.layout.indexing import build_render_index
 from docscriptor import (
     Affiliation,
+    Assumption,
     Author,
     AuthorLayout,
+    Axiom,
     BlockOptions,
     Box,
     BoxStyle,
@@ -33,15 +35,21 @@ from docscriptor import (
     CitationLibrary,
     CitationSource,
     Chapter,
+    Claim,
     Comment,
     CommentsPage,
     CodeBlock,
     ColumnSpan,
+    Conjecture,
+    CountableBlock,
+    Corollary,
+    Definition,
     Document,
     DocumentSettings,
     DocumentValidationError,
     Divider,
     Equation,
+    Example,
     Figure,
     FigureList,
     Footnote,
@@ -50,6 +58,7 @@ from docscriptor import (
     ImageBox,
     InlineChip,
     InlineChipStyle,
+    Lemma,
     ListStyle,
     Math,
     MultiColumn,
@@ -61,7 +70,10 @@ from docscriptor import (
     Paragraph,
     ParagraphStyle,
     Part,
+    Proof,
+    Proposition,
     ReferencesPage,
+    Remark,
     Section,
     Shape,
     SubFigure,
@@ -76,6 +88,7 @@ from docscriptor import (
     TableList,
     Text,
     TextBox,
+    Theorem,
     Theme,
     TitleMatterOptions,
     TocLevelStyle,
@@ -88,6 +101,7 @@ from docscriptor import (
     color,
     cite,
     comment,
+    countable_kind,
     footnote,
     highlight,
     italic,
@@ -1031,6 +1045,20 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
     assert hasattr(docscriptor, "Part")
     assert hasattr(docscriptor, "BulletList")
     assert hasattr(docscriptor, "ColumnSpan")
+    assert hasattr(docscriptor, "CountableBlock")
+    assert hasattr(docscriptor, "Definition")
+    assert hasattr(docscriptor, "Lemma")
+    assert hasattr(docscriptor, "Proposition")
+    assert hasattr(docscriptor, "Theorem")
+    assert hasattr(docscriptor, "Corollary")
+    assert hasattr(docscriptor, "Proof")
+    assert hasattr(docscriptor, "Example")
+    assert hasattr(docscriptor, "Remark")
+    assert hasattr(docscriptor, "Assumption")
+    assert hasattr(docscriptor, "Axiom")
+    assert hasattr(docscriptor, "Claim")
+    assert hasattr(docscriptor, "Conjecture")
+    assert hasattr(docscriptor, "countable_kind")
     assert hasattr(docscriptor, "MultiColumn")
     assert hasattr(docscriptor, "NumberedList")
     assert hasattr(docscriptor, "PageBreak")
@@ -2099,6 +2127,82 @@ def test_explicit_reference_api_covers_numbered_blocks(tmp_path: Path) -> None:
         assert "reference(obj)" in str(exc)
     else:
         raise AssertionError("Expected raw document object references in Paragraph to fail")
+
+
+def test_countable_blocks_share_document_counter_and_render_references(tmp_path: Path) -> None:
+    CustomClaim = countable_kind("Claim", counter="theorem")
+    definition = Definition("A countable block participates in the document-wide theorem counter.")
+    lemma = Lemma("A later theorem-like block advances the same counter.")
+    theorem = Theorem("The shared counter is stable across output formats.", title="Main result")
+    proof = Proof("The proof is intentionally unnumbered.")
+    example = Example("Examples keep counting after the proof.")
+    remark = Remark("Remarks share the same theorem-like sequence.")
+    assumption = Assumption("Assumptions can be referenced and numbered.")
+    claim = CustomClaim("Custom countable kinds can join the same counter.")
+    document = Document(
+        "Countable Blocks",
+        Paragraph("See ", theorem.reference(), ", ", proof.reference("the proof"), ", and ", claim.reference(), "."),
+        definition,
+        lemma,
+        theorem,
+        proof,
+        example,
+        remark,
+        assumption,
+        claim,
+    )
+
+    render_index = build_render_index(document)
+    assert isinstance(claim, CountableBlock)
+    assert render_index.countable_number(definition) == 1
+    assert render_index.countable_number(lemma) == 2
+    assert render_index.countable_number(theorem) == 3
+    assert render_index.countable_number(proof) is None
+    assert render_index.countable_number(example) == 4
+    assert render_index.countable_number(remark) == 5
+    assert render_index.countable_number(assumption) == 6
+    assert render_index.countable_number(claim) == 7
+
+    docx_path = tmp_path / "countable-blocks.docx"
+    pdf_path = tmp_path / "countable-blocks.pdf"
+    html_path = tmp_path / "countable-blocks.html"
+    document.save_docx(docx_path)
+    document.save_pdf(pdf_path)
+    document.save_html(html_path)
+
+    word_text = "\n".join(paragraph.text for paragraph in WordDocument(docx_path).paragraphs)
+    pdf_text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf_path.read_bytes())).pages)
+    html_text = html_path.read_text(encoding="utf-8")
+    normalized_html_text = _normalized_html_text(html_path)
+
+    expected_texts = (
+        "See Theorem 3, the proof, and Claim 7.",
+        "Definition 1.",
+        "Lemma 2.",
+        "Theorem 3. Main result",
+        "Proof.",
+        "Example 4.",
+        "Remark 5.",
+        "Assumption 6.",
+        "Claim 7.",
+    )
+    for text in expected_texts:
+        assert text in word_text
+        assert text in pdf_text
+    for text in expected_texts[1:]:
+        assert text in normalized_html_text
+    assert "See Theorem 3 , the proof , and Claim 7 ." in normalized_html_text
+    assert 'class="docscriptor-countable-block' in html_text
+    assert 'href="#countable_' in html_text
+
+
+def test_unnumbered_countable_reference_requires_custom_label() -> None:
+    proof = Proof("No counter is assigned to proofs by default.")
+    document = Document("Proof Reference", Paragraph("See ", proof.reference(), "."), proof)
+
+    result = document.validate()
+
+    assert [issue.code for issue in result.errors] == ["unnumbered-countable-reference"]
 
 
 def test_code_block_language_label_can_move_or_hide(tmp_path: Path) -> None:

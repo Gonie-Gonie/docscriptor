@@ -28,6 +28,7 @@ from docscriptor.components.blocks import (
     BulletList,
     CodeBlock,
     ColumnSpan,
+    CountableBlock,
     Divider,
     Equation,
     MultiColumn,
@@ -407,6 +408,43 @@ class DocxRenderer:
             context.unit,
             word_document=context.word_document,
         )
+
+    def render_countable_block(
+        self,
+        container: object,
+        block: CountableBlock,
+        context: DocxRenderContext,
+    ) -> None:
+        """Render a theorem-like countable block into DOCX."""
+
+        paragraph = self._add_paragraph(container)
+        paragraph.paragraph_format.space_after = Pt(4)
+        paragraph.paragraph_format.keep_with_next = True
+        anchor = context.render_index.block_anchor(block)
+        if anchor is not None:
+            self._add_bookmark(paragraph, anchor)
+        label_run = paragraph.add_run(
+            block.heading_label(context.render_index.countable_number(block))
+        )
+        self._apply_run_style(
+            label_run,
+            TextStyle(bold=True),
+            default_size=context.theme.body_font_size,
+        )
+        if block.title is not None:
+            paragraph.add_run(" ")
+            self._append_runs(
+                paragraph,
+                block.title,
+                default_size=context.theme.body_font_size,
+                default_style=TextStyle(italic=True),
+                theme=context.theme,
+                render_index=context.render_index,
+                word_document=context.word_document,
+                unit=context.unit,
+            )
+        for child in block.children:
+            child.render_to_docx(self, container, context)
 
     def render_column_span(
         self,
@@ -2698,6 +2736,15 @@ class DocxRenderer:
             if number is None:
                 raise DocscriptorError("Box references require the target box to be included in the document")
             return f"Box {number}"
+
+        if isinstance(target, CountableBlock):
+            number = render_index.countable_number(target)
+            if number is None:
+                raise DocscriptorError(
+                    "CountableBlock references require the target to be numbered and included in the document, "
+                    "or the reference must provide a custom label"
+                )
+            return target.reference_text(number)
 
         raise DocscriptorError(f"Unsupported reference target: {type(target)!r}")
 
