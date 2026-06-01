@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-function Test-Python314 {
+function Test-SupportedPython {
     param(
         [Parameter(Mandatory)]
         [string]$Command,
@@ -15,7 +15,7 @@ function Test-Python314 {
     )
 
     try {
-        & $Command @Arguments -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 14) else 1)" *> $null
+        & $Command @Arguments -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)" *> $null
         return $LASTEXITCODE -eq 0
     }
     catch {
@@ -88,21 +88,24 @@ $pythonCommand = $null
 $pythonArguments = @()
 
 if (Get-Command py -ErrorAction SilentlyContinue) {
-    if (Test-Python314 -Command "py" -Arguments @("-3.14")) {
-        $pythonCommand = "py"
-        $pythonArguments = @("-3.14")
+    foreach ($version in @("3.11", "3.12", "3.13", "3.14")) {
+        if (Test-SupportedPython -Command "py" -Arguments @("-$version")) {
+            $pythonCommand = "py"
+            $pythonArguments = @("-$version")
+            break
+        }
     }
 }
 
 if (-not $pythonCommand -and (Get-Command python -ErrorAction SilentlyContinue)) {
-    if (Test-Python314 -Command "python") {
+    if (Test-SupportedPython -Command "python") {
         $pythonCommand = "python"
         $pythonArguments = @()
     }
 }
 
 if (-not $pythonCommand) {
-    throw "Python 3.14 was not found. Install Python 3.14 and rerun this script."
+    throw "Python 3.11 or newer was not found. Install Python 3.11+ and rerun this script."
 }
 
 $pythonDisplay = ($pythonCommand + " " + ($pythonArguments -join " ")).Trim()
@@ -120,8 +123,8 @@ try {
     $env:TMP = $tempRoot
 
     if (Test-Path -LiteralPath $venvPython) {
-        if (-not (Test-Python314 -Command $venvPython)) {
-            throw "Existing virtual environment at '$resolvedVenvPath' is not using Python 3.14. Remove it and rerun the script."
+        if (-not (Test-SupportedPython -Command $venvPython)) {
+            throw "Existing virtual environment at '$resolvedVenvPath' is not using Python 3.11 or newer. Remove it and rerun the script."
         }
 
         Write-Host "Reusing existing virtual environment: $resolvedVenvPath"

@@ -38,5 +38,5 @@ This file is the shared memory for ongoing work on this repository. Keep it read
 
 ## Local Environment Notes
 
-- This project requires Python 3.14. On this Windows machine, use `py -3.14 ...`.
-- `pytest` may not be on PATH. Prefer `py -3.14 -m pytest ...` for test commands.
+- This project requires Python 3.11 or newer. On this Windows machine, prefer `py -3.11 ...` when checking the minimum supported version.
+- `pytest` may not be on PATH. Prefer `py -3.11 -m pytest ...` for minimum-version test commands.

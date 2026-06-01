@@ -244,7 +244,7 @@ The package is organized by responsibility:
 
 ## Development
 
-Assuming Python 3.14 is installed:
+Assuming Python 3.11 or newer is installed:
 
 ```powershell
 .\scripts\setup-repo.cmd

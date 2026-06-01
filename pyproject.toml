@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=77", "setuptools-scm>=8", "wheel"]
+requires = ["setuptools>=77", "setuptools-scm>=8.0.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,7 @@ name = "docscriptor"
 dynamic = ["version"]
 description = "Python-first document authoring toolkit for generating DOCX, PDF, and HTML outputs from the same source."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
@@ -20,6 +20,9 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Topic :: Documentation",
   "Topic :: Text Processing",
@@ -27,7 +30,7 @@ classifiers = [
 dependencies = [
   "Pillow>=10.0.0",
   "Pygments>=2.18.0",
-  "python-docx>=1.1.2",
+  "python-docx>=1.2.0",
   "reportlab>=4.2.5",
 ]
 
@@ -37,12 +40,12 @@ examples = [
   "pandas>=2.3.0",
 ]
 dev = [
-  "build>=1.2.0",
+  "build>=1.2.1",
   "matplotlib>=3.10.0",
   "pandas>=2.3.0",
   "pypdf>=5.4.0",
   "pytest>=8.0.0",
-  "setuptools-scm>=8.0.0",
+  "setuptools-scm>=8.0.1",
   "twine>=6.1.0",
 ]
 
