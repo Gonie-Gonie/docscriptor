@@ -50,10 +50,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Gonie-Gonie/oodocs"
-Repository = "https://github.com/Gonie-Gonie/oodocs"
-Documentation = "https://github.com/Gonie-Gonie/oodocs#readme"
-Issues = "https://github.com/Gonie-Gonie/oodocs/issues"
+Homepage = "https://github.com/Gonie-Gonie/oo-docs"
+Repository = "https://github.com/Gonie-Gonie/oo-docs"
+Documentation = "https://github.com/Gonie-Gonie/oo-docs#readme"
+Issues = "https://github.com/Gonie-Gonie/oo-docs/issues"
 
 [project.scripts]
 oodocs = "oodocs.cli:main"

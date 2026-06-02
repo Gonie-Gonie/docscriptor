@@ -102,12 +102,12 @@ RELATED_WORK = CitationLibrary(
             url="https://doi.org/10.1093/comjnl/27.2.97",
         ),
         CitationSource(
-            "oodocs repository",
+            "OODocs repository",
             key="repository",
             organization="Gonie-Gonie",
             publisher="GitHub repository",
             year="2026",
-            url="https://github.com/Gonie-Gonie/oodocs",
+            url="https://github.com/Gonie-Gonie/oo-docs",
         ),
         CitationSource(
             "Elsevier Your Paper Your Way Guide for Authors",
@@ -1033,7 +1033,7 @@ def build_usage_guide_document() -> Document:
             ),
             Paragraph(
                 bold("Repository. "),
-                link("https://github.com/Gonie-Gonie/oodocs", "github.com/Gonie-Gonie/oodocs"),
+                link("https://github.com/Gonie-Gonie/oo-docs", "github.com/Gonie-Gonie/oo-docs"),
                 ".",
             ),
             Paragraph(

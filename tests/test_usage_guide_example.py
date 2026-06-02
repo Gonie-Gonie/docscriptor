@@ -154,7 +154,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("Validation results are structured objects" in text for text in paragraph_texts)
     assert any("Command-line builds, conversions, and validation all call the same high-level workflow API." in text for text in paragraph_texts)
     assert any("portable footnotes exactly where the text appears." in text for text in paragraph_texts)
-    assert any("github.com/Gonie-Gonie/oodocs" in text for text in paragraph_texts)
+    assert any("github.com/Gonie-Gonie/oo-docs" in text for text in paragraph_texts)
     assert any("The journal example at examples/journal_paper_example/main.py" in text for text in paragraph_texts)
     assert any("Document.from_markdown(...)" in text for text in paragraph_texts)
     assert any("parse_markdown(...)" in text for text in paragraph_texts)
@@ -249,7 +249,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Validation results are structured objects" in pdf_text
     assert "Command-line builds, conversions, and validation all call the same high-level workflow API." in pdf_text
     assert "Portable footnotes are authored inline" in pdf_text
-    assert "github.com/Gonie-Gonie/oodocs" in pdf_text
+    assert "github.com/Gonie-Gonie/oo-docs" in pdf_text
     assert "Document.from_markdown(...)" in pdf_text
     assert "parse_markdown(...)" in pdf_text
     assert "Document.from_ipynb(...)" in pdf_text
@@ -328,7 +328,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Validation results are structured objects" in normalized_html_text
     assert "Command-line builds, conversions, and validation all call the same high-level workflow API." in normalized_html_text
     assert "Portable footnotes are authored inline" in normalized_html_text
-    assert "github.com/Gonie-Gonie/oodocs" in normalized_html_text
+    assert "github.com/Gonie-Gonie/oo-docs" in normalized_html_text
     assert "Document.from_markdown(...)" in normalized_html_text
     assert "parse_markdown(...)" in normalized_html_text
     assert "Document.from_ipynb(...)" in normalized_html_text

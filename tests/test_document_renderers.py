@@ -2464,7 +2464,7 @@ def test_bibtex_string_creates_citation_library() -> None:
   title = {oodocs},
   organization = {Gonie-Gonie},
   year = {2026},
-  url = {https://github.com/Gonie-Gonie/oodocs},
+  url = {https://github.com/Gonie-Gonie/oo-docs},
   note = {GitHub repository}
 }""",
     )
@@ -2472,7 +2472,7 @@ def test_bibtex_string_creates_citation_library() -> None:
     entry = document.citations.resolve("oodocs-repository")
     assert entry.title == "oodocs"
     assert entry.organization == "Gonie-Gonie"
-    assert entry.url == "https://github.com/Gonie-Gonie/oodocs"
+    assert entry.url == "https://github.com/Gonie-Gonie/oo-docs"
     assert "GitHub repository" in entry.format_reference()
 
 
@@ -2744,7 +2744,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
         organization="Gonie-Gonie",
         publisher="GitHub repository",
         year="2026",
-        url="https://github.com/Gonie-Gonie/oodocs",
+        url="https://github.com/Gonie-Gonie/oo-docs",
     )
     registered_source = CitationSource(
         "Release Notes",
@@ -2752,7 +2752,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
         organization="Gonie-Gonie",
         publisher="Documentation index",
         year="2026",
-        url="https://github.com/Gonie-Gonie/oodocs/releases",
+        url="https://github.com/Gonie-Gonie/oo-docs/releases",
     )
     unused_source = CitationSource(
         "Internal Draft",
@@ -2977,8 +2977,8 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert paragraph_texts.count("Table 3. Merged header table.") >= 2
     assert paragraph_texts.count("Figure 1. Tiny sample image.") >= 2
     assert paragraph_texts.count("Figure 2. Second tiny sample image.") >= 2
-    assert any("https://github.com/Gonie-Gonie/oodocs" in text for text in paragraph_texts)
-    assert any("https://github.com/Gonie-Gonie/oodocs/releases" in text for text in paragraph_texts)
+    assert any("https://github.com/Gonie-Gonie/oo-docs" in text for text in paragraph_texts)
+    assert any("https://github.com/Gonie-Gonie/oo-docs/releases" in text for text in paragraph_texts)
     assert all("internal-draft" not in text.lower() for text in paragraph_texts)
     assert any("from oodocs import Document" in text for text in paragraph_texts)
     assert len(word_document.inline_shapes) == 3
@@ -3070,8 +3070,8 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "List of Tables" in pdf_text
     assert "List of Figures" in pdf_text
     assert "References" in pdf_text
-    assert "https://github.com/Gonie-Gonie/oodocs" in pdf_text
-    assert "https://github.com/Gonie-Gonie/oodocs/releases" in pdf_text
+    assert "https://github.com/Gonie-Gonie/oo-docs" in pdf_text
+    assert "https://github.com/Gonie-Gonie/oo-docs/releases" in pdf_text
     assert "Internal Draft" not in pdf_text
     assert "Lists render into both DOCX and PDF." in pdf_text
     assert "from oodocs import Document" in pdf_text
@@ -3130,8 +3130,8 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert normalized_html_text.count("Table 3. Merged header table.") >= 2
     assert normalized_html_text.count("Figure 1. Tiny sample image.") >= 2
     assert normalized_html_text.count("Figure 2. Second tiny sample image.") >= 2
-    assert "https://github.com/Gonie-Gonie/oodocs" in normalized_html_text
-    assert "https://github.com/Gonie-Gonie/oodocs/releases" in normalized_html_text
+    assert "https://github.com/Gonie-Gonie/oo-docs" in normalized_html_text
+    assert "https://github.com/Gonie-Gonie/oo-docs/releases" in normalized_html_text
     assert "Internal Draft" not in normalized_html_text
     assert "Lists render into both DOCX and PDF." in normalized_html_text
     assert "from oodocs import Document" in normalized_html_text

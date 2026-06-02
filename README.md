@@ -38,8 +38,8 @@ pip install "oodocs[examples]"
 If you want to work from a repository checkout, run the bundled example scripts, or contribute locally:
 
 ```powershell
-git clone https://github.com/Gonie-Gonie/oodocs.git
-cd oodocs
+git clone https://github.com/Gonie-Gonie/oo-docs.git
+cd oo-docs
 pip install -e .
 ```
 
@@ -309,4 +309,4 @@ If you want a curated release body instead of GitHub's generated notes, add a fi
 
 The `examples/release_notes_digest/` script demonstrates the same convention as a document workflow: it scans the semantic-versioned Markdown files under `release-notes/`, builds an index, includes the version-management rules, and imports each release body into one DOCX/PDF/HTML bundle.
 
-PyPI publishing uses Trusted Publishing through the `pypi` GitHub environment. The PyPI project or pending publisher must trust repository `Gonie-Gonie/oodocs`, workflow `.github/workflows/release.yml`, and environment `pypi`.
+PyPI publishing uses Trusted Publishing through the `pypi` GitHub environment. The PyPI project or pending publisher must trust repository `Gonie-Gonie/oo-docs`, workflow `.github/workflows/release.yml`, and environment `pypi`.
