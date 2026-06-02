@@ -62,10 +62,10 @@ def _normalized_html_text(html_path: Path) -> str:
 def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     usage_guide = _load_example_module("usage_guide_example")
     docx_path, pdf_path = usage_guide.build_usage_guide(tmp_path)
-    html_path = tmp_path / "docscriptor-user-guide.html"
+    html_path = tmp_path / "oodocs-user-guide.html"
 
     assert_rendered_bundle(docx_path, pdf_path, html_path)
-    assert (Path(usage_guide.__file__).resolve().parent / "assets" / "docscriptor-logo.png").exists()
+    assert (Path(usage_guide.__file__).resolve().parent / "assets" / "oodocs-logo.png").exists()
 
     word_document = WordDocument(docx_path)
     paragraph_texts = [paragraph.text for paragraph in word_document.paragraphs]
@@ -80,9 +80,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     html_text = html_path.read_text(encoding="utf-8")
     normalized_html_text = _normalized_html_text(html_path)
 
-    assert "Docscriptor User Guide" in paragraph_texts
+    assert "OODocs User Guide" in paragraph_texts
     assert "Reference-style guide for structured Python document authoring" in paragraph_texts
-    assert "Docscriptor Contributors" in paragraph_texts
+    assert "OODocs Contributors" in paragraph_texts
     assert "Open-source documentation workflow" in paragraph_texts
     assert "Hyeong-Gon Jo" in paragraph_texts
     assert "Repository steward" in paragraph_texts
@@ -126,7 +126,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("TableOfContents" in text for text in paragraph_texts)
     assert any("TocLevelStyle" in text for text in paragraph_texts)
     assert any("A reading map for the guide." in text for text in paragraph_texts)
-    assert any("LaTeX habits translated into docscriptor's Python-first authoring model." in text for text in paragraph_texts)
+    assert any("LaTeX habits translated into oodocs's Python-first authoring model." in text for text in paragraph_texts)
     assert any("For authors coming from LaTeX" in text for text in paragraph_texts)
     assert any("Page layout controls shared across renderers." in text for text in paragraph_texts)
     assert any("Table-of-contents defaults and customization options." in text for text in paragraph_texts)
@@ -135,8 +135,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("Block-level option scope" in text for text in paragraph_texts)
     assert any("Component presets wrap ordinary blocks" in text for text in paragraph_texts)
     assert any("Template presets build full Document objects" in text for text in paragraph_texts)
-    assert any("docscriptor.presets.components" in text for text in paragraph_texts)
-    assert any("docscriptor.presets.templates" in text for text in paragraph_texts)
+    assert any("oodocs.presets.components" in text for text in paragraph_texts)
+    assert any("oodocs.presets.templates" in text for text in paragraph_texts)
     assert any("JournalArticleTemplate" in text for text in paragraph_texts)
     assert any("Your Paper Your Way" in text for text in paragraph_texts)
     assert any("Instructions for Authors" in text for text in paragraph_texts)
@@ -150,11 +150,11 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("Theorem 3. Stable references" in text for text in paragraph_texts)
     assert any("Exercise 1." in text for text in paragraph_texts)
     assert any("Build, convert, and validate from the CLI" in text for text in paragraph_texts)
-    assert any("docscriptor build report.py --out artifacts" in text for text in paragraph_texts)
+    assert any("oodocs build report.py --out artifacts" in text for text in paragraph_texts)
     assert any("Validation results are structured objects" in text for text in paragraph_texts)
     assert any("Command-line builds, conversions, and validation all call the same high-level workflow API." in text for text in paragraph_texts)
     assert any("portable footnotes exactly where the text appears." in text for text in paragraph_texts)
-    assert any("github.com/Gonie-Gonie/docscriptor" in text for text in paragraph_texts)
+    assert any("github.com/Gonie-Gonie/oodocs" in text for text in paragraph_texts)
     assert any("The journal example at examples/journal_paper_example/main.py" in text for text in paragraph_texts)
     assert any("Document.from_markdown(...)" in text for text in paragraph_texts)
     assert any("parse_markdown(...)" in text for text in paragraph_texts)
@@ -162,7 +162,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert any("parse_ipynb(...)" in text for text in paragraph_texts)
     assert any("Notebook-backed report" in text for text in paragraph_texts)
     assert any("Release note digest" in text for text in paragraph_texts)
-    assert "Docscriptor Contributor Certificate" in table_text
+    assert "OODocs Contributor Certificate" in table_text
     assert "Footnotes" not in [text for text in paragraph_texts if text == "Footnotes"]
     assert len(word_document.tables) == 24
     assert len(word_document.inline_shapes) == 11
@@ -170,7 +170,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert_docx_structure(
         docx_path,
         required_paragraphs=(
-            "Docscriptor User Guide",
+            "OODocs User Guide",
             "Contents",
             "List of Tables",
             "List of Figures",
@@ -190,7 +190,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Portable footnotes are authored inline" in footnotes_xml
     assert all("CommentsPage() collects these review notes onto a dedicated generated page." in "\n".join(p.text for p in comment.paragraphs) or "This note will show up again on the generated comments page." in "\n".join(p.text for p in comment.paragraphs) for comment in word_document.comments)
 
-    assert "Docscriptor User Guide" in pdf_text
+    assert "OODocs User Guide" in pdf_text
     assert "Contents" in pdf_text
     assert "List of Tables" in pdf_text
     assert "List of Figures" in pdf_text
@@ -219,7 +219,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "TableOfContents" in pdf_text
     assert "TocLevelStyle" in pdf_text
     assert "A reading map for the guide." in pdf_text
-    assert "LaTeX habits translated into docscriptor's Python-first authoring model." in pdf_text
+    assert "LaTeX habits translated into oodocs's Python-first authoring model." in pdf_text
     assert "For authors coming from LaTeX" in pdf_text
     assert "Page layout controls shared across renderers." in pdf_text
     assert "Table-of-contents defaults and customization options." in pdf_text
@@ -228,8 +228,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Block-level option scope" in pdf_text
     assert "Component presets wrap ordinary blocks" in pdf_text
     assert "Template presets build full Document objects" in pdf_text
-    assert "docscriptor.presets.components" in pdf_text
-    assert "docscriptor.presets.templates" in pdf_text
+    assert "oodocs.presets.components" in pdf_text
+    assert "oodocs.presets.templates" in pdf_text
     assert "JournalArticleTemplate" in pdf_text
     assert "Your Paper Your Way" in pdf_text
     assert "Instructions for Authors" in pdf_text
@@ -238,18 +238,18 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Figure sizing patterns for width, height, and document-relative sizing." in pdf_text
     assert "Coordinate-based drawings can be page overlays or inline flow objects." in pdf_text
     assert "Advanced table and figure placement controls." in pdf_text
-    assert "Docscriptor Contributor Certificate" in pdf_text
+    assert "OODocs Contributor Certificate" in pdf_text
     assert "Renderer-specific behavior for notes, review workflows, and cross-reference stability." in pdf_text
     assert "Numbered statements, proofs, and custom counters" in pdf_text
     assert "CountableBlock" in pdf_text
     assert "Theorem 3. Stable references" in pdf_text
     assert "Exercise 1." in pdf_text
     assert "Build, convert, and validate from the CLI" in pdf_text
-    assert "docscriptor build report.py --out artifacts" in pdf_text
+    assert "oodocs build report.py --out artifacts" in pdf_text
     assert "Validation results are structured objects" in pdf_text
     assert "Command-line builds, conversions, and validation all call the same high-level workflow API." in pdf_text
     assert "Portable footnotes are authored inline" in pdf_text
-    assert "github.com/Gonie-Gonie/docscriptor" in pdf_text
+    assert "github.com/Gonie-Gonie/oodocs" in pdf_text
     assert "Document.from_markdown(...)" in pdf_text
     assert "parse_markdown(...)" in pdf_text
     assert "Document.from_ipynb(...)" in pdf_text
@@ -262,7 +262,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert_pdf_text_and_pages(
         pdf_path,
         required_text=(
-            "Docscriptor User Guide",
+            "OODocs User Guide",
             "Contents",
             "List of Tables",
             "List of Figures",
@@ -271,7 +271,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
         min_pages=14,
     )
 
-    assert "Docscriptor User Guide" in normalized_html_text
+    assert "OODocs User Guide" in normalized_html_text
     assert "Guide Cover" in normalized_html_text
     assert "List of Tables" in normalized_html_text
     assert "List of Figures" in normalized_html_text
@@ -299,7 +299,7 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "TableOfContents" in normalized_html_text
     assert "TocLevelStyle" in normalized_html_text
     assert "CommentsPage() collects these review notes onto a dedicated generated page." in normalized_html_text
-    assert "LaTeX habits translated into docscriptor's Python-first authoring model." in normalized_html_text
+    assert "LaTeX habits translated into oodocs's Python-first authoring model." in normalized_html_text
     assert "For authors coming from LaTeX" in normalized_html_text
     assert "Page layout controls shared across renderers." in normalized_html_text
     assert "Table-of-contents defaults and customization options." in normalized_html_text
@@ -308,8 +308,8 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Block-level option scope" in normalized_html_text
     assert "Component presets wrap ordinary blocks" in normalized_html_text
     assert "Template presets build full Document objects" in normalized_html_text
-    assert "docscriptor.presets.components" in normalized_html_text
-    assert "docscriptor.presets.templates" in normalized_html_text
+    assert "oodocs.presets.components" in normalized_html_text
+    assert "oodocs.presets.templates" in normalized_html_text
     assert "JournalArticleTemplate" in normalized_html_text
     assert "Your Paper Your Way" in normalized_html_text
     assert "Instructions for Authors" in normalized_html_text
@@ -318,17 +318,17 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert "Figure sizing patterns for width, height, and document-relative sizing." in normalized_html_text
     assert "Coordinate-based drawings can be page overlays or inline flow objects." in normalized_html_text
     assert "Advanced table and figure placement controls." in normalized_html_text
-    assert "Docscriptor Contributor Certificate" in normalized_html_text
+    assert "OODocs Contributor Certificate" in normalized_html_text
     assert "Numbered statements, proofs, and custom counters" in normalized_html_text
     assert "CountableBlock" in normalized_html_text
     assert "Theorem 3. Stable references" in normalized_html_text
     assert "Exercise 1." in normalized_html_text
     assert "Build, convert, and validate from the CLI" in normalized_html_text
-    assert "docscriptor build report.py --out artifacts" in normalized_html_text
+    assert "oodocs build report.py --out artifacts" in normalized_html_text
     assert "Validation results are structured objects" in normalized_html_text
     assert "Command-line builds, conversions, and validation all call the same high-level workflow API." in normalized_html_text
     assert "Portable footnotes are authored inline" in normalized_html_text
-    assert "github.com/Gonie-Gonie/docscriptor" in normalized_html_text
+    assert "github.com/Gonie-Gonie/oodocs" in normalized_html_text
     assert "Document.from_markdown(...)" in normalized_html_text
     assert "parse_markdown(...)" in normalized_html_text
     assert "Document.from_ipynb(...)" in normalized_html_text
@@ -342,9 +342,9 @@ def test_usage_guide_example_builds_outputs(tmp_path: Path) -> None:
     assert_html_internal_links_resolve(
         html_path,
         required_hrefs=("#table_1", "#figure_1"),
-        required_text=("Docscriptor User Guide", "Build, convert, and validate from the CLI"),
+        required_text=("OODocs User Guide", "Build, convert, and validate from the CLI"),
     )
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-1"' in html_text
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-2"' in html_text
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-3"' in html_text
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-4"' in html_text
+    assert 'class="oodocs-toc-entry oodocs-toc-entry-no-page oodocs-toc-entry-level-1"' in html_text
+    assert 'class="oodocs-toc-entry oodocs-toc-entry-no-page oodocs-toc-entry-level-2"' in html_text
+    assert 'class="oodocs-toc-entry oodocs-toc-entry-no-page oodocs-toc-entry-level-3"' in html_text
+    assert 'class="oodocs-toc-entry oodocs-toc-entry-no-page oodocs-toc-entry-level-4"' in html_text

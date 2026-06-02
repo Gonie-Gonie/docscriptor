@@ -58,7 +58,7 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     assert release_notes_example.release_type_from_version((0, 9, 0)) == "Minor"
 
     docx_path, pdf_path = release_notes_example.build_release_notes(tmp_path)
-    html_path = tmp_path / "docscriptor-release-notes.html"
+    html_path = tmp_path / "oodocs-release-notes.html"
 
     assert_rendered_bundle(docx_path, pdf_path, html_path)
 
@@ -75,7 +75,7 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     normalized_html_text = _normalized_html_text(html_path)
     html_text = html_path.read_text(encoding="utf-8")
 
-    assert "Docscriptor Release Notes" in paragraph_texts
+    assert "OODocs Release Notes" in paragraph_texts
     assert "Contents" in paragraph_texts
     assert any("Release Note Index" in text for text in paragraph_texts)
     assert any("Release-note digest workflow" in text for text in paragraph_texts)
@@ -107,7 +107,7 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     assert_docx_structure(
         docx_path,
         required_paragraphs=(
-            "Docscriptor Release Notes",
+            "OODocs Release Notes",
             "Contents",
             "3 Version History",
             latest_version,
@@ -115,7 +115,7 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
         table_count=2,
     )
 
-    assert "Docscriptor Release Notes" in pdf_text
+    assert "OODocs Release Notes" in pdf_text
     assert "Contents" in pdf_text
     assert "Release Note Index" in pdf_text
     assert "Release-note digest workflow" in pdf_text
@@ -127,14 +127,14 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     assert_pdf_text_and_pages(
         pdf_path,
         required_text=(
-            "Docscriptor Release Notes",
+            "OODocs Release Notes",
             "Version Management",
             "Version History",
         ),
         min_pages=3,
     )
 
-    assert "Docscriptor Release Notes" in normalized_html_text
+    assert "OODocs Release Notes" in normalized_html_text
     assert "Contents" in normalized_html_text
     assert "Release Note Index" in normalized_html_text
     assert "Release-note digest workflow" in normalized_html_text
@@ -144,8 +144,8 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     assert latest_release_path in normalized_html_text
     assert "vMAJOR.MINOR.PATCH" in normalized_html_text
     assert (
-        'class="docscriptor-toc-entry docscriptor-toc-entry-no-page '
-        'docscriptor-toc-entry-level-1"'
+        'class="oodocs-toc-entry oodocs-toc-entry-no-page '
+        'oodocs-toc-entry-level-1"'
     ) in html_text
     toc_html = html_text.split("</nav>", 1)[0]
     assert ">3 Version History</a>" in toc_html
@@ -153,5 +153,5 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     assert ">Highlights</a>" not in toc_html
     assert_html_internal_links_resolve(
         html_path,
-        required_text=("Docscriptor Release Notes", "Version History"),
+        required_text=("OODocs Release Notes", "Version History"),
     )

@@ -93,10 +93,10 @@ jobs:
         with:
           files: |
             dist/*
-            artifacts/usage-guide/docscriptor-user-guide.pdf
-            artifacts/journal-paper/docscriptor-development-philosophy.pdf
+            artifacts/usage-guide/oodocs-user-guide.pdf
+            artifacts/journal-paper/oodocs-development-philosophy.pdf
             artifacts/native-benchmark-report/native-python-benchmark.pdf
-            artifacts/release-notes/docscriptor-release-notes.pdf
+            artifacts/release-notes/oodocs-release-notes.pdf
           body_path: ${{ steps.release_notes.outputs.path }}
 
       - name: Publish GitHub Release
@@ -105,10 +105,10 @@ jobs:
         with:
           files: |
             dist/*
-            artifacts/usage-guide/docscriptor-user-guide.pdf
-            artifacts/journal-paper/docscriptor-development-philosophy.pdf
+            artifacts/usage-guide/oodocs-user-guide.pdf
+            artifacts/journal-paper/oodocs-development-philosophy.pdf
             artifacts/native-benchmark-report/native-python-benchmark.pdf
-            artifacts/release-notes/docscriptor-release-notes.pdf
+            artifacts/release-notes/oodocs-release-notes.pdf
           generate_release_notes: true
 
   publish-pypi:
@@ -118,7 +118,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/p/docscriptor
+      url: https://pypi.org/p/oodocs
 
     permissions:
       id-token: write

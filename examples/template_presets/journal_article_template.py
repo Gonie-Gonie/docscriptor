@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from docscriptor import (
+from oodocs import (
     Affiliation,
     Author,
     CitationLibrary,
@@ -13,7 +13,7 @@ from docscriptor import (
     Table,
     code,
 )
-from docscriptor.presets.templates import JournalArticleTemplate, ManuscriptSection
+from oodocs.presets.templates import JournalArticleTemplate, ManuscriptSection
 
 
 OUTPUT_DIR = Path("artifacts") / "template"
@@ -36,7 +36,7 @@ AUTHORS = [
         corresponding=True,
     ),
     Author(
-        "Docscriptor Contributors",
+        "OODocs Contributors",
         affiliations=["Open-source document tooling"],
     ),
 ]
@@ -87,7 +87,7 @@ KEYWORDS = [
 ]
 
 ACKNOWLEDGEMENTS = (
-    "The authors thank the docscriptor maintainers and early readers for feedback on "
+    "The authors thank the oodocs maintainers and early readers for feedback on "
     "the manuscript preset API."
 )
 

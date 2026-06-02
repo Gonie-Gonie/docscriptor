@@ -3,17 +3,17 @@ requires = ["setuptools>=77", "setuptools-scm>=8.0.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "docscriptor"
+name = "oodocs"
 dynamic = ["version"]
-description = "Python-first document authoring toolkit for generating DOCX, PDF, and HTML outputs from the same source."
+description = "Object-oriented documentation toolkit for authoring DOCX, PDF, and HTML documents from Python object trees."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
-  { name = "docscriptor contributors" }
+  { name = "OODocs contributors" }
 ]
-keywords = ["document generation", "pdf", "docx", "python"]
+keywords = ["object-oriented documentation", "document generation", "pdf", "docx", "python"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
@@ -50,23 +50,23 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Gonie-Gonie/docscriptor"
-Repository = "https://github.com/Gonie-Gonie/docscriptor"
-Documentation = "https://github.com/Gonie-Gonie/docscriptor#readme"
-Issues = "https://github.com/Gonie-Gonie/docscriptor/issues"
+Homepage = "https://github.com/Gonie-Gonie/oodocs"
+Repository = "https://github.com/Gonie-Gonie/oodocs"
+Documentation = "https://github.com/Gonie-Gonie/oodocs#readme"
+Issues = "https://github.com/Gonie-Gonie/oodocs/issues"
 
 [project.scripts]
-docscriptor = "docscriptor.cli:main"
+oodocs = "oodocs.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["docscriptor*"]
+include = ["oodocs*"]
 
 [tool.setuptools_scm]
-fallback_version = "1.0.0"
+fallback_version = "1.0.1"
 tag_regex = "^v(?P<version>\\d+\\.\\d+\\.\\d+)$"
 
 [tool.pytest.ini_options]

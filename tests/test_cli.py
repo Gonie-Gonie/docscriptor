@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from docscriptor import convert_source, validate_source
-from docscriptor.cli import main
+from oodocs import convert_source, validate_source
+from oodocs.cli import main
 
 
 def test_cli_convert_markdown_outputs_selected_formats(
@@ -75,7 +75,7 @@ def test_cli_build_python_document(tmp_path: Path, capsys) -> None:
     script_path.write_text(
         "\n".join(
             [
-                "from docscriptor import Document, Paragraph",
+                "from oodocs import Document, Paragraph",
                 "",
                 "def build_document():",
                 "    return Document('Python Report', Paragraph('Built from Python.'))",
@@ -112,7 +112,7 @@ def test_cli_validate_blocks_invalid_python_document(
     script_path.write_text(
         "\n".join(
             [
-                "from docscriptor import Document, Figure",
+                "from oodocs import Document, Figure",
                 "",
                 "def build_document():",
                 "    return Document('Broken', Figure('missing.png', caption='Missing.'))",
@@ -126,7 +126,7 @@ def test_cli_validate_blocks_invalid_python_document(
 
     captured = capsys.readouterr()
     assert exit_code == 1
-    assert "Docscriptor validation failed for PDF" in captured.out
+    assert "OODocs validation failed for PDF" in captured.out
     assert "missing-image-file" in captured.out
     assert "PDF" in captured.out
 

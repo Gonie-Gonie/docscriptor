@@ -4,8 +4,8 @@ import json
 from base64 import b64encode
 from pathlib import Path
 
-from docscriptor import Document, Figure, ImageData, Table, from_ipynb, parse_ipynb
-from docscriptor.components.blocks import Chapter, CodeBlock, Paragraph, Section
+from oodocs import Document, Figure, ImageData, Table, from_ipynb, parse_ipynb
+from oodocs.components.blocks import Chapter, CodeBlock, Paragraph, Section
 
 _TINY_PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -69,7 +69,7 @@ def _sample_notebook() -> dict[str, object]:
     }
 
 
-def test_parse_ipynb_maps_cells_to_docscriptor_blocks() -> None:
+def test_parse_ipynb_maps_cells_to_oodocs_blocks() -> None:
     blocks = parse_ipynb(_sample_notebook())
 
     assert len(blocks) == 1

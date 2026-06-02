@@ -1,4 +1,4 @@
-"""Standalone journal paper example for docscriptor."""
+"""Standalone journal paper example for oodocs."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from docscriptor import (
+from oodocs import (
     Affiliation,
     Author,
     BulletList,
@@ -86,12 +86,12 @@ def build_revision_effort_figure():
 
     revision_rounds = [1, 2, 3, 4]
     manual_minutes = [36, 49, 63, 79]
-    docscriptor_minutes = [18, 21, 25, 29]
+    oodocs_minutes = [18, 21, 25, 29]
 
     figure, axis = plt.subplots(figsize=(3.4, 2.8))
     axis.plot(revision_rounds, manual_minutes, marker="o", linewidth=1.8, color="#D06A44", label="Manual")
-    axis.plot(revision_rounds, docscriptor_minutes, marker="o", linewidth=1.8, color="#3F8F6B", label="Docscriptor")
-    axis.fill_between(revision_rounds, docscriptor_minutes, manual_minutes, color="#F6D8CB", alpha=0.45)
+    axis.plot(revision_rounds, oodocs_minutes, marker="o", linewidth=1.8, color="#3F8F6B", label="OODocs")
+    axis.fill_between(revision_rounds, oodocs_minutes, manual_minutes, color="#F6D8CB", alpha=0.45)
     axis.set_xlabel("Late revision round", fontsize=7.5)
     axis.set_ylabel("Minutes per update", fontsize=7.5)
     axis.set_xticks(revision_rounds)
@@ -186,14 +186,14 @@ def build_journal_paper_document() -> Document:
     revision_effort_figure = Figure(
         build_revision_effort_figure(),
         caption=Paragraph(
-            "Estimated late-revision synchronization effort comparing manual workflows with a docscriptor-based workflow."
+            "Estimated late-revision synchronization effort comparing manual workflows with an OODocs-based workflow."
         ),
         width=2.7,
         placement="here",
     )
 
     return Document(
-        "Docscriptor Development Philosophy",
+        "OODocs Development Philosophy",
         Section(
             "Abstract",
             Paragraph(
@@ -366,7 +366,7 @@ def build_journal_paper_document() -> Document:
             Section(
                 "Conclusion",
                 Paragraph(
-                    "This journal example shows docscriptor at its most manuscript-oriented: structured authorship, data-backed tables, explanatory figures, and submission-ready exports are kept in one readable Python source. The result is not just reproducible output, but a document workflow that is easier to revise and easier to trust."
+                    "This journal example shows OODocs at its most manuscript-oriented: structured authorship, data-backed tables, explanatory figures, and submission-ready exports are kept in one readable Python source. The result is not just reproducible output, but a document workflow that is easier to revise and easier to trust."
                 ),
                 Paragraph(
                     "The broader lesson is that document automation does not have to mean giving up familiar manuscript structure. It can instead make that structure cheaper to maintain, especially when the final paper must exist as DOCX, PDF, and HTML at the same time."
@@ -434,7 +434,7 @@ def build_journal_paper(
     document = build_journal_paper_document()
     outputs = document.save_all(
         output_path,
-        stem="docscriptor-development-philosophy",
+        stem="oodocs-development-philosophy",
         verbose=verbose,
     )
     return outputs["docx"], outputs["pdf"]
@@ -444,7 +444,7 @@ def main() -> None:
     """Build the paper into the default example output directory."""
 
     docx_path, pdf_path = build_journal_paper(OUTPUT_DIR, verbose=True)
-    html_path = OUTPUT_DIR / "docscriptor-development-philosophy.html"
+    html_path = OUTPUT_DIR / "oodocs-development-philosophy.html"
     print(f"Wrote {docx_path}")
     print(f"Wrote {pdf_path}")
     print(f"Wrote {html_path}")

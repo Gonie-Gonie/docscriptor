@@ -67,7 +67,7 @@ def _docx_document_xml(docx_path: Path) -> str:
 def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     paper_example = _load_example_module("journal_paper_example")
     docx_path, pdf_path = paper_example.build_journal_paper(tmp_path)
-    html_path = tmp_path / "docscriptor-development-philosophy.html"
+    html_path = tmp_path / "oodocs-development-philosophy.html"
 
     assert_rendered_bundle(docx_path, pdf_path, html_path)
     assert (Path(paper_example.__file__).resolve().parent / "assets" / "benchmark_results.csv").exists()
@@ -80,7 +80,7 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     normalized_html_text = _normalized_html_text(html_path)
     html_text = html_path.read_text(encoding="utf-8")
 
-    assert "Docscriptor Development Philosophy" in paragraph_texts
+    assert "OODocs Development Philosophy" in paragraph_texts
     assert "Hyeong-Gon Jo [1]*, Codex [2]" in paragraph_texts
     assert "[1] Building Simulation LAB, Seoul National University, Seoul, Republic of Korea" in paragraph_texts
     assert "[2] OpenAI" in paragraph_texts
@@ -105,14 +105,14 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     assert any("matplotlib" in text for text in paragraph_texts)
     assert any("Traceability pipeline used in the study" in text for text in paragraph_texts)
     assert any("Quality-latency frontier derived directly from the benchmark CSV used in the manuscript." in text for text in paragraph_texts)
-    assert any("Estimated late-revision synchronization effort comparing manual workflows with a docscriptor-based workflow." in text for text in paragraph_texts)
+    assert any("Estimated late-revision synchronization effort comparing manual workflows with an OODocs-based workflow." in text for text in paragraph_texts)
     assert len(word_document.tables) == 3
     assert len(word_document.inline_shapes) == 3
     assert 'w:num="2"' in _docx_document_xml(docx_path)
     assert_docx_structure(
         docx_path,
         required_paragraphs=(
-            "Docscriptor Development Philosophy",
+            "OODocs Development Philosophy",
             "Abstract",
             "Highlights",
             "References",
@@ -121,7 +121,7 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
         inline_shape_count=3,
     )
 
-    assert "Docscriptor Development Philosophy" in pdf_text
+    assert "OODocs Development Philosophy" in pdf_text
     assert "Hyeong-Gon Jo [1]*, Codex [2]" in pdf_text
     assert "Abstract" in pdf_text
     assert "Highlights" in pdf_text
@@ -143,7 +143,7 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     assert "Ablation results for the manuscript automation workflow." in pdf_text
     assert "late-revision" in pdf_text
     assert "synchronization effort" in pdf_text
-    assert "docscriptor-based" in pdf_text
+    assert "OODocs-based" in pdf_text
     assert "https://doi.org/10.1093/comjnl/27.2.97" in pdf_text
     assert "https://doi.org/10.1198/106186007X178663" in pdf_text
     assert "https://yihui.org/knitr/" in pdf_text
@@ -152,7 +152,7 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     assert_pdf_text_and_pages(
         pdf_path,
         required_text=(
-            "Docscriptor Development Philosophy",
+            "OODocs Development Philosophy",
             "Abstract",
             "Results",
             "References",
@@ -161,7 +161,7 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
         max_pages=8,
     )
 
-    assert "Docscriptor Development Philosophy" in normalized_html_text
+    assert "OODocs Development Philosophy" in normalized_html_text
     assert "Hyeong-Gon Jo [1]*, Codex [2]" in normalized_html_text
     assert "Evidence Traceability" in normalized_html_text
     assert "Study Assets" in normalized_html_text
@@ -173,12 +173,12 @@ def test_journal_paper_example_builds_outputs(tmp_path: Path) -> None:
     assert "https://doi.org/10.1198/106186007X178663" in normalized_html_text
     assert "https://yihui.org/knitr/" in normalized_html_text
     assert html_text.count("data:image/png;base64,") == 3
-    assert 'class="docscriptor-multi-column-layout"' in html_text
+    assert 'class="oodocs-multi-column-layout"' in html_text
     assert "column-count: 2" in html_text
     assert 'href="#table_2"' in html_text
     assert 'href="#figure_2"' in html_text
     assert_html_internal_links_resolve(
         html_path,
         required_hrefs=("#table_2", "#figure_2"),
-        required_text=("Docscriptor Development Philosophy", "Benchmark Frontier"),
+        required_text=("OODocs Development Philosophy", "Benchmark Frontier"),
     )

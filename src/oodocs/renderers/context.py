@@ -1,0 +1,45 @@
+"""Renderer context objects shared with block-level render dispatch."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from oodocs.layout.indexing import RenderIndex
+from oodocs.layout.theme import Theme
+from oodocs.settings import DocumentSettings
+
+
+@dataclass(slots=True)
+class DocxRenderContext:
+    """Context needed while rendering blocks into DOCX."""
+
+    theme: Theme
+    render_index: RenderIndex
+    settings: DocumentSettings
+    unit: str
+    word_document: Any
+    in_box: bool = False
+
+
+@dataclass(slots=True)
+class PdfRenderContext:
+    """Context needed while rendering blocks into PDF."""
+
+    theme: Theme
+    render_index: RenderIndex
+    settings: DocumentSettings
+    unit: str
+    styles: Any
+    in_box: bool = False
+
+
+@dataclass(slots=True)
+class HtmlRenderContext:
+    """Context needed while rendering blocks into HTML."""
+
+    theme: Theme
+    render_index: RenderIndex
+    settings: DocumentSettings
+    unit: str
+    in_box: bool = False

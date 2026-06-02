@@ -1,4 +1,4 @@
-"""Native Python benchmark report example for docscriptor."""
+"""Native Python benchmark report example for oodocs."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 from statistics import median
 from time import perf_counter_ns
 
-from docscriptor import (
+from oodocs import (
     Chapter,
     CodeBlock,
     Document,
@@ -171,7 +171,7 @@ def build_benchmark_document() -> Document:
                     "Generate a deterministic in-memory payload.",
                     "Run each implementation over the same workload.",
                     "Keep timing and checksum values in dictionaries.",
-                    "Turn those dictionaries into docscriptor table rows and prose.",
+                    "Turn those dictionaries into oodocs table rows and prose.",
                     "Render the same source document to DOCX, PDF, and HTML.",
                 ),
             ),
@@ -237,7 +237,7 @@ def build_benchmark_document() -> Document:
             ),
         ),
         settings=DocumentSettings(
-            metadata_author="Docscriptor Contributors",
+            metadata_author="OODocs Contributors",
             subtitle="Documenting measured Python work without leaving Python",
             summary="Example report generated from native Python benchmark data",
             theme=Theme(show_page_numbers=True, page_number_format="{page}"),

@@ -1,34 +1,45 @@
-# docscriptor
+# oodocs
 
-Docscriptor is a Python-first document authoring toolkit for people who want to define structured documents with normal Python code and render the same source to DOCX, PDF, and HTML.
+OODocs is an Object-Oriented Documentation Tool: a Python-first authoring toolkit for defining structured documents as ordinary objects and rendering the same source to DOCX, PDF, and HTML.
 
-It is aimed at report, documentation, and manuscript workflows where content already lives near Python data, figures, and scripts.
+It is aimed at report, documentation, and manuscript workflows where content already lives near Python data, figures, and scripts. Instead of treating a document as a string template or a markup stream, OODocs keeps the source of record as a typed object tree.
+
+## Object-Oriented Documentation
+
+In OODocs, `Document` owns the artifact, `DocumentSettings` owns document-wide metadata and rendering defaults, and blocks such as `Chapter`, `Section`, `Paragraph`, `Table`, `Figure`, `Box`, and `CitationSource` carry document intent directly in Python.
+
+That object model is the main design constraint:
+
+- the visible outline should match the Python tree
+- data-backed tables, generated figures, citations, comments, and cross-references should stay editable objects until render time
+- renderer-specific behavior should live behind DOCX, PDF, and HTML renderers rather than leaking into authoring code
+- the same source should be useful for writing, validating, reviewing, and releasing a document
 
 ## Install
 
-For normal use, install Docscriptor from PyPI:
+For normal use, install OODocs from PyPI:
 
 ```powershell
-pip install docscriptor
+pip install oodocs
 ```
 
 To upgrade later:
 
 ```powershell
-pip install --upgrade docscriptor
+pip install --upgrade oodocs
 ```
 
 If you need the optional dependencies used by the bundled examples:
 
 ```powershell
-pip install "docscriptor[examples]"
+pip install "oodocs[examples]"
 ```
 
 If you want to work from a repository checkout, run the bundled example scripts, or contribute locally:
 
 ```powershell
-git clone https://github.com/Gonie-Gonie/docscriptor.git
-cd docscriptor
+git clone https://github.com/Gonie-Gonie/oodocs.git
+cd oodocs
 pip install -e .
 ```
 
@@ -55,10 +66,10 @@ On Windows, the repository also includes a helper that creates `.venv` and insta
 The smallest useful document is just a `Document`, one visible heading, one paragraph, and one save call. Start here before splitting code into helper functions:
 
 ```python
-from docscriptor import Chapter, Document, DocumentSettings, Paragraph, Section, bold
+from oodocs import Chapter, Document, DocumentSettings, Paragraph, Section, bold
 
 report = Document(
-    "Hello docscriptor",
+    "Hello oodocs",
     Chapter(
         "Getting Started",
         Section(
@@ -70,7 +81,7 @@ report = Document(
             ),
         ),
     ),
-    settings=DocumentSettings(metadata_author="Docscriptor"),
+    settings=DocumentSettings(metadata_author="OODocs"),
 )
 
 report.save("artifacts/hello.docx")
@@ -89,20 +100,20 @@ print(paths["docx"], paths["pdf"], paths["html"])
 
 ## Command Line
 
-The installed package exposes a `docscriptor` command for common build and conversion workflows:
+The installed package exposes a `oodocs` command for common build and conversion workflows:
 
 ```powershell
-docscriptor build report.py --out artifacts
-docscriptor convert README.md --to docx,pdf,html
-docscriptor convert notebook.ipynb --to pdf
-docscriptor validate report.py
+oodocs build report.py --out artifacts
+oodocs convert README.md --to docx,pdf,html
+oodocs convert notebook.ipynb --to pdf
+oodocs validate report.py
 ```
 
 `build` expects a Python file that exposes a `Document` as `document`, `doc`, or `report`, or a zero-argument factory such as `build_document()`. Use `--factory NAME` when the document object or builder has a different name. `convert` imports Markdown and Jupyter notebooks through the same parser APIs available in Python. Both commands validate before rendering by default and stop before writing outputs when validation errors are found.
 
 ## Why Not Just LaTeX?
 
-Docscriptor is not trying to replace every LaTeX workflow. It is meant for documents where Python already owns the data, plots, citations, or release process and where collaborators may still need DOCX.
+OODocs is not trying to replace every LaTeX workflow. It is meant for documents where Python already owns the data, plots, citations, or release process and where collaborators may still need DOCX.
 
 Common translations:
 
@@ -123,12 +134,12 @@ The main payoff is fewer manual handoffs: a benchmark CSV can become a table, a 
 
 ## Authoring Model
 
-Docscriptor tries to keep the source readable:
+OODocs tries to keep the source readable:
 
 - create objects with classes such as `Document`, `Part`, `Chapter`, `Section`, `Paragraph`, `Table`, and `Figure`
 - apply inline actions with helpers such as `bold(...)`, `italic(...)`, `code(...)`, `tag(...)`, `badge(...)`, `status(...)`, `keyboard(...)`, `Text.from_markup(...)`, `Comment.annotated(...)`, `Footnote.annotated(...)`, and `CitationSource.cite()`
-- import existing Markdown with `parse_markdown(...)`, `from_markdown(...)`, or `Document.from_markdown(...)` when release notes, README fragments, or generated Markdown should become editable docscriptor objects
-- import Jupyter notebooks with `parse_ipynb(...)`, `from_ipynb(...)`, or `Document.from_ipynb(...)` when notebook markdown, code cells, and textual outputs should become docscriptor blocks
+- import existing Markdown with `parse_markdown(...)`, `from_markdown(...)`, or `Document.from_markdown(...)` when release notes, README fragments, or generated Markdown should become editable OODocs objects
+- import Jupyter notebooks with `parse_ipynb(...)`, `from_ipynb(...)`, or `Document.from_ipynb(...)` when notebook markdown, code cells, and textual outputs should become OODocs blocks
 - keep the document tree explicit so the Python structure matches the final output structure
 - move document-wide metadata and theme options into `DocumentSettings(...)` when you want a single place to adjust title matter, cover pages, and renderer defaults
 
@@ -219,7 +230,7 @@ Direct example scripts print slow major render steps. Imported build functions s
 What they show:
 
 - `usage_guide_example` is a detailed guide that keeps almost all assembly in one `main.py` so the source stays easy to read; it now covers the core authoring model, validation, CLI workflows, theorem-like countable blocks, layout controls, imports, presets, and renderer differences
-- the usage guide includes Markdown and notebook import patterns that bring existing authored files into normal docscriptor document objects
+- the usage guide includes Markdown and notebook import patterns that bring existing authored files into normal OODocs document objects
 - `journal_paper_example` shows a longer manuscript-style workflow with article-style sections, unnumbered abstract/highlights/acknowledgements, CSV-backed tables, and matplotlib figures inserted directly from Python objects
 - `native_benchmark_report` shows a compact Python-native workflow where a script generates an in-memory workload, benchmarks several callables, turns structured result objects into tables and prose, and exports one report bundle
 - `release_notes_digest` collects `release-notes/*.md`, sorts semantic versions from filenames, imports the Markdown bodies, and builds a release-note document with a version-management table and runbook
@@ -233,21 +244,21 @@ By default they write outputs under:
 
 The main exported filenames are:
 
-- `artifacts/usage-guide/docscriptor-user-guide.pdf`
-- `artifacts/journal-paper/docscriptor-development-philosophy.pdf`
+- `artifacts/usage-guide/oodocs-user-guide.pdf`
+- `artifacts/journal-paper/oodocs-development-philosophy.pdf`
 - `artifacts/native-benchmark-report/native-python-benchmark.pdf`
-- `artifacts/release-notes/docscriptor-release-notes.pdf`
+- `artifacts/release-notes/oodocs-release-notes.pdf`
 
 ## Project Layout
 
 The package is organized by responsibility:
 
-- `src/docscriptor/document.py` for the root `Document`
-- `src/docscriptor/settings.py` for `DocumentSettings` plus grouped configuration exports
-- `src/docscriptor/components/` for the concrete authoring model (`base.py`, `blocks.py`, `equations.py`, `generated.py`, `inline.py`, `markup.py`, `media.py`, `people.py`, `positioning.py`, and `references.py`)
-- `src/docscriptor/importers/` for adapters that convert external formats such as Markdown into docscriptor objects
-- `src/docscriptor/layout/` for low-level theme and indexing support
-- `src/docscriptor/renderers/docx.py`, `src/docscriptor/renderers/pdf.py`, and `src/docscriptor/renderers/html.py` for format-specific layout
+- `src/oodocs/document.py` for the root `Document`
+- `src/oodocs/settings.py` for `DocumentSettings` plus grouped configuration exports
+- `src/oodocs/components/` for the concrete authoring model (`base.py`, `blocks.py`, `equations.py`, `generated.py`, `inline.py`, `markup.py`, `media.py`, `people.py`, `positioning.py`, and `references.py`)
+- `src/oodocs/importers/` for adapters that convert external formats such as Markdown into OODocs objects
+- `src/oodocs/layout/` for low-level theme and indexing support
+- `src/oodocs/renderers/docx.py`, `src/oodocs/renderers/pdf.py`, and `src/oodocs/renderers/html.py` for format-specific layout
 
 ## Development
 
@@ -284,18 +295,18 @@ Build distribution artifacts:
 
 ## Releases
 
-Docscriptor versions are derived from git tags through `setuptools-scm`.
+OODocs versions are derived from git tags through `setuptools-scm`.
 
 Create and push a release tag like this:
 
 ```powershell
-.\scripts\release.ps1 1.0.0
+.\scripts\release.ps1 1.0.1
 ```
 
-That pushes `v1.0.0`, and the GitHub release workflow runs the test suite, builds the wheel/sdist artifacts, renders the example PDFs, attaches them to the matching GitHub Release, and uploads the Python distributions to PyPI.
+That pushes `v1.0.1`, and the GitHub release workflow runs the test suite, builds the wheel/sdist artifacts, renders the example PDFs, attaches them to the matching GitHub Release, and uploads the Python distributions to PyPI.
 
-If you want a curated release body instead of GitHub's generated notes, add a file such as `release-notes/v1.0.0.md` before pushing the tag.
+If you want a curated release body instead of GitHub's generated notes, add a file such as `release-notes/v1.0.1.md` before pushing the tag.
 
 The `examples/release_notes_digest/` script demonstrates the same convention as a document workflow: it scans the semantic-versioned Markdown files under `release-notes/`, builds an index, includes the version-management rules, and imports each release body into one DOCX/PDF/HTML bundle.
 
-PyPI publishing uses Trusted Publishing through the `pypi` GitHub environment. The PyPI project or pending publisher must trust repository `Gonie-Gonie/docscriptor`, workflow `.github/workflows/release.yml`, and environment `pypi`.
+PyPI publishing uses Trusted Publishing through the `pypi` GitHub environment. The PyPI project or pending publisher must trust repository `Gonie-Gonie/oodocs`, workflow `.github/workflows/release.yml`, and environment `pypi`.

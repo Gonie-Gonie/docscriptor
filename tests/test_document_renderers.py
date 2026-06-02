@@ -9,18 +9,18 @@ import struct
 import zlib
 import zipfile
 
-import docscriptor
+import oodocs
 from docx import Document as WordDocument
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import RGBColor
 from pypdf import PdfReader
 
-import docscriptor.components.generated as generated_components
-import docscriptor.components.inline as inline_components
-from docscriptor.components.equations import BASELINE, SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
-from docscriptor.core import length_to_inches
-from docscriptor.layout.indexing import build_render_index
-from docscriptor import (
+import oodocs.components.generated as generated_components
+import oodocs.components.inline as inline_components
+from oodocs.components.equations import BASELINE, SUBSCRIPT, SUPERSCRIPT, parse_latex_segments
+from oodocs.core import length_to_inches
+from oodocs.layout.indexing import build_render_index
+from oodocs import (
     Affiliation,
     Assumption,
     Author,
@@ -121,9 +121,9 @@ from docscriptor import (
     superscript,
     tag,
 )
-from docscriptor.presets.components import CalloutBox, KeyValueTable, Nomenclature
-from docscriptor.presets.templates import JournalArticleTemplate, ManuscriptSection
-from docscriptor.settings import TextStyle
+from oodocs.presets.components import CalloutBox, KeyValueTable, Nomenclature
+from oodocs.presets.templates import JournalArticleTemplate, ManuscriptSection
+from oodocs.settings import TextStyle
 
 class HighlightedParagraph(Paragraph):
     pass
@@ -302,9 +302,9 @@ def _normalized_html_text(html_path: Path) -> str:
 
 
 def test_version_is_defined() -> None:
-    from docscriptor import __version__
+    from oodocs import __version__
 
-    assert __version__ == package_version("docscriptor")
+    assert __version__ == package_version("oodocs")
     assert __version__
 
 
@@ -335,7 +335,7 @@ def test_comment_and_math_helpers_create_renderable_fragments() -> None:
     inline_math = math(r"\alpha^2 + \beta^2")
     equation = Equation(r"\frac{1}{2}")
 
-    assert isinstance(inline_comment, docscriptor.Comment)
+    assert isinstance(inline_comment, oodocs.Comment)
     assert inline_comment.plain_text() == "term[?]"
     assert inline_comment.author == "pytest"
     assert inline_comment.initials == "PT"
@@ -722,7 +722,7 @@ def test_document_validate_returns_printable_result_with_format_scopes() -> None
     assert result.warnings_for(("docx",)) == ()
 
     printable = str(result)
-    assert "Docscriptor validation ok for All" in printable
+    assert "OODocs validation ok for All" in printable
     assert "Severity" in printable
     assert "Formats" in printable
     assert "HTML" in printable
@@ -749,7 +749,7 @@ def test_document_validate_reports_authoring_errors_and_blocks_render(
         document.save_pdf(pdf_path)
     except DocumentValidationError as exc:
         message = str(exc)
-        assert "Docscriptor validation failed for PDF" in message
+        assert "OODocs validation failed for PDF" in message
         assert "missing-image-file" in message
         assert "PDF" in message
     else:
@@ -1001,9 +1001,9 @@ def test_table_split_and_media_placement_options_render(tmp_path: Path) -> None:
     assert "Long table with repeated headers." in pdf_text
     assert pdf_text.count("Item") >= 2
     assert len(pdf_reader.pages) >= 2
-    assert 'docscriptor-table-split' in html_text
-    assert 'docscriptor-placement-here' in html_text
-    assert 'docscriptor-placement-top' in html_text
+    assert 'oodocs-table-split' in html_text
+    assert 'oodocs-placement-here' in html_text
+    assert 'oodocs-placement-top' in html_text
     assert 'break-before: page' in html_text
 
 
@@ -1119,120 +1119,120 @@ def test_parts_use_dedicated_pages_without_resetting_chapters(tmp_path: Path) ->
     normalized_html_text = _normalized_html_text(html_path)
     assert "Part I Foundations" in normalized_html_text
     assert "2 Continue" in normalized_html_text
-    assert 'class="docscriptor-part-page docscriptor-page-break-before docscriptor-page-break-after"' in html_text
-    assert 'docscriptor-toc-entry-level-0' in html_text
+    assert 'class="oodocs-part-page oodocs-page-break-before oodocs-page-break-after"' in html_text
+    assert 'oodocs-toc-entry-level-0' in html_text
 
 
 def test_public_api_prefers_classes_for_structural_nodes() -> None:
-    assert hasattr(docscriptor, "Document")
-    assert hasattr(docscriptor, "DocumentSettings")
-    assert hasattr(docscriptor, "Chapter")
-    assert hasattr(docscriptor, "AuthorLayout")
-    assert hasattr(docscriptor, "Section")
-    assert hasattr(docscriptor, "Shape")
-    assert hasattr(docscriptor, "Paragraph")
-    assert hasattr(docscriptor, "Part")
-    assert hasattr(docscriptor, "BulletList")
-    assert hasattr(docscriptor, "ColumnSpan")
-    assert hasattr(docscriptor, "CountableBlock")
-    assert hasattr(docscriptor, "Definition")
-    assert hasattr(docscriptor, "Lemma")
-    assert hasattr(docscriptor, "Proposition")
-    assert hasattr(docscriptor, "Theorem")
-    assert hasattr(docscriptor, "Corollary")
-    assert hasattr(docscriptor, "Proof")
-    assert hasattr(docscriptor, "Example")
-    assert hasattr(docscriptor, "Remark")
-    assert hasattr(docscriptor, "Assumption")
-    assert hasattr(docscriptor, "Axiom")
-    assert hasattr(docscriptor, "Claim")
-    assert hasattr(docscriptor, "Conjecture")
-    assert hasattr(docscriptor, "countable_kind")
-    assert hasattr(docscriptor, "MultiColumn")
-    assert hasattr(docscriptor, "NumberedList")
-    assert hasattr(docscriptor, "PageBreak")
-    assert hasattr(docscriptor, "PageMargins")
-    assert hasattr(docscriptor, "PageSize")
-    assert hasattr(docscriptor, "TableList")
-    assert hasattr(docscriptor, "FigureList")
-    assert hasattr(docscriptor, "cite")
-    assert hasattr(docscriptor, "Box")
-    assert hasattr(docscriptor, "BoxStyle")
-    assert hasattr(docscriptor, "CitationOptions")
-    assert hasattr(docscriptor, "HeadingNumbering")
-    assert hasattr(docscriptor, "ImageBox")
-    assert hasattr(docscriptor, "ImageData")
-    assert hasattr(docscriptor, "ListStyle")
-    assert hasattr(docscriptor, "Table")
-    assert hasattr(docscriptor, "TableCell")
-    assert hasattr(docscriptor, "TableStyle")
-    assert hasattr(docscriptor, "Figure")
-    assert hasattr(docscriptor, "TableOfContents")
-    assert hasattr(docscriptor, "TocLevelStyle")
-    assert hasattr(docscriptor, "Comment")
-    assert hasattr(docscriptor, "CommentsPage")
-    assert hasattr(docscriptor, "Footnote")
-    assert hasattr(docscriptor, "Equation")
-    assert hasattr(docscriptor, "Math")
-    assert hasattr(docscriptor, "InlineChip")
-    assert hasattr(docscriptor, "InlineChipStyle")
-    assert hasattr(docscriptor, "TextStyle")
-    assert hasattr(docscriptor, "TextBox")
-    assert hasattr(docscriptor, "LineBreak")
-    assert hasattr(docscriptor, "VerticalSpace")
-    assert hasattr(docscriptor, "Divider")
-    assert not hasattr(docscriptor, "Sheet")
-    assert not hasattr(docscriptor, "Body")
-    assert not hasattr(docscriptor, "Bold")
-    assert not hasattr(docscriptor, "Hyperlink")
-    assert not hasattr(docscriptor, "Italic")
-    assert not hasattr(docscriptor, "Monospace")
-    assert not hasattr(docscriptor, "FootnotesPage")
+    assert hasattr(oodocs, "Document")
+    assert hasattr(oodocs, "DocumentSettings")
+    assert hasattr(oodocs, "Chapter")
+    assert hasattr(oodocs, "AuthorLayout")
+    assert hasattr(oodocs, "Section")
+    assert hasattr(oodocs, "Shape")
+    assert hasattr(oodocs, "Paragraph")
+    assert hasattr(oodocs, "Part")
+    assert hasattr(oodocs, "BulletList")
+    assert hasattr(oodocs, "ColumnSpan")
+    assert hasattr(oodocs, "CountableBlock")
+    assert hasattr(oodocs, "Definition")
+    assert hasattr(oodocs, "Lemma")
+    assert hasattr(oodocs, "Proposition")
+    assert hasattr(oodocs, "Theorem")
+    assert hasattr(oodocs, "Corollary")
+    assert hasattr(oodocs, "Proof")
+    assert hasattr(oodocs, "Example")
+    assert hasattr(oodocs, "Remark")
+    assert hasattr(oodocs, "Assumption")
+    assert hasattr(oodocs, "Axiom")
+    assert hasattr(oodocs, "Claim")
+    assert hasattr(oodocs, "Conjecture")
+    assert hasattr(oodocs, "countable_kind")
+    assert hasattr(oodocs, "MultiColumn")
+    assert hasattr(oodocs, "NumberedList")
+    assert hasattr(oodocs, "PageBreak")
+    assert hasattr(oodocs, "PageMargins")
+    assert hasattr(oodocs, "PageSize")
+    assert hasattr(oodocs, "TableList")
+    assert hasattr(oodocs, "FigureList")
+    assert hasattr(oodocs, "cite")
+    assert hasattr(oodocs, "Box")
+    assert hasattr(oodocs, "BoxStyle")
+    assert hasattr(oodocs, "CitationOptions")
+    assert hasattr(oodocs, "HeadingNumbering")
+    assert hasattr(oodocs, "ImageBox")
+    assert hasattr(oodocs, "ImageData")
+    assert hasattr(oodocs, "ListStyle")
+    assert hasattr(oodocs, "Table")
+    assert hasattr(oodocs, "TableCell")
+    assert hasattr(oodocs, "TableStyle")
+    assert hasattr(oodocs, "Figure")
+    assert hasattr(oodocs, "TableOfContents")
+    assert hasattr(oodocs, "TocLevelStyle")
+    assert hasattr(oodocs, "Comment")
+    assert hasattr(oodocs, "CommentsPage")
+    assert hasattr(oodocs, "Footnote")
+    assert hasattr(oodocs, "Equation")
+    assert hasattr(oodocs, "Math")
+    assert hasattr(oodocs, "InlineChip")
+    assert hasattr(oodocs, "InlineChipStyle")
+    assert hasattr(oodocs, "TextStyle")
+    assert hasattr(oodocs, "TextBox")
+    assert hasattr(oodocs, "LineBreak")
+    assert hasattr(oodocs, "VerticalSpace")
+    assert hasattr(oodocs, "Divider")
+    assert not hasattr(oodocs, "Sheet")
+    assert not hasattr(oodocs, "Body")
+    assert not hasattr(oodocs, "Bold")
+    assert not hasattr(oodocs, "Hyperlink")
+    assert not hasattr(oodocs, "Italic")
+    assert not hasattr(oodocs, "Monospace")
+    assert not hasattr(oodocs, "FootnotesPage")
     assert hasattr(inline_components, "Bold")
     assert hasattr(inline_components, "Hyperlink")
     assert hasattr(inline_components, "Italic")
     assert hasattr(inline_components, "Monospace")
     assert hasattr(generated_components, "FootnotesPage")
-    assert not hasattr(docscriptor, "ListBlock")
-    assert not hasattr(docscriptor, "Citation")
-    assert not hasattr(docscriptor, "TableReference")
-    assert not hasattr(docscriptor, "FigureReference")
-    assert not hasattr(docscriptor, "Strong")
-    assert not hasattr(docscriptor, "Emphasis")
-    assert not hasattr(docscriptor, "Code")
-    assert not hasattr(docscriptor, "PageBreaker")
-    assert not hasattr(docscriptor, "VSpace")
-    assert not hasattr(docscriptor, "HorizontalRule")
-    assert hasattr(docscriptor, "comment")
-    assert hasattr(docscriptor, "footnote")
-    assert hasattr(docscriptor, "from_ipynb")
-    assert hasattr(docscriptor, "from_markdown")
-    assert hasattr(docscriptor, "from_markdown_file")
-    assert hasattr(docscriptor, "from_notebook")
-    assert hasattr(docscriptor, "math")
-    assert hasattr(docscriptor, "prescript")
-    assert hasattr(docscriptor, "reference")
-    assert hasattr(docscriptor, "bold")
-    assert hasattr(docscriptor, "italic")
-    assert hasattr(docscriptor, "code")
-    assert hasattr(docscriptor, "color")
-    assert hasattr(docscriptor, "highlight")
-    assert hasattr(docscriptor, "link")
-    assert hasattr(docscriptor, "line_break")
-    assert not hasattr(docscriptor, "vspace")
-    assert not hasattr(docscriptor, "hrule")
-    assert hasattr(docscriptor, "strike")
-    assert hasattr(docscriptor, "strikethrough")
-    assert hasattr(docscriptor, "tag")
-    assert hasattr(docscriptor, "badge")
-    assert hasattr(docscriptor, "status")
-    assert hasattr(docscriptor, "keyboard")
-    assert hasattr(docscriptor, "subscript")
-    assert hasattr(docscriptor, "superscript")
-    assert hasattr(docscriptor, "parse_ipynb")
-    assert hasattr(docscriptor, "parse_markdown")
-    assert hasattr(docscriptor, "parse_markdown_file")
-    assert hasattr(docscriptor, "parse_notebook")
+    assert not hasattr(oodocs, "ListBlock")
+    assert not hasattr(oodocs, "Citation")
+    assert not hasattr(oodocs, "TableReference")
+    assert not hasattr(oodocs, "FigureReference")
+    assert not hasattr(oodocs, "Strong")
+    assert not hasattr(oodocs, "Emphasis")
+    assert not hasattr(oodocs, "Code")
+    assert not hasattr(oodocs, "PageBreaker")
+    assert not hasattr(oodocs, "VSpace")
+    assert not hasattr(oodocs, "HorizontalRule")
+    assert hasattr(oodocs, "comment")
+    assert hasattr(oodocs, "footnote")
+    assert hasattr(oodocs, "from_ipynb")
+    assert hasattr(oodocs, "from_markdown")
+    assert hasattr(oodocs, "from_markdown_file")
+    assert hasattr(oodocs, "from_notebook")
+    assert hasattr(oodocs, "math")
+    assert hasattr(oodocs, "prescript")
+    assert hasattr(oodocs, "reference")
+    assert hasattr(oodocs, "bold")
+    assert hasattr(oodocs, "italic")
+    assert hasattr(oodocs, "code")
+    assert hasattr(oodocs, "color")
+    assert hasattr(oodocs, "highlight")
+    assert hasattr(oodocs, "link")
+    assert hasattr(oodocs, "line_break")
+    assert not hasattr(oodocs, "vspace")
+    assert not hasattr(oodocs, "hrule")
+    assert hasattr(oodocs, "strike")
+    assert hasattr(oodocs, "strikethrough")
+    assert hasattr(oodocs, "tag")
+    assert hasattr(oodocs, "badge")
+    assert hasattr(oodocs, "status")
+    assert hasattr(oodocs, "keyboard")
+    assert hasattr(oodocs, "subscript")
+    assert hasattr(oodocs, "superscript")
+    assert hasattr(oodocs, "parse_ipynb")
+    assert hasattr(oodocs, "parse_markdown")
+    assert hasattr(oodocs, "parse_markdown_file")
+    assert hasattr(oodocs, "parse_notebook")
     assert hasattr(inline_components, "InlineChip")
     assert hasattr(inline_components, "InlineChipStyle")
     assert not hasattr(inline_components, "Strong")
@@ -1259,7 +1259,7 @@ def test_public_api_prefers_classes_for_structural_nodes() -> None:
         "table",
         "figure",
     ):
-        assert not hasattr(docscriptor, removed_name)
+        assert not hasattr(oodocs, removed_name)
 
 
 def test_multicolumn_layout_renders_across_outputs(tmp_path: Path) -> None:
@@ -1332,9 +1332,9 @@ def test_multicolumn_layout_renders_across_outputs(tmp_path: Path) -> None:
 
     html_text = html_path.read_text(encoding="utf-8")
     normalized_html_text = _normalized_html_text(html_path)
-    assert 'class="docscriptor-multi-column-layout"' in html_text
+    assert 'class="oodocs-multi-column-layout"' in html_text
     assert "column-count: 2" in html_text
-    assert html_text.count('class="docscriptor-column-span"') >= 2
+    assert html_text.count('class="oodocs-column-span"') >= 2
     assert "Column paragraph alpha." in normalized_html_text
     assert "Column paragraph delta." in normalized_html_text
     assert "Table 1. Wide result table." in normalized_html_text
@@ -1428,12 +1428,12 @@ def test_page_items_render_without_affecting_document_flow(tmp_path: Path) -> No
     assert "Positioned Page Overlay" in pdf_text
     assert "Anchored to the named frame shape." in pdf_text
     assert _pdf_image_draw_count(pdf_path) == 1
-    assert 'class="docscriptor-page-items"' in html_text
-    assert 'class="docscriptor-page-item docscriptor-imagebox"' in html_text
+    assert 'class="oodocs-page-items"' in html_text
+    assert 'class="oodocs-page-item oodocs-imagebox"' in html_text
     assert "Positioned Page Overlay" in html_text
     assert "Anchored to the named frame shape." in html_text
     assert html_text.count("data:image/png;base64,") == 1
-    assert "docscriptor-sheet" not in html_text
+    assert "oodocs-sheet" not in html_text
 
 
 def test_positioned_items_can_render_inline_like_text(tmp_path: Path) -> None:
@@ -1578,7 +1578,7 @@ def test_explicit_page_break_renders_to_all_outputs(tmp_path: Path) -> None:
 
     assert '<w:br w:type="page"/>' in _docx_document_xml(docx_path)
     assert len(PdfReader(BytesIO(pdf_path.read_bytes())).pages) >= 2
-    assert 'class="docscriptor-page-break"' in html_path.read_text(encoding="utf-8")
+    assert 'class="oodocs-page-break"' in html_path.read_text(encoding="utf-8")
 
 
 def test_inline_highlight_strike_and_line_break_render_to_all_outputs(tmp_path: Path) -> None:
@@ -1697,10 +1697,10 @@ def test_inline_chips_render_to_all_outputs(tmp_path: Path) -> None:
     assert "READY" in pdf_text
     assert "3" in pdf_text
     assert "Ctrl+Enter" in pdf_text
-    assert "docscriptor-inline-chip-tag" in html_text
-    assert "docscriptor-inline-chip-badge" in html_text
-    assert "docscriptor-inline-chip-status" in html_text
-    assert "docscriptor-inline-chip-keyboard" in html_text
+    assert "oodocs-inline-chip-tag" in html_text
+    assert "oodocs-inline-chip-badge" in html_text
+    assert "oodocs-inline-chip-status" in html_text
+    assert "oodocs-inline-chip-keyboard" in html_text
     assert "api" in normalized_html
     assert "READY" in normalized_html
     assert "Ctrl+Enter" in normalized_html
@@ -1820,9 +1820,9 @@ def test_vertical_space_and_divider_render_to_all_outputs(tmp_path: Path) -> Non
     assert '<w:bottom w:val="single" w:sz="12" w:space="1" w:color="C8CDD6"/>' in docx_xml
     assert "Before spacer." in pdf_text
     assert "After divider." in pdf_text
-    assert 'class="docscriptor-vertical-space"' in html_text
+    assert 'class="oodocs-vertical-space"' in html_text
     assert "height: 18.0pt" in html_text
-    assert 'class="docscriptor-divider"' in html_text
+    assert 'class="oodocs-divider"' in html_text
     assert "border-top: 1.50pt solid #C8CDD6" in html_text
     assert "width: 2.0000in" in html_text
 
@@ -2009,7 +2009,7 @@ def test_component_and_template_presets_build_renderable_documents(tmp_path: Pat
         variant="warning",
     )
     metadata = KeyValueTable(
-        {"Preset namespace": "docscriptor.presets.components", "Output": "DOCX/PDF/HTML"},
+        {"Preset namespace": "oodocs.presets.components", "Output": "DOCX/PDF/HTML"},
         caption="Preset metadata.",
     )
     nomenclature = Nomenclature(
@@ -2311,7 +2311,7 @@ def test_countable_blocks_share_document_counter_and_render_references(tmp_path:
     for text in expected_texts[1:]:
         assert text in normalized_html_text
     assert "See Theorem 3 , the proof , and Claim 7 ." in normalized_html_text
-    assert 'class="docscriptor-countable-block' in html_text
+    assert 'class="oodocs-countable-block' in html_text
     assert 'href="#countable_' in html_text
 
 
@@ -2326,7 +2326,7 @@ def test_unnumbered_countable_reference_requires_custom_label() -> None:
 
 def test_code_block_language_label_can_move_or_hide(tmp_path: Path) -> None:
     visible = CodeBlock("print('visible')", language="python", language_position="bottom-left")
-    hidden = CodeBlock("README.md\nsrc/docscriptor", language="text", show_language=False)
+    hidden = CodeBlock("README.md\nsrc/oodocs", language="text", show_language=False)
     document = Document("Code Labels", visible, hidden)
 
     docx_path = tmp_path / "code-labels.docx"
@@ -2342,8 +2342,8 @@ def test_code_block_language_label_can_move_or_hide(tmp_path: Path) -> None:
 
     assert "PYTHON" in word_text
     assert "PYTHON" in pdf_text
-    assert "docscriptor-code-language-bottom-left" in html_text
-    assert "docscriptor-code-has-label-bottom" in html_text
+    assert "oodocs-code-language-bottom-left" in html_text
+    assert "oodocs-code-has-label-bottom" in html_text
     assert "TEXT" not in word_text
     assert "TEXT" not in pdf_text
     assert ">TEXT<" not in html_text
@@ -2353,8 +2353,8 @@ def test_code_block_language_label_can_move_or_hide(tmp_path: Path) -> None:
 
 
 def test_pdf_code_block_flowable_wraps_long_unbroken_lines() -> None:
-    from docscriptor.renderers.pdf import CodeBlockFlowable
-    from docscriptor.renderers.syntax import SyntaxToken
+    from oodocs.renderers.pdf import CodeBlockFlowable
+    from oodocs.renderers.syntax import SyntaxToken
 
     flowable = CodeBlockFlowable(
         [SyntaxToken("x" * 120)],
@@ -2403,10 +2403,10 @@ def test_table_of_contents_uses_page_numbers_and_leaders_by_default(tmp_path: Pa
     assert "<w:fldSimple" not in docx_xml
     assert ".  .  ." in pdf_text
     assert "1 One" in pdf_text
-    assert 'class="docscriptor-toc-page-number"' not in html_text
-    assert "docscriptor-toc-leader" not in html_text
+    assert 'class="oodocs-toc-page-number"' not in html_text
+    assert "oodocs-toc-leader" not in html_text
     assert "target-counter(attr(data-target), page)" not in html_text
-    assert "docscriptor-toc-entry-no-page" in html_text
+    assert "oodocs-toc-entry-no-page" in html_text
 
 
 def test_table_of_contents_options_can_hide_pages_and_limit_depth(tmp_path: Path) -> None:
@@ -2429,9 +2429,9 @@ def test_table_of_contents_options_can_hide_pages_and_limit_depth(tmp_path: Path
     html_text = html_path.read_text(encoding="utf-8")
 
     assert "PAGEREF heading_" not in docx_xml
-    assert 'class="docscriptor-toc-page-number"' not in html_text
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-no-page docscriptor-toc-entry-level-1"' in html_text
-    assert 'class="docscriptor-toc-entry docscriptor-toc-entry-level-2"' not in html_text
+    assert 'class="oodocs-toc-page-number"' not in html_text
+    assert 'class="oodocs-toc-entry oodocs-toc-entry-no-page oodocs-toc-entry-level-1"' in html_text
+    assert 'class="oodocs-toc-entry oodocs-toc-entry-level-2"' not in html_text
 
 
 def test_table_of_contents_default_styles_emphasize_only_top_level(tmp_path: Path) -> None:
@@ -2451,28 +2451,28 @@ def test_table_of_contents_default_styles_emphasize_only_top_level(tmp_path: Pat
     assert ' TC "1.1.1 Third" \\l 3 ' in docx_xml
     assert " TOC \\f \\l \"1-9\" \\h \\z " in docx_xml
     html_text = html_path.read_text(encoding="utf-8")
-    assert 'docscriptor-toc-entry-level-1" style="margin-left: 0.00in; margin-top: 12.0pt; margin-bottom: 7.0pt' in html_text
-    assert 'docscriptor-toc-entry-level-2" style="margin-left: 0.24in; margin-top: 3.0pt; margin-bottom: 3.0pt' in html_text
-    assert 'docscriptor-toc-entry-level-2" style=' in html_text and "font-weight: 400" in html_text
+    assert 'oodocs-toc-entry-level-1" style="margin-left: 0.00in; margin-top: 12.0pt; margin-bottom: 7.0pt' in html_text
+    assert 'oodocs-toc-entry-level-2" style="margin-left: 0.24in; margin-top: 3.0pt; margin-bottom: 3.0pt' in html_text
+    assert 'oodocs-toc-entry-level-2" style=' in html_text and "font-weight: 400" in html_text
 
 
 def test_bibtex_string_creates_citation_library() -> None:
     document = Document(
         "Bibliography Test",
         Paragraph("Example"),
-        citations="""@misc{pydocs-repository,
-  title = {pydocs},
+        citations="""@misc{oodocs-repository,
+  title = {oodocs},
   organization = {Gonie-Gonie},
   year = {2026},
-  url = {https://github.com/Gonie-Gonie/docscriptor},
+  url = {https://github.com/Gonie-Gonie/oodocs},
   note = {GitHub repository}
 }""",
     )
 
-    entry = document.citations.resolve("pydocs-repository")
-    assert entry.title == "pydocs"
+    entry = document.citations.resolve("oodocs-repository")
+    assert entry.title == "oodocs"
     assert entry.organization == "Gonie-Gonie"
-    assert entry.url == "https://github.com/Gonie-Gonie/docscriptor"
+    assert entry.url == "https://github.com/Gonie-Gonie/oodocs"
     assert "GitHub repository" in entry.format_reference()
 
 
@@ -2524,12 +2524,12 @@ def test_citation_and_reference_formats_can_be_configured(tmp_path: Path) -> Non
     assert "Knuth, D. E. (1984). Literate Programming." in normalized_html_text
     assert 'href="#citation_1"' in html_text
     assert 'id="citation_1"' in html_text
-    assert '<span class="docscriptor-generated-marker">' not in html_text
+    assert '<span class="oodocs-generated-marker">' not in html_text
 
 
 def test_document_accepts_document_settings() -> None:
     settings = DocumentSettings(
-        metadata_author="Docscriptor",
+        metadata_author="OODocs",
         summary="Settings test",
         subtitle="Grouped metadata",
         authors=[
@@ -2546,7 +2546,7 @@ def test_document_accepts_document_settings() -> None:
 
     document = Document("Configured", Paragraph("Body"), settings=settings)
 
-    assert document.settings.resolved_author() == "Docscriptor"
+    assert document.settings.resolved_author() == "OODocs"
     assert document.settings.summary == "Settings test"
     assert document.settings.subtitle is not None
     assert document.settings.subtitle[0].plain_text() == "Grouped metadata"
@@ -2740,11 +2740,11 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     image_path = tmp_path / "sample.png"
     _write_sample_image(image_path)
     repository_source = CitationSource(
-        "pydocs",
+        "oodocs",
         organization="Gonie-Gonie",
         publisher="GitHub repository",
         year="2026",
-        url="https://github.com/Gonie-Gonie/docscriptor",
+        url="https://github.com/Gonie-Gonie/oodocs",
     )
     registered_source = CitationSource(
         "Release Notes",
@@ -2752,7 +2752,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
         organization="Gonie-Gonie",
         publisher="Documentation index",
         year="2026",
-        url="https://github.com/Gonie-Gonie/docscriptor/releases",
+        url="https://github.com/Gonie-Gonie/oodocs/releases",
     )
     unused_source = CitationSource(
         "Internal Draft",
@@ -2847,7 +2847,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
                 ),
                 HighlightedParagraph(
                     "The ",
-                    bold("docscriptor"),
+                    bold("oodocs"),
                     " pipeline supports ",
                     italic("styled"),
                     " text, ",
@@ -2895,7 +2895,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
                     Subsubsection(
                         "Export Steps",
                         CodeBlock(
-                            "from docscriptor import Document\n\ndocument.save_docx('report.docx')\ndocument.save_pdf('report.pdf')",
+                            "from oodocs import Document\n\ndocument.save_docx('report.docx')\ndocument.save_pdf('report.pdf')",
                             language="python",
                         ),
                     ),
@@ -2958,7 +2958,7 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "List of Figures" in paragraph_texts
     assert "References" in paragraph_texts
     assert any("The review note[1] appears inline" in text for text in paragraph_texts)
-    assert any("docscriptor" in text for text in paragraph_texts)
+    assert any("oodocs" in text for text in paragraph_texts)
     assert any(text == "1 Summary" for text in paragraph_texts)
     assert any(text == "1.1 Highlights" for text in paragraph_texts)
     assert any("See Table 1 and Figure 1 for the generated outputs." in text for text in paragraph_texts)
@@ -2977,10 +2977,10 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert paragraph_texts.count("Table 3. Merged header table.") >= 2
     assert paragraph_texts.count("Figure 1. Tiny sample image.") >= 2
     assert paragraph_texts.count("Figure 2. Second tiny sample image.") >= 2
-    assert any("https://github.com/Gonie-Gonie/docscriptor" in text for text in paragraph_texts)
-    assert any("https://github.com/Gonie-Gonie/docscriptor/releases" in text for text in paragraph_texts)
+    assert any("https://github.com/Gonie-Gonie/oodocs" in text for text in paragraph_texts)
+    assert any("https://github.com/Gonie-Gonie/oodocs/releases" in text for text in paragraph_texts)
     assert all("internal-draft" not in text.lower() for text in paragraph_texts)
-    assert any("from docscriptor import Document" in text for text in paragraph_texts)
+    assert any("from oodocs import Document" in text for text in paragraph_texts)
     assert len(word_document.inline_shapes) == 3
     summary_paragraph = next(
         paragraph
@@ -3070,11 +3070,11 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert "List of Tables" in pdf_text
     assert "List of Figures" in pdf_text
     assert "References" in pdf_text
-    assert "https://github.com/Gonie-Gonie/docscriptor" in pdf_text
-    assert "https://github.com/Gonie-Gonie/docscriptor/releases" in pdf_text
+    assert "https://github.com/Gonie-Gonie/oodocs" in pdf_text
+    assert "https://github.com/Gonie-Gonie/oodocs/releases" in pdf_text
     assert "Internal Draft" not in pdf_text
     assert "Lists render into both DOCX and PDF." in pdf_text
-    assert "from docscriptor import Document" in pdf_text
+    assert "from oodocs import Document" in pdf_text
     assert "1\nLists render into both DOCX and PDF." not in pdf_text
     assert "1.\nCreate the model" in pdf_text
     assert _pdf_image_draw_count(pdf_path) == 3
@@ -3130,11 +3130,11 @@ def test_document_renders_to_docx_and_pdf(tmp_path: Path) -> None:
     assert normalized_html_text.count("Table 3. Merged header table.") >= 2
     assert normalized_html_text.count("Figure 1. Tiny sample image.") >= 2
     assert normalized_html_text.count("Figure 2. Second tiny sample image.") >= 2
-    assert "https://github.com/Gonie-Gonie/docscriptor" in normalized_html_text
-    assert "https://github.com/Gonie-Gonie/docscriptor/releases" in normalized_html_text
+    assert "https://github.com/Gonie-Gonie/oodocs" in normalized_html_text
+    assert "https://github.com/Gonie-Gonie/oodocs/releases" in normalized_html_text
     assert "Internal Draft" not in normalized_html_text
     assert "Lists render into both DOCX and PDF." in normalized_html_text
-    assert "from docscriptor import Document" in normalized_html_text
+    assert "from oodocs import Document" in normalized_html_text
     assert html_text.count("data:image/png;base64,") == 3
     assert 'href="#table_1"' in html_text
     assert 'href="#figure_1"' in html_text

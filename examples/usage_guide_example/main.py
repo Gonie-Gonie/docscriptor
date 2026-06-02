@@ -1,4 +1,4 @@
-"""Standalone usage guide example for docscriptor.
+"""Standalone usage guide example for oodocs.
 
 The guide is written as a part- and chapter-based reference document. Each chapter
 focuses on a specific authoring concern so a reader can jump directly to the page
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from docscriptor import (
+from oodocs import (
     Affiliation,
     Assumption,
     Author,
@@ -78,14 +78,14 @@ from docscriptor import (
     superscript,
     tag,
 )
-from docscriptor.presets.components import CalloutBox, KeyValueTable, Nomenclature
-from docscriptor.presets.templates import JournalArticleTemplate, ManuscriptSection
+from oodocs.presets.components import CalloutBox, KeyValueTable, Nomenclature
+from oodocs.presets.templates import JournalArticleTemplate, ManuscriptSection
 
 
 OUTPUT_DIR = Path("artifacts") / "usage-guide"
 EXAMPLE_DIR = Path(__file__).resolve().parent
 ASSET_DIR = EXAMPLE_DIR / "assets"
-LOGO_PATH = ASSET_DIR / "docscriptor-logo.png"
+LOGO_PATH = ASSET_DIR / "oodocs-logo.png"
 PIPELINE_DIAGRAM_PATH = ASSET_DIR / "pipeline-diagram.png"
 AUTHOR_LAYOUT_DIAGRAM_PATH = ASSET_DIR / "author-layout-diagram.png"
 RENDERER_BEHAVIOR_DIAGRAM_PATH = ASSET_DIR / "renderer-behavior-diagram.png"
@@ -102,12 +102,12 @@ RELATED_WORK = CitationLibrary(
             url="https://doi.org/10.1093/comjnl/27.2.97",
         ),
         CitationSource(
-            "docscriptor repository",
+            "oodocs repository",
             key="repository",
             organization="Gonie-Gonie",
             publisher="GitHub repository",
             year="2026",
-            url="https://github.com/Gonie-Gonie/docscriptor",
+            url="https://github.com/Gonie-Gonie/oodocs",
         ),
         CitationSource(
             "Elsevier Your Paper Your Way Guide for Authors",
@@ -136,10 +136,10 @@ RELATED_WORK = CitationLibrary(
     ]
 )
 
-QUICK_START_SNIPPET = """from docscriptor import Chapter, Document, DocumentSettings, Paragraph, Section, bold
+QUICK_START_SNIPPET = """from oodocs import Chapter, Document, DocumentSettings, Paragraph, Section, bold
 
 report = Document(
-    "Hello docscriptor",
+    "Hello oodocs",
     Chapter(
         "Getting Started",
         Section(
@@ -147,7 +147,7 @@ report = Document(
             Paragraph("This document was defined with ", bold("Python objects"), "."),
         ),
     ),
-    settings=DocumentSettings(metadata_author="Docscriptor"),
+    settings=DocumentSettings(metadata_author="OODocs"),
 )
 
 report.save("artifacts/hello.docx")
@@ -158,7 +158,7 @@ report.save("artifacts/hello.html")
 report.save_all("artifacts", stem="hello")
 """
 
-PART_STRUCTURE_SNIPPET = """from docscriptor import Chapter, Document, Paragraph, Part, Section
+PART_STRUCTURE_SNIPPET = """from oodocs import Chapter, Document, Paragraph, Part, Section
 
 handbook = Document(
     "Implementation Handbook",
@@ -173,7 +173,7 @@ handbook = Document(
 )
 """
 
-AUTHOR_LAYOUT_SNIPPET = """from docscriptor import Affiliation, Author, AuthorLayout, DocumentSettings
+AUTHOR_LAYOUT_SNIPPET = """from oodocs import Affiliation, Author, AuthorLayout, DocumentSettings
 
 settings = DocumentSettings(
     authors=[
@@ -193,7 +193,7 @@ settings = DocumentSettings(
 )
 """
 
-LAYOUT_CONTROL_SNIPPET = """from docscriptor import DocumentSettings, PageMargins, PageSize, Theme
+LAYOUT_CONTROL_SNIPPET = """from oodocs import DocumentSettings, PageMargins, PageSize, Theme
 
 settings = DocumentSettings(
     unit="cm",
@@ -210,7 +210,7 @@ settings = DocumentSettings(
 )
 """
 
-FIGURE_SIZING_SNIPPET = """from docscriptor import DocumentSettings, Figure, PageMargins
+FIGURE_SIZING_SNIPPET = """from oodocs import DocumentSettings, Figure, PageMargins
 
 settings = DocumentSettings(unit="cm", page_margins=PageMargins.all(2.0, unit="cm"))
 
@@ -221,7 +221,7 @@ figure = Figure(
 )
 """
 
-SUBFIGURE_SNIPPET = """from docscriptor import Paragraph, SubFigure, SubFigureGroup
+SUBFIGURE_SNIPPET = """from oodocs import Paragraph, SubFigure, SubFigureGroup
 
 before = SubFigure("assets/before.png", caption="Before calibration.", width=6.0, unit="cm")
 after = SubFigure("assets/after.png", caption="After calibration.", width=6.0, unit="cm")
@@ -236,7 +236,7 @@ comparison = SubFigureGroup(
 Paragraph("The post-calibration case is shown in ", after.reference(), ".")
 """
 
-POSITIONED_DRAWING_SNIPPET = """from docscriptor import Document, DocumentSettings, ImageBox, Paragraph, Shape, TextBox
+POSITIONED_DRAWING_SNIPPET = """from oodocs import Document, DocumentSettings, ImageBox, Paragraph, Shape, TextBox
 
 frame = Shape.rect(
     name="approval-frame",
@@ -252,7 +252,7 @@ document = Document(
     "Drawing placement",
     Paragraph(
         "Inline logo ",
-        ImageBox("assets/docscriptor-logo.png", width=0.35, height=0.18, placement="inline"),
+        ImageBox("assets/oodocs-logo.png", width=0.35, height=0.18, placement="inline"),
         " stays in the sentence flow.",
     ),
     settings=DocumentSettings(
@@ -264,7 +264,7 @@ document = Document(
 )
 """
 
-REPORT_PANEL_SNIPPET = """from docscriptor import Box, Paragraph, Table
+REPORT_PANEL_SNIPPET = """from oodocs import Box, Paragraph, Table
 
 panel = Box(
     Paragraph("Editable report content can stay grouped with its evidence."),
@@ -289,7 +289,7 @@ panel = Box(
 )
 """
 
-CONTENTS_CONTROL_SNIPPET = """from docscriptor import TableOfContents, TocLevelStyle
+CONTENTS_CONTROL_SNIPPET = """from oodocs import TableOfContents, TocLevelStyle
 
 contents = TableOfContents(
     show_page_numbers=True,
@@ -303,7 +303,7 @@ contents = TableOfContents(
 )
 """
 
-CONFIGURATION_OPTIONS_SNIPPET = """from docscriptor import (
+CONFIGURATION_OPTIONS_SNIPPET = """from oodocs import (
     BlockOptions, CaptionOptions, DocumentSettings, PageNumberOptions,
     Paragraph, Table, Theme, TypographyOptions,
 )
@@ -336,7 +336,7 @@ table = Table(
 )
 """
 
-COUNTABLE_BLOCK_SNIPPET = """from docscriptor import Definition, Lemma, Paragraph, Proof, Theorem, countable_kind
+COUNTABLE_BLOCK_SNIPPET = """from oodocs import Definition, Lemma, Paragraph, Proof, Theorem, countable_kind
 
 Exercise = countable_kind("Exercise", counter="exercise")
 
@@ -364,18 +364,18 @@ PROJECT_LAYOUT_SNIPPET = """my-report/
 """
 
 CLI_WORKFLOW_SNIPPET = """# Build a Python-authored document that exposes build_document(), document, doc, or report.
-docscriptor build report.py --out artifacts --to docx,pdf,html
+oodocs build report.py --out artifacts --to docx,pdf,html
 
 # Convert existing authored sources through the same import APIs used in Python.
-docscriptor convert README.md --to docx,pdf,html
-docscriptor convert notebook.ipynb --to pdf
+oodocs convert README.md --to docx,pdf,html
+oodocs convert notebook.ipynb --to pdf
 
 # Validate without writing outputs; use --strict when warnings should fail CI.
-docscriptor validate report.py
-docscriptor validate report.py --to pdf --strict
+oodocs validate report.py
+oodocs validate report.py --to pdf --strict
 """
 
-PYTHON_BUILD_SOURCE_SNIPPET = """from docscriptor import Chapter, Document, Paragraph, Section
+PYTHON_BUILD_SOURCE_SNIPPET = """from oodocs import Chapter, Document, Paragraph, Section
 
 def build_document() -> Document:
     return Document(
@@ -397,7 +397,7 @@ if not result.ok:
 document.save_all("artifacts", stem="operational-report")
 """
 
-MARKDOWN_RELEASE_NOTES_SNIPPET = """from docscriptor import Document, Section, Table, parse_markdown
+MARKDOWN_RELEASE_NOTES_SNIPPET = """from oodocs import Document, Section, Table, parse_markdown
 
 release_notes = {
     "v0.8.0": "# v0.8.0\\n\\n## Added\\n- [x] Markdown import\\n- [x] Release digest",
@@ -430,7 +430,7 @@ ad_hoc_blocks = parse_markdown("## Follow-up\\n\\n- Publish DOCX\\n- Publish PDF
 digest.body.children.extend(ad_hoc_blocks)
 """
 
-NOTEBOOK_IMPORT_SNIPPET = """from docscriptor import Document, Section, parse_ipynb
+NOTEBOOK_IMPORT_SNIPPET = """from oodocs import Document, Section, parse_ipynb
 
 analysis = Document.from_ipynb(
     "analysis.ipynb",
@@ -451,13 +451,13 @@ report = Document(
 report.save_all("artifacts/notebook-report", stem="analysis")
 """
 
-LATEX_COMPARISON_SNIPPET = """from docscriptor import Box, Divider, Figure, Paragraph, Table, VerticalSpace, bold, code
+LATEX_COMPARISON_SNIPPET = """from oodocs import Box, Divider, Figure, Paragraph, Table, VerticalSpace, bold, code
 
 summary = Box(
     Paragraph(bold("Takeaway. "), "The result table and figure are normal document blocks."),
     Table(
         headers=["Method", "Score"],
-        rows=[["Baseline", "0.81"], ["Docscriptor workflow", "0.88"]],
+        rows=[["Baseline", "0.81"], ["OODocs workflow", "0.88"]],
         caption="Benchmark summary generated from Python data.",
     ),
     VerticalSpace(6),
@@ -472,7 +472,7 @@ summary = Box(
 Paragraph("See ", summary.reference(), " for the editable evidence package.")
 """
 
-INLINE_WORD_FEATURES_SNIPPET = """from docscriptor import Paragraph, Text, highlight, line_break, prescript, strike, subscript, superscript
+INLINE_WORD_FEATURES_SNIPPET = """from oodocs import Paragraph, Text, highlight, line_break, prescript, strike, subscript, superscript
 
 Paragraph(
     "Keep ",
@@ -497,7 +497,7 @@ Paragraph(
 )
 """
 
-INLINE_CHIPS_SNIPPET = """from docscriptor import Paragraph, badge, keyboard, status, tag
+INLINE_CHIPS_SNIPPET = """from oodocs import Paragraph, badge, keyboard, status, tag
 
 Paragraph(
     "Route ",
@@ -527,14 +527,14 @@ ORDER BY mean_score DESC;
 """
 
 YAML_SNIPPET = """report:
-  title: Docscriptor User Guide
+  title: OODocs User Guide
   outputs:
     - docx
     - pdf
     - html
 """
 
-PARAGRAPH_INDENT_SNIPPET = """from docscriptor import DocumentSettings, Paragraph, Theme
+PARAGRAPH_INDENT_SNIPPET = """from oodocs import DocumentSettings, Paragraph, Theme
 
 settings = DocumentSettings(theme=Theme(paragraph_alignment="left"))
 
@@ -562,7 +562,7 @@ Paragraph(
 )
 """
 
-TABLE_ALIGNMENT_SNIPPET = """from docscriptor import Table, TableCell
+TABLE_ALIGNMENT_SNIPPET = """from oodocs import Table, TableCell
 
 Table(
     headers=[["Metric", "Value"]],
@@ -588,7 +588,7 @@ Table(
 )
 """
 
-TABLE_PLACEMENT_SNIPPET = """from docscriptor import Figure, Table
+TABLE_PLACEMENT_SNIPPET = """from oodocs import Figure, Table
 
 audit_log = Table(
     headers=["Step", "Result"],
@@ -612,8 +612,8 @@ diagram = Figure(
 )
 """
 
-COMPONENT_PRESETS_SNIPPET = """from docscriptor import Paragraph
-from docscriptor.presets.components import CalloutBox, KeyValueTable, Nomenclature
+COMPONENT_PRESETS_SNIPPET = """from oodocs import Paragraph
+from oodocs.presets.components import CalloutBox, KeyValueTable, Nomenclature
 
 review_note = CalloutBox(
     Paragraph("Check terminology before external review."),
@@ -641,8 +641,8 @@ nomenclature = Nomenclature(
 )
 """
 
-TEMPLATE_PRESETS_SNIPPET = """from docscriptor import Author, Paragraph
-from docscriptor.presets.templates import JournalArticleTemplate, ManuscriptSection
+TEMPLATE_PRESETS_SNIPPET = """from oodocs import Author, Paragraph
+from oodocs.presets.templates import JournalArticleTemplate, ManuscriptSection
 
 document = JournalArticleTemplate().build(
     "Readable manuscript generation",
@@ -698,7 +698,7 @@ def build_usage_guide_document() -> Document:
         headers=["Need", "Recommended chapter", "What you will find there"],
         rows=[
             ["First successful export", "1. Overview", "The minimal document shape, the save methods, and the default rendering model."],
-            ["Switching from LaTeX", "1. Overview", "A concrete mapping from familiar LaTeX concepts to docscriptor objects."],
+            ["Switching from LaTeX", "1. Overview", "A concrete mapping from familiar LaTeX concepts to OODocs objects."],
             ["Author metadata and covers", "2. Metadata and Title Matter", "Structured authors, journal-style defaults, stacked profiles, and cover conventions."],
             ["Tables, figures, and references", "4. Tables, Figures, and Cross-References", "Caption numbering, block references, and data-backed media objects."],
             ["Notes and citations", "5. Notes, Comments, and References", "Footnotes, generated comments pages, citation libraries, and bibliography output."],
@@ -709,7 +709,7 @@ def build_usage_guide_document() -> Document:
         column_widths=[2.0, 2.0, 2.6],
     )
     latex_transition_table = Table(
-        headers=["If you reach for this in LaTeX", "Use this in docscriptor", "Why it is easier here"],
+        headers=["If you reach for this in LaTeX", "Use this in oodocs", "Why it is easier here"],
         rows=[
             ["\\part", "Part(...)", "Parts render on their own separator pages and do not reset chapter numbering, matching the usual LaTeX book/report behavior."],
             ["\\section, \\subsection", "Chapter, Section, Subsection", "The Python object tree is also the document outline, so headings, contents, and anchors stay synchronized."],
@@ -721,7 +721,7 @@ def build_usage_guide_document() -> Document:
             ["tcolorbox", "Box(..., background_color=..., padding=...)", "Report panels remain editable in Word while keeping a similar grouped visual shape in PDF and HTML."],
             ["BibTeX plus \\cite", "CitationLibrary and CitationSource.cite(...)", "Citations are authored inline, and only cited sources appear on ReferencesPage()."],
         ],
-        caption="LaTeX habits translated into docscriptor's Python-first authoring model.",
+        caption="LaTeX habits translated into oodocs's Python-first authoring model.",
         column_widths=[1.9, 2.1, 2.8],
     )
     author_options_table = Table(
@@ -902,10 +902,10 @@ def build_usage_guide_document() -> Document:
     cli_command_table = Table(
         headers=["Command", "Input expectation", "Use it when"],
         rows=[
-            ["docscriptor build report.py --out artifacts", "A Python file exposing document, doc, report, or build_document().", "The source of record is a Python-authored Document."],
-            ["docscriptor convert README.md --to docx,pdf,html", "Markdown source imported with the same parser used by Document.from_markdown(...).", "A README, changelog, release note, or generated Markdown file should become a rendered bundle."],
-            ["docscriptor convert notebook.ipynb --to pdf", "A notebook imported with the same parser used by Document.from_ipynb(...).", "A notebook-backed analysis needs a quick PDF export or an appendix source."],
-            ["docscriptor validate report.py", "Any Python, Markdown, or notebook source that can be loaded as a Document.", "CI should fail before rendering when authoring mistakes are present."],
+            ["oodocs build report.py --out artifacts", "A Python file exposing document, doc, report, or build_document().", "The source of record is a Python-authored Document."],
+            ["oodocs convert README.md --to docx,pdf,html", "Markdown source imported with the same parser used by Document.from_markdown(...).", "A README, changelog, release note, or generated Markdown file should become a rendered bundle."],
+            ["oodocs convert notebook.ipynb --to pdf", "A notebook imported with the same parser used by Document.from_ipynb(...).", "A notebook-backed analysis needs a quick PDF export or an appendix source."],
+            ["oodocs validate report.py", "Any Python, Markdown, or notebook source that can be loaded as a Document.", "CI should fail before rendering when authoring mistakes are present."],
         ],
         caption="CLI commands and the source shapes they expect.",
         column_widths=[2.5, 2.4, 2.5],
@@ -938,7 +938,7 @@ def build_usage_guide_document() -> Document:
     )
     preset_callout = CalloutBox(
         Paragraph(
-            "Presets are ordinary docscriptor components with carefully chosen defaults. Use direct kwargs for quick local changes and reserve style objects for repeated house styles that need a name."
+            "Presets are ordinary oodocs components with carefully chosen defaults. Use direct kwargs for quick local changes and reserve style objects for repeated house styles that need a name."
         ),
         title="Preset rule",
         variant="info",
@@ -948,7 +948,7 @@ def build_usage_guide_document() -> Document:
     )
     preset_metadata_table = KeyValueTable(
         {
-            "Preset namespace": "docscriptor.presets.components",
+            "Preset namespace": "oodocs.presets.components",
             "Customization surface": "Same direct kwargs as core components",
             "Output formats": "DOCX, PDF, HTML",
         },
@@ -1007,7 +1007,7 @@ def build_usage_guide_document() -> Document:
             alignment="center",
             space_after=0,
         ),
-        title="Docscriptor Contributor Certificate",
+        title="OODocs Contributor Certificate",
         border_color="#D4B56A",
         background_color="#FDFBF6",
         title_background_color="#1058A3",
@@ -1023,7 +1023,7 @@ def build_usage_guide_document() -> Document:
     )
 
     return Document(
-        "Docscriptor User Guide",
+        "OODocs User Guide",
         Section(
             "Guide Cover",
             logo_figure,
@@ -1033,12 +1033,12 @@ def build_usage_guide_document() -> Document:
             ),
             Paragraph(
                 bold("Repository. "),
-                link("https://github.com/Gonie-Gonie/docscriptor", "github.com/Gonie-Gonie/docscriptor"),
+                link("https://github.com/Gonie-Gonie/oodocs", "github.com/Gonie-Gonie/oodocs"),
                 ".",
             ),
             Paragraph(
                 bold("Positioning. "),
-                "Docscriptor is for situations where document content already lives near Python data, figures, scripts, and review workflows."
+                "OODocs is for situations where document content already lives near Python data, figures, scripts, and review workflows."
             ),
             cover_callout,
             level=2,
@@ -1052,9 +1052,9 @@ def build_usage_guide_document() -> Document:
             Chapter(
                 "Overview",
             Section(
-                "What docscriptor is trying to solve",
+                "What oodocs is trying to solve",
                 Paragraph(
-                    "Docscriptor is a Python-first document authoring toolkit. It lets you define a document with ordinary Python objects, render the same source to DOCX, PDF, and HTML, and keep data-backed tables and figures close to the code that generated them."
+                    "OODocs is a Python-first document authoring toolkit. It lets you define a document with ordinary Python objects, render the same source to DOCX, PDF, and HTML, and keep data-backed tables and figures close to the code that generated them."
                 ),
                 Paragraph(
                     "The central motivation is the one described in ",
@@ -1093,7 +1093,7 @@ def build_usage_guide_document() -> Document:
             Section(
                 "For authors coming from LaTeX",
                 Paragraph(
-                    "If you already know LaTeX, the important shift is that docscriptor treats document structure as Python objects rather than commands in a markup stream. You still get numbered headings, captions, cross-references, equations, citations, and tcolorbox-like panels, but the same source can also produce an editable DOCX review copy."
+                    "If you already know LaTeX, the important shift is that oodocs treats document structure as Python objects rather than commands in a markup stream. You still get numbered headings, captions, cross-references, equations, citations, and tcolorbox-like panels, but the same source can also produce an editable DOCX review copy."
                 ),
                 latex_transition_table,
                 Divider(space_before=2, space_after=8),
@@ -1110,7 +1110,7 @@ def build_usage_guide_document() -> Document:
                 Paragraph(
                     "The default structured-author path is now journal-friendly without forcing every document to look like a journal submission. If you provide ",
                     code("Author(...)"),
-                    " objects, docscriptor groups names, affiliations, and correspondence information into a compact title block by default."
+                    " objects, oodocs groups names, affiliations, and correspondence information into a compact title block by default."
                 ),
                 Paragraph(
                     "That default fits papers well, but guides often read better with stacked author profiles. This guide therefore uses ",
@@ -1168,7 +1168,7 @@ def build_usage_guide_document() -> Document:
                     "Research notes, specifications, and technical manuals often need blocks such as definitions, lemmas, theorems, examples, remarks, and assumptions. These are not headings because they should usually stay inside the current section, but they still need document-wide numbering and cross-references."
                 ),
                 Paragraph(
-                    "Docscriptor handles those cases with ",
+                    "OODocs handles those cases with ",
                     code("CountableBlock"),
                     " and the factory ",
                     code("countable_kind(...)"),
@@ -1346,7 +1346,7 @@ def build_usage_guide_document() -> Document:
                 Paragraph(
                     "Authors normally decide whether a table may be split, not whether it is a normal table or a long table. With ",
                     code("Table(split=False)"),
-                    ", docscriptor keeps a short table together and lets PDF place following prose before the table when that avoids an awkward blank page. Very long tables automatically switch to repeated-header split rendering. With ",
+                    ", oodocs keeps a short table together and lets PDF place following prose before the table when that avoids an awkward blank page. Very long tables automatically switch to repeated-header split rendering. With ",
                     code("Table(split=True)"),
                     ", the table behaves like a here-placed object that can break in source order."
                 ),
@@ -1527,7 +1527,7 @@ def build_usage_guide_document() -> Document:
                     "The generated contents page now separates top-level chapters more clearly so readers can distinguish chapters, sections, and deeper levels at a glance. Captions are also kept visually closer to their table or figure so page breaks are less likely to strand a label away from the object it describes."
                 ),
                 Paragraph(
-                    "Those changes matter because docscriptor is not trying to imitate a notebook export. It should read like an intentionally typeset document even when the source stays fully programmable."
+                    "Those changes matter because oodocs is not trying to imitate a notebook export. It should read like an intentionally typeset document even when the source stays fully programmable."
                 ),
             ),
         ),
@@ -1560,7 +1560,7 @@ def build_usage_guide_document() -> Document:
                 cli_workflow_figure,
                 Paragraph(
                     "Use ",
-                    code("docscriptor build"),
+                    code("oodocs build"),
                     " when the source file is Python and exposes a ",
                     code("Document"),
                     " as ",
@@ -1572,16 +1572,16 @@ def build_usage_guide_document() -> Document:
                     ", or a zero-argument factory such as ",
                     code("build_document()"),
                     ". Use ",
-                    code("docscriptor convert"),
+                    code("oodocs convert"),
                     " when the source is Markdown or a notebook. Use ",
-                    code("docscriptor validate"),
+                    code("oodocs validate"),
                     " when CI should stop before any renderer writes files."
                 ),
                 cli_command_table,
                 CodeBlock(CLI_WORKFLOW_SNIPPET, language="powershell"),
                 Paragraph(
                     "A Python source file for ",
-                    code("docscriptor build"),
+                    code("oodocs build"),
                     " should keep construction and rendering separate. That makes the same source easy to import from tests, validate in CI, or render locally."
                 ),
                 CodeBlock(PYTHON_BUILD_SOURCE_SNIPPET, language="python"),
@@ -1607,7 +1607,7 @@ def build_usage_guide_document() -> Document:
                     " when the imported blocks should be rearranged inside a larger Python-authored report."
                 ),
                 Paragraph(
-                    "Because parsed Markdown becomes normal docscriptor objects, several release-note bodies can be collected, counted, wrapped in ",
+                    "Because parsed Markdown becomes normal OODocs objects, several release-note bodies can be collected, counted, wrapped in ",
                     code("Section"),
                     " objects, combined with a summary ",
                     code("Table"),
@@ -1641,7 +1641,7 @@ def build_usage_guide_document() -> Document:
                     "Reusable components keep the core API visible",
                     Paragraph(
                         "Component presets live under ",
-                        code("docscriptor.presets.components"),
+                        code("oodocs.presets.components"),
                         ". They are intentionally thin wrappers around ordinary blocks, so a user can start with ",
                         code("CalloutBox"),
                         ", ",
@@ -1671,7 +1671,7 @@ def build_usage_guide_document() -> Document:
                     "Templates build complete documents from manuscript-shaped input",
                     Paragraph(
                         "Template presets live under ",
-                        code("docscriptor.presets.templates"),
+                        code("oodocs.presets.templates"),
                         ". The generic journal template owns the routine article scaffolding so callers usually fill content fields rather than theme details. The build input stays small: title, authors, abstract, keywords, body sections, optional acknowledgement and data availability statements, and citation data. Publisher-specific presets are intentionally not included because broad public guidance is not the same thing as a journal-specific template. The included example uses common manuscript elements that appear in Elsevier's general Your Paper Your Way guidance ",
                         RELATED_WORK.cite("elsevier-your-paper-your-way"),
                         " and Taylor & Francis Author Services guidance ",
@@ -1698,12 +1698,12 @@ def build_usage_guide_document() -> Document:
         CommentsPage(),
         ReferencesPage(),
         settings=DocumentSettings(
-            metadata_author="Docscriptor Contributors",
+            metadata_author="OODocs Contributors",
             summary="Detailed usage guide and API walkthrough",
             subtitle="Reference-style guide for structured Python document authoring",
             authors=[
                 Author(
-                    "Docscriptor Contributors",
+                    "OODocs Contributors",
                     affiliations=["Open-source documentation workflow"],
                     note="Maintainers and release editors",
                 ),
@@ -1745,7 +1745,7 @@ def build_usage_guide(
     document = build_usage_guide_document()
     outputs = document.save_all(
         output_path,
-        stem="docscriptor-user-guide",
+        stem="oodocs-user-guide",
         verbose=verbose,
     )
     return outputs["docx"], outputs["pdf"]
@@ -1755,7 +1755,7 @@ def main() -> None:
     """Build the guide into the default example output directory."""
 
     docx_path, pdf_path = build_usage_guide(OUTPUT_DIR, verbose=True)
-    html_path = OUTPUT_DIR / "docscriptor-user-guide.html"
+    html_path = OUTPUT_DIR / "oodocs-user-guide.html"
     print(f"Wrote {docx_path}")
     print(f"Wrote {pdf_path}")
     print(f"Wrote {html_path}")

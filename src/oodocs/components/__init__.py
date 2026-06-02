@@ -1,0 +1,106 @@
+"""Grouped component namespaces for more granular imports."""
+
+from __future__ import annotations
+
+from importlib import import_module
+
+
+_EXPORTS = {
+    "Affiliation": "oodocs.components.people",
+    "Assumption": "oodocs.components.blocks",
+    "Author": "oodocs.components.people",
+    "AuthorLayout": "oodocs.components.people",
+    "Axiom": "oodocs.components.blocks",
+    "Bold": "oodocs.components.inline",
+    "Box": "oodocs.components.blocks",
+    "BulletList": "oodocs.components.blocks",
+    "Chapter": "oodocs.components.blocks",
+    "Citation": "oodocs.components.inline",
+    "CitationLibrary": "oodocs.components.references",
+    "CitationSource": "oodocs.components.references",
+    "Claim": "oodocs.components.blocks",
+    "CodeBlock": "oodocs.components.blocks",
+    "ColumnSpan": "oodocs.components.blocks",
+    "Comment": "oodocs.components.inline",
+    "Conjecture": "oodocs.components.blocks",
+    "CommentsPage": "oodocs.components.generated",
+    "Corollary": "oodocs.components.blocks",
+    "CountableBlock": "oodocs.components.blocks",
+    "Definition": "oodocs.components.blocks",
+    "Divider": "oodocs.components.blocks",
+    "Equation": "oodocs.components.blocks",
+    "Example": "oodocs.components.blocks",
+    "Figure": "oodocs.components.media",
+    "FigureList": "oodocs.components.generated",
+    "Footnote": "oodocs.components.inline",
+    "FootnotesPage": "oodocs.components.generated",
+    "Highlight": "oodocs.components.inline",
+    "Hyperlink": "oodocs.components.inline",
+    "ImageBox": "oodocs.components.positioning",
+    "ImageData": "oodocs.components.media",
+    "InlineChip": "oodocs.components.inline",
+    "InlineChipStyle": "oodocs.components.inline",
+    "Italic": "oodocs.components.inline",
+    "Lemma": "oodocs.components.blocks",
+    "LineBreak": "oodocs.components.inline",
+    "Math": "oodocs.components.inline",
+    "Monospace": "oodocs.components.inline",
+    "MultiColumn": "oodocs.components.blocks",
+    "NumberedList": "oodocs.components.blocks",
+    "Paragraph": "oodocs.components.blocks",
+    "Part": "oodocs.components.blocks",
+    "Proposition": "oodocs.components.blocks",
+    "Proof": "oodocs.components.blocks",
+    "ReferencesPage": "oodocs.components.generated",
+    "Remark": "oodocs.components.blocks",
+    "Section": "oodocs.components.blocks",
+    "Shape": "oodocs.components.positioning",
+    "SubFigure": "oodocs.components.media",
+    "SubFigureGroup": "oodocs.components.media",
+    "Subsection": "oodocs.components.blocks",
+    "Subsubsection": "oodocs.components.blocks",
+    "Table": "oodocs.components.media",
+    "TableCell": "oodocs.components.media",
+    "TableCellStyle": "oodocs.components.media",
+    "TableList": "oodocs.components.generated",
+    "TableOfContents": "oodocs.components.generated",
+    "Text": "oodocs.components.inline",
+    "TextBox": "oodocs.components.positioning",
+    "Theorem": "oodocs.components.blocks",
+    "VerticalSpace": "oodocs.components.blocks",
+    "badge": "oodocs.components.inline",
+    "bold": "oodocs.components.inline",
+    "code": "oodocs.components.inline",
+    "color": "oodocs.components.inline",
+    "cite": "oodocs.components.inline",
+    "comment": "oodocs.components.inline",
+    "countable_kind": "oodocs.components.blocks",
+    "footnote": "oodocs.components.inline",
+    "highlight": "oodocs.components.inline",
+    "italic": "oodocs.components.inline",
+    "keyboard": "oodocs.components.inline",
+    "link": "oodocs.components.inline",
+    "line_break": "oodocs.components.inline",
+    "math": "oodocs.components.inline",
+    "markup": "oodocs.components.markup",
+    "prescript": "oodocs.components.inline",
+    "reference": "oodocs.components.inline",
+    "status": "oodocs.components.inline",
+    "strike": "oodocs.components.inline",
+    "strikethrough": "oodocs.components.inline",
+    "styled": "oodocs.components.inline",
+    "subscript": "oodocs.components.inline",
+    "superscript": "oodocs.components.inline",
+    "tag": "oodocs.components.inline",
+}
+
+__all__ = list(_EXPORTS)
+
+
+def __getattr__(name: str) -> object:
+    module_name = _EXPORTS.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(module_name), name)
+    globals()[name] = value
+    return value

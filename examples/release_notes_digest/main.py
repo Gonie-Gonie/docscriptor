@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import re
 
-from docscriptor import (
+from oodocs import (
     Chapter,
     Document,
     DocumentSettings,
@@ -185,7 +185,7 @@ def build_release_notes_document(
     )
 
     return Document(
-        "Docscriptor Release Notes",
+        "OODocs Release Notes",
         TableOfContents(max_level=2),
         Chapter(
             "Release Note Index",
@@ -239,7 +239,7 @@ def build_release_notes_document(
             release_sections,
         ),
         settings=DocumentSettings(
-            metadata_author="Docscriptor Contributors",
+            metadata_author="OODocs Contributors",
             summary="Release-note digest generated from repository Markdown files",
             subtitle="Markdown import, semantic sorting, and release workflow documentation",
             theme=Theme(show_page_numbers=True, page_number_format="{page}"),
@@ -260,7 +260,7 @@ def build_release_notes(
     document = build_release_notes_document()
     outputs = document.save_all(
         output_path,
-        stem="docscriptor-release-notes",
+        stem="oodocs-release-notes",
         verbose=verbose,
     )
     return outputs["docx"], outputs["pdf"]
@@ -270,7 +270,7 @@ def main() -> None:
     """Build the release-note digest into the default example output directory."""
 
     docx_path, pdf_path = build_release_notes(OUTPUT_DIR, verbose=True)
-    html_path = OUTPUT_DIR / "docscriptor-release-notes.html"
+    html_path = OUTPUT_DIR / "oodocs-release-notes.html"
     print(f"Wrote {docx_path}")
     print(f"Wrote {pdf_path}")
     print(f"Wrote {html_path}")

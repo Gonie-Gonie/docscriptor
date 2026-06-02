@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from docscriptor import (
+from oodocs import (
     BulletList,
     Chapter,
     CodeBlock,
@@ -20,9 +20,9 @@ from docscriptor import (
     parse_markdown_file,
     shift_heading_levels,
 )
-from docscriptor.components.inline import Hyperlink
-from docscriptor.components.markup import markup
-from docscriptor.layout.indexing import build_render_index
+from oodocs.components.inline import Hyperlink
+from oodocs.components.markup import markup
+from oodocs.layout.indexing import build_render_index
 
 _TINY_PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
