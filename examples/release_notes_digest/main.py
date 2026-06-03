@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import subprocess
 
 from oodocs import (
     Chapter,
@@ -29,6 +30,7 @@ RELEASE_DIGEST_DIAGRAM_PATH = ASSET_DIR / "release-digest-workflow.png"
 VERSION_FILENAME_RE = re.compile(
     r"^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\.md$"
 )
+GIT_TAG_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def version_parts_from_filename(path: Path) -> tuple[int, int, int]:
@@ -58,6 +60,30 @@ def release_note_files(release_notes_dir: str | Path = RELEASE_NOTES_DIR) -> lis
     if not files:
         raise FileNotFoundError(f"No release note Markdown files found in {notes_dir}")
     return files
+
+
+def release_dates_from_git(repo_root: str | Path = REPO_ROOT) -> dict[str, str]:
+    """Return release tag creation dates keyed by tag name."""
+
+    result = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo_root),
+            "for-each-ref",
+            "refs/tags",
+            "--format=%(refname:short)\t%(creatordate:short)",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    release_dates: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        tag, _, release_date = line.partition("\t")
+        if tag.startswith("v") and GIT_TAG_DATE_RE.fullmatch(release_date):
+            release_dates[tag] = release_date
+    return release_dates
 
 
 def release_type_from_version(version_parts: tuple[int, int, int]) -> str:
@@ -96,6 +122,7 @@ def build_release_notes_document(
     """Build the release-note digest document from Markdown files."""
 
     files = release_note_files(release_notes_dir)
+    release_dates = release_dates_from_git()
     release_index_rows = []
     release_sections = []
 
@@ -104,6 +131,13 @@ def build_release_notes_document(
         version_parts = version_parts_from_filename(path)
         release_type = release_type_from_version(version_parts)
         markdown_text = path.read_text(encoding="utf-8")
+        try:
+            release_date = release_dates[version]
+        except KeyError as exc:
+            raise ValueError(
+                f"No git tag date found for {version}; create a matching git tag "
+                "before rendering the release-note digest."
+            ) from exc
         imported_release = Document.from_markdown(
             markdown_text,
             numbered=False,
@@ -114,6 +148,7 @@ def build_release_notes_document(
         release_index_rows.append(
             [
                 f"{version} (latest)" if index == 0 else version,
+                release_date,
                 release_type,
                 path.name,
                 section_titles(markdown_text),
@@ -123,6 +158,7 @@ def build_release_notes_document(
         release_sections.append(
             Section(
                 version,
+                Paragraph("Release date: ", release_date, "."),
                 Paragraph(
                     "Imported from ",
                     code(repo_relative(path)),
@@ -137,6 +173,7 @@ def build_release_notes_document(
 
     latest_release = files[0]
     latest_version = latest_release.stem
+    latest_release_date = release_dates[latest_version]
     digest_workflow_figure = Figure(
         RELEASE_DIGEST_DIAGRAM_PATH,
         caption=Paragraph(
@@ -145,10 +182,10 @@ def build_release_notes_document(
         width=6.5,
     )
     release_index_table = Table(
-        headers=["Version", "Type", "File", "Sections"],
+        headers=["Version", "Date", "Type", "File", "Sections"],
         rows=release_index_rows,
         caption="Release note files collected from the repository.",
-        column_widths=[2.6, 1.6, 2.8, 9.0],
+        column_widths=[2.6, 2.3, 1.4, 2.7, 7.0],
         unit="cm",
         header_background_color="#E7EEF7",
         alternate_row_background_color="#F8FBFD",
@@ -161,12 +198,16 @@ def build_release_notes_document(
                 "Package versions are derived from git tags through setuptools-scm.",
             ],
             [
+                "Date source",
+                "Release dates are read from the matching git tag creation date.",
+            ],
+            [
                 "Tag format",
                 "Use vMAJOR.MINOR.PATCH, matching the release note filename.",
             ],
             [
                 "Current release",
-                f"{latest_version} from {repo_relative(latest_release)}.",
+                f"{latest_version} ({latest_release_date}) from {repo_relative(latest_release)}.",
             ],
             [
                 "Release body",
@@ -194,7 +235,8 @@ def build_release_notes_document(
                 code(repo_relative(Path(release_notes_dir))),
                 ", reads version metadata from filenames such as ",
                 code("v0.9.1.md"),
-                ", and sorts the imported notes from newest to oldest.",
+                ", reads release dates from matching git tags, and sorts the "
+                "imported notes from newest to oldest.",
             ),
             digest_workflow_figure,
             release_index_table,
@@ -231,10 +273,10 @@ def build_release_notes_document(
         Chapter(
             "Version History",
             Paragraph(
-                "Each version below is imported from the matching Markdown file. "
-                "The version headings stay visible in the contents, while release-note "
-                "subsections such as Highlights and Compatibility Notes stay local to "
-                "each version body."
+                "Each version below shows the matching git tag date and is imported "
+                "from the matching Markdown file. The version headings stay visible "
+                "in the contents, while release-note subsections such as Highlights "
+                "and Compatibility Notes stay local to each version body."
             ),
             release_sections,
         ),

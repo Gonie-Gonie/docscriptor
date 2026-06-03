@@ -37,8 +37,10 @@ def _normalized_html_text(html_path: Path) -> str:
 def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     release_notes_example = _load_example_module("release_notes_digest")
     files = release_notes_example.release_note_files()
+    release_dates = release_notes_example.release_dates_from_git()
     latest_release = files[0]
     latest_version = latest_release.stem
+    latest_release_date = release_dates[latest_version]
     latest_release_path = f"release-notes/{latest_release.name}"
 
     expected_count = len(list(Path(release_notes_example.RELEASE_NOTES_DIR).glob("*.md")))
@@ -56,6 +58,8 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     assert release_notes_example.release_type_from_version((0, 10, 0)) == "Minor"
     assert release_notes_example.release_type_from_version((0, 9, 1)) == "Patch"
     assert release_notes_example.release_type_from_version((0, 9, 0)) == "Minor"
+    assert all(path.stem in release_dates for path in files)
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", latest_release_date)
 
     docx_path, pdf_path = release_notes_example.build_release_notes(tmp_path)
     html_path = tmp_path / "oodocs-release-notes.html"
@@ -84,8 +88,10 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     assert any("Release runbook" in text for text in paragraph_texts)
     assert any("setuptools-scm" in text for text in paragraph_texts + [table_text])
     assert latest_release.name in table_text
+    assert latest_release_date in table_text
     assert "latest" in table_text
     assert any(latest_release_path in text for text in paragraph_texts)
+    assert f"Release date: {latest_release_date}." in paragraph_texts
     assert latest_version in paragraph_texts
     assert "Highlights" in paragraph_texts
     assert f"3 {latest_version}" not in paragraph_texts
@@ -122,6 +128,7 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     assert "Version Management" in pdf_text
     assert "Version History" in pdf_text
     assert latest_release_path in pdf_text
+    assert latest_release_date in pdf_text
     assert "setuptools-scm" in pdf_text
     assert len(pdf_reader.pages) >= 3
     assert_pdf_text_and_pages(
@@ -142,6 +149,7 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     assert "Version History" in normalized_html_text
     assert "Release runbook" in normalized_html_text
     assert latest_release_path in normalized_html_text
+    assert latest_release_date in normalized_html_text
     assert "vMAJOR.MINOR.PATCH" in normalized_html_text
     assert (
         'class="oodocs-toc-entry oodocs-toc-entry-no-page '
