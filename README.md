@@ -35,6 +35,13 @@ If you need the optional dependencies used by the bundled examples:
 pip install "oodocs[examples]"
 ```
 
+If you need YAML-backed repository adapters such as GitHub Actions workflow
+summaries:
+
+```powershell
+pip install "oodocs[adapters]"
+```
+
 If you want to work from a repository checkout, run the bundled example scripts, or contribute locally:
 
 ```powershell
@@ -113,6 +120,8 @@ oodocs validate report.py
 
 For CI and release evidence, `oodocs validate --format json` emits a machine-readable validation summary. `oodocs build ... --fail-on-warning` and `oodocs convert ... --fail-on-warning` treat validation warnings as failures, while `--show-warnings` prints warning tables without changing the default success path. Add `--traceback` to any command when debugging needs the full Python stack trace.
 
+For imported Markdown or notebooks, `oodocs convert ... --show-import-warnings` prints diagnostics for lossy source features, and `--strict-import` fails on those diagnostics. Release evidence bundles can be generated with `python -m oodocs.evidence build --out artifacts/evidence`.
+
 ## Why Not Just LaTeX?
 
 OODocs is not trying to replace every LaTeX workflow. It is meant for documents where Python already owns the data, plots, citations, or release process and where collaborators may still need DOCX.
@@ -182,16 +191,18 @@ The default behavior is intentionally conventional:
 - Use `DocumentSettings(...)` for document-wide choices: authors, subtitle, page size, margins, units, page overlays, and theme defaults.
 - Use `document.validate()` when you want a structured preflight check before rendering. The returned `ValidationResult` prints as a compact table, can be serialized with `to_dict()` or `to_json()`, and each issue records whether it affects Word, PDF, HTML, or all outputs. `save(...)`, `save_docx(...)`, `save_pdf(...)`, `save_html(...)`, and `save_all(...)` validate before rendering by default and stop before writing when errors are found.
 - Use `Document.from_markdown(...)` when a Markdown file should become a full document. Use `parse_markdown(...)` when you want a list of blocks that can be inserted, reordered, wrapped in sections, or combined with tables and figures.
+- Use `parse_markdown(..., diagnostics=True)` or `parse_markdown_file(..., diagnostics=True)` when you need an `ImportResult` with import issues. Use `import_policy="strict"` when lossy Markdown features such as remote images should fail instead of being converted conservatively.
 - Use `Document.from_markdown(..., numbered=False, toc=True)` when imported headings should keep their source titles without generated numbers but still appear in a generated table of contents.
 - Use `heading_level_shift=1` or `heading_level_shift=-1` with `Document.from_markdown(...)` or `parse_markdown(...)` when imported Markdown should be demoted or promoted before it is inserted into a larger outline. Use `shift_heading_levels(...)` when already-created `Chapter(...)`/`Section(...)` objects need the same adjustment; paragraphs and other non-heading blocks stay unchanged, and shifts beyond the supported heading range fail.
-- Use `Document.from_ipynb(...)` when a notebook should become a full document. Use `parse_ipynb(...)` when notebook cells should be merged into a larger report; markdown cells become normal document structure, code cells become `CodeBlock(...)`, and textual outputs can be included or filtered.
+- Use `Document.from_ipynb(...)` when a notebook should become a full document. Use `parse_ipynb(...)` when notebook cells should be merged into a larger report; markdown cells become normal document structure, code cells become `CodeBlock(...)`, and textual outputs can be included or filtered. Use `NotebookImportOptions(...)` for tag filtering, output truncation, image captions, and error-output policy.
+- Use `oodocs.adapters` when repository files should become document objects: `section_from_pyproject(...)`, `section_from_github_workflow(...)`, `section_from_manifest(...)`, and `build_release_evidence_document(...)` are designed for release and audit reports.
 - Use `document.save_all("artifacts")` when a workflow normally needs DOCX, PDF, and HTML together.
 
 ## Features
 
 - DOCX, PDF, and HTML rendering from the same document tree
-- Markdown and GitHub Flavored Markdown import for headings, paragraphs, lists, task-list markers, block quotes, fenced code, thematic breaks, tables, local images, links, autolinks, emphasis, inline code, and strikethrough
-- Jupyter notebook import for markdown cells, code cells, raw cells, and textual stream/result/error outputs
+- Markdown and GitHub Flavored Markdown import for headings, paragraphs, lists, task-list markers, block quotes, fenced code, thematic breaks, tables, local images, links, autolinks, emphasis, inline code, strikethrough, and optional import diagnostics
+- Jupyter notebook import for markdown cells, code cells, raw cells, textual stream/result/error outputs, tag filtering, output truncation, image captions, and optional import diagnostics
 - block objects for paragraphs, lists, code blocks, equations, boxes, tables, figures, and generated pages
 - Pygments-backed syntax highlighting for code blocks across Python, JavaScript, SQL, YAML, shell, and other supported languages
 - editable report panels with `Box(...)` kwargs for width, alignment, title color, and per-side padding
@@ -210,6 +221,7 @@ The default behavior is intentionally conventional:
 - bibliography support through `CitationSource`, `CitationLibrary`, direct citation objects, BibTeX import, and configurable inline/reference formats such as APA
 - optional title matter such as subtitle, structured `Author(...)` metadata, `AuthorLayout(...)`, affiliations, and a cover page
 - inline hyperlinks and heading/caption anchors for cross-references
+- release evidence adapters for pyproject metadata, GitHub Actions workflows, JSON manifests, CSV/TSV evidence tables, checksums, and generated evidence reports
 
 ## Example Scripts
 
@@ -261,6 +273,7 @@ The package is organized by responsibility:
 - `src/oodocs/settings.py` for `DocumentSettings` plus grouped configuration exports
 - `src/oodocs/components/` for the concrete authoring model (`base.py`, `blocks.py`, `equations.py`, `generated.py`, `inline.py`, `markup.py`, `media.py`, `people.py`, `positioning.py`, and `references.py`)
 - `src/oodocs/importers/` for adapters that convert external formats such as Markdown into OODocs objects
+- `src/oodocs/adapters/` and `src/oodocs/evidence.py` for repository artefact adapters and release evidence bundles
 - `src/oodocs/layout/` for low-level theme and indexing support
 - `src/oodocs/renderers/docx.py`, `src/oodocs/renderers/pdf.py`, and `src/oodocs/renderers/html.py` for format-specific layout
 
@@ -304,12 +317,12 @@ OODocs versions are derived from git tags through `setuptools-scm`.
 Create and push a release tag like this:
 
 ```powershell
-.\scripts\release.ps1 1.0.2
+.\scripts\release.ps1 1.0.3
 ```
 
-That pushes `v1.0.2`, and the GitHub release workflow runs the test suite, builds the wheel/sdist artifacts, renders the example PDFs, attaches them to the matching GitHub Release, and uploads the Python distributions to PyPI.
+That pushes `v1.0.3`, and the GitHub release workflow runs the test suite, builds the wheel/sdist artifacts, renders the release documents, builds the release evidence bundle, attaches those assets to the matching GitHub Release, and uploads the Python distributions to PyPI.
 
-If you want a curated release body instead of GitHub's generated notes, add a file such as `release-notes/v1.0.2.md` before pushing the tag.
+If you want a curated release body instead of GitHub's generated notes, add a file such as `release-notes/v1.0.3.md` before pushing the tag.
 
 The `examples/release_notes_digest/` script demonstrates the same convention as a document workflow: it scans the semantic-versioned Markdown files under `release-notes/`, builds an index, includes the version-management rules, and imports each release body into one DOCX/PDF/HTML bundle.
 

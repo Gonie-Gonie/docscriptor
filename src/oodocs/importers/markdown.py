@@ -27,6 +27,7 @@ from oodocs.components.markup import markup
 from oodocs.components.media import Figure, Table
 from oodocs.components.references import CitationLibrary, CitationSource
 from oodocs.document import Document
+from oodocs.importers.results import ImportIssue, ImportResult, resolve_import_result
 from oodocs.layout.theme import ListStyle
 from oodocs.settings import DocumentSettings
 
@@ -51,6 +52,7 @@ _BLOCK_IMAGE_RE = re.compile(
     r"^ {0,3}!\[(?P<alt>[^\]]*)\]\((?P<target><[^>]+>|\S+)"
     r"(?:[ \t]+(?:\"[^\"]*\"|'[^']*'|\([^)]*\)))?\)[ \t]*$"
 )
+_RAW_HTML_RE = re.compile(r"^ {0,3}</?[A-Za-z][^>]*>")
 
 
 @dataclass(slots=True)
@@ -69,7 +71,10 @@ def parse_markdown(
     toc: bool | None = None,
     heading_level_shift: int = 0,
     base_dir: str | OsPathLike[str] | None = None,
-) -> list[Block]:
+    diagnostics: bool = False,
+    import_policy: str = "lossy",
+    source_name: str | None = None,
+) -> list[Block] | ImportResult:
     """Parse Markdown text into oodocs block objects.
 
     The parser targets the Markdown and GitHub Flavored Markdown constructs that
@@ -89,12 +94,19 @@ def parse_markdown(
         toc=toc,
         heading_level_shift=heading_level_shift,
         base_dir=base_dir,
+        source_name=source_name,
     )
-    return _build_heading_hierarchy(
+    blocks = _build_heading_hierarchy(
         parser.parse(),
         numbered=numbered,
         toc=toc,
         heading_level_shift=heading_level_shift,
+    )
+    return resolve_import_result(
+        blocks,
+        parser.issues,
+        diagnostics=diagnostics,
+        import_policy=import_policy,
     )
 
 
@@ -108,6 +120,7 @@ def from_markdown(
     toc: bool | None = None,
     heading_level_shift: int = 0,
     base_dir: str | OsPathLike[str] | None = None,
+    import_policy: str = "lossy",
 ) -> Document:
     """Create a ``Document`` from Markdown text.
 
@@ -129,14 +142,21 @@ def from_markdown(
     )
     events = parser.parse()
     document_title = title or _consume_first_h1_title(events) or "Markdown Document"
+    blocks = _build_heading_hierarchy(
+        events,
+        numbered=numbered,
+        toc=toc,
+        heading_level_shift=heading_level_shift,
+    )
+    checked_blocks = resolve_import_result(
+        blocks,
+        parser.issues,
+        diagnostics=False,
+        import_policy=import_policy,
+    )
     return Document(
         document_title,
-        _build_heading_hierarchy(
-            events,
-            numbered=numbered,
-            toc=toc,
-            heading_level_shift=heading_level_shift,
-        ),
+        checked_blocks,
         settings=settings,
         citations=citations,
     )
@@ -148,7 +168,9 @@ def parse_markdown_file(
     numbered: bool = True,
     toc: bool | None = None,
     heading_level_shift: int = 0,
-) -> list[Block]:
+    diagnostics: bool = False,
+    import_policy: str = "lossy",
+) -> list[Block] | ImportResult:
     """Parse a Markdown file into editable OODocs blocks.
 
     Local image paths are resolved relative to the Markdown file.
@@ -161,6 +183,9 @@ def parse_markdown_file(
         toc=toc,
         heading_level_shift=heading_level_shift,
         base_dir=source_path.parent,
+        diagnostics=diagnostics,
+        import_policy=import_policy,
+        source_name=str(source_path),
     )
 
 
@@ -173,6 +198,7 @@ def from_markdown_file(
     numbered: bool = True,
     toc: bool | None = None,
     heading_level_shift: int = 0,
+    import_policy: str = "lossy",
 ) -> Document:
     """Create a ``Document`` from a Markdown file.
 
@@ -190,6 +216,7 @@ def from_markdown_file(
         toc=toc,
         heading_level_shift=heading_level_shift,
         base_dir=source_path.parent,
+        import_policy=import_policy,
     )
 
 
@@ -202,6 +229,7 @@ class _MarkdownParser:
         toc: bool | None = None,
         heading_level_shift: int = 0,
         base_dir: str | OsPathLike[str] | None = None,
+        source_name: str | None = None,
     ) -> None:
         normalized_source = source.replace("\r\n", "\n").replace("\r", "\n")
         self.lines = normalized_source.split("\n")
@@ -210,6 +238,8 @@ class _MarkdownParser:
         self.toc = toc
         self.heading_level_shift = heading_level_shift
         self.base_dir = Path(base_dir) if base_dir is not None else None
+        self.source_name = source_name
+        self.issues: list[ImportIssue] = []
 
     def parse(self) -> list[_MarkdownEvent]:
         events: list[_MarkdownEvent] = []
@@ -242,6 +272,14 @@ class _MarkdownParser:
                 events.append(Divider())
                 index += 1
                 continue
+
+            if _RAW_HTML_RE.match(line):
+                self._add_issue(
+                    "warning",
+                    "raw-html-unsupported",
+                    "Raw HTML is imported as plain paragraph text.",
+                    index + 1,
+                )
 
             table = self._parse_table(index)
             if table is not None:
@@ -277,6 +315,23 @@ class _MarkdownParser:
             events.append(paragraph)
 
         return events
+
+    def _add_issue(
+        self,
+        severity: str,
+        code: str,
+        message: str,
+        line: int | None,
+    ) -> None:
+        self.issues.append(
+            ImportIssue(
+                severity=severity,  # type: ignore[arg-type]
+                code=code,
+                message=message,
+                line=line,
+                source=self.source_name,
+            )
+        )
 
     def _parse_fenced_code(self, index: int) -> tuple[CodeBlock, int] | None:
         match = _FENCE_RE.match(self.lines[index])
@@ -494,6 +549,12 @@ class _MarkdownParser:
         alt_text = match.group("alt")
         target = _strip_angle_destination(match.group("target"))
         if _is_remote_url(target):
+            self._add_issue(
+                "warning",
+                "remote-image-lossy",
+                "Remote image was imported as linked paragraph text.",
+                index + 1,
+            )
             return (
                 Paragraph(markup(f"{alt_text}: {target}", references=self.references)),
                 index + 1,

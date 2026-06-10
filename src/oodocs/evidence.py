@@ -1,0 +1,47 @@
+"""Command line entry point for release evidence bundles."""
+
+from __future__ import annotations
+
+import argparse
+from typing import Sequence
+
+from oodocs.adapters import build_release_evidence_bundle
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="python -m oodocs.evidence")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    build = subparsers.add_parser("build", help="Build release evidence files.")
+    build.add_argument("--out", default="artifacts/evidence", help="Evidence output directory.")
+    build.add_argument("--pyproject", default="pyproject.toml", help="pyproject.toml path.")
+    build.add_argument(
+        "--workflow",
+        default=".github/workflows/release.yml",
+        help="GitHub Actions workflow YAML path.",
+    )
+    build.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail if optional evidence inputs are missing.",
+    )
+    build.set_defaults(func=_run_build)
+    args = parser.parse_args(argv)
+    return args.func(args)
+
+
+def _run_build(args: argparse.Namespace) -> int:
+    bundle = build_release_evidence_bundle(
+        args.out,
+        pyproject=args.pyproject,
+        workflow=args.workflow,
+        strict=args.strict,
+    )
+    print(f"Wrote evidence bundle: {bundle.output_dir}")
+    for output_format, path in bundle.document_outputs.items():
+        print(f"Wrote {output_format}: {path}")
+    print(f"Wrote checksums: {bundle.checksum_file}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

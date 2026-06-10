@@ -14,6 +14,7 @@ from oodocs.core import PathLike
 from oodocs.settings import DocumentSettings
 
 if TYPE_CHECKING:
+    from oodocs.importers.notebook import NotebookImportOptions
     from oodocs.validation import ValidationResult
 
 
@@ -126,15 +127,17 @@ class Document:
         title: str | None = None,
         settings: DocumentSettings | None = None,
         citations: CitationLibrary | Sequence[CitationSource] | str | None = None,
-        include_outputs: bool = True,
-        include_code: bool = True,
-        include_markdown: bool = True,
-        include_raw: bool = True,
+        options: NotebookImportOptions | None = None,
+        include_outputs: bool | None = None,
+        include_code: bool | None = None,
+        include_markdown: bool | None = None,
+        include_raw: bool | None = None,
         code_language: str | None = None,
         base_dir: str | Path | None = None,
         numbered: bool = True,
         toc: bool | None = None,
         heading_level_shift: int = 0,
+        import_policy: str = "lossy",
     ) -> Document:
         """Create a document from a Jupyter notebook."""
 
@@ -145,6 +148,7 @@ class Document:
             title=title,
             settings=settings,
             citations=citations,
+            options=options,
             include_outputs=include_outputs,
             include_code=include_code,
             include_markdown=include_markdown,
@@ -154,6 +158,7 @@ class Document:
             numbered=numbered,
             toc=toc,
             heading_level_shift=heading_level_shift,
+            import_policy=import_policy,
         )
 
     def split_top_level_children(self) -> tuple[list[object], list[object]]:

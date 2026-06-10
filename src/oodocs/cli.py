@@ -9,6 +9,8 @@ import traceback
 from typing import Sequence
 
 from oodocs.compatibility import normalize_output_formats
+from oodocs.core import OODocsError
+from oodocs.importers.results import ImportResult
 from oodocs.validation import DocumentValidationError
 from oodocs.workflows import build_python_document, convert_source, validate_source
 
@@ -26,6 +28,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             print(exc, file=sys.stderr)
         return 1
+    except OODocsError as exc:
+        if getattr(args, "traceback", False):
+            traceback.print_exception(exc, file=sys.stderr)
+        else:
+            print(f"oodocs: {exc}", file=sys.stderr)
+        return 2
     except (AttributeError, FileNotFoundError, ImportError, TypeError, ValueError) as exc:
         if getattr(args, "traceback", False):
             traceback.print_exception(exc, file=sys.stderr)
@@ -65,6 +73,16 @@ def _build_parser() -> argparse.ArgumentParser:
     convert.add_argument("source", help="Markdown (.md) or notebook (.ipynb) file.")
     _add_render_options(convert, default_out=None)
     convert.add_argument("--title", help="Override the imported document title.")
+    convert.add_argument(
+        "--show-import-warnings",
+        action="store_true",
+        help="Print lossy Markdown/notebook import warnings before rendering.",
+    )
+    convert.add_argument(
+        "--strict-import",
+        action="store_true",
+        help="Fail when Markdown/notebook import reports lossy or unsupported content.",
+    )
     convert.set_defaults(func=_run_convert)
 
     validate = subparsers.add_parser(
@@ -186,6 +204,9 @@ def _run_build(args: argparse.Namespace) -> int:
 
 def _run_convert(args: argparse.Namespace) -> int:
     formats = _parse_formats(args.to)
+    import_exit = _run_import_warning_policy(args)
+    if import_exit != 0:
+        return import_exit
     validation_exit = _run_render_warning_policy(
         args,
         formats=formats,
@@ -224,6 +245,41 @@ def _run_validate(args: argparse.Namespace) -> int:
         return 1
     if args.strict and result.warnings_for(formats):
         return 1
+    return 0
+
+
+def _run_import_warning_policy(args: argparse.Namespace) -> int:
+    if not (args.show_import_warnings or args.strict_import):
+        return 0
+
+    source_path = Path(args.source)
+    policy = "strict" if args.strict_import else "warn"
+    suffix = source_path.suffix.lower()
+    if suffix in {".md", ".markdown"}:
+        from oodocs.importers.markdown import parse_markdown_file
+
+        result = parse_markdown_file(
+            source_path,
+            diagnostics=True,
+            import_policy=policy,
+        )
+    elif suffix == ".ipynb":
+        from oodocs.importers.notebook import parse_ipynb
+
+        result = parse_ipynb(
+            source_path,
+            diagnostics=True,
+            import_policy=policy,
+        )
+    else:
+        raise ValueError(
+            f"Cannot infer document source type from {source_path}. "
+            "Use a Markdown or notebook source."
+        )
+
+    assert isinstance(result, ImportResult)
+    if args.show_import_warnings and result.issues:
+        print(result.format_issues())
     return 0
 
 

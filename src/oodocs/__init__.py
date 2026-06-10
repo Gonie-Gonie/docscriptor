@@ -70,11 +70,13 @@ from oodocs.importers.markdown import (
     parse_markdown_file,
 )
 from oodocs.importers.notebook import (
+    NotebookImportOptions,
     from_ipynb,
     from_notebook,
     parse_ipynb,
     parse_notebook,
 )
+from oodocs.importers.results import ImportIssue, ImportPolicyError, ImportResult
 from oodocs.components.inline import (
     Comment,
     Footnote,
@@ -137,7 +139,7 @@ from oodocs.workflows import (
 )
 
 
-_FALLBACK_VERSION = "1.0.2"
+_FALLBACK_VERSION = "1.0.3"
 
 
 def _resolve_version() -> str:
@@ -195,6 +197,9 @@ __all__ = [
     "HeadingNumbering",
     "ImageBox",
     "ImageData",
+    "ImportIssue",
+    "ImportPolicyError",
+    "ImportResult",
     "InlineChip",
     "InlineChipStyle",
     "LineBreak",
@@ -204,6 +209,7 @@ __all__ = [
     "MAX_SECTION_LEVEL",
     "MIN_SECTION_LEVEL",
     "MultiColumn",
+    "NotebookImportOptions",
     "NumberedList",
     "OUTPUT_FORMATS",
     "OutputFormat",
