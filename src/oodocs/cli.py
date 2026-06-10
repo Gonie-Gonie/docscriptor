@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import sys
+import traceback
 from typing import Sequence
 
 from oodocs.compatibility import normalize_output_formats
@@ -20,10 +21,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         return args.func(args)
     except DocumentValidationError as exc:
-        print(exc, file=sys.stderr)
+        if getattr(args, "traceback", False):
+            traceback.print_exception(exc, file=sys.stderr)
+        else:
+            print(exc, file=sys.stderr)
         return 1
     except (AttributeError, FileNotFoundError, ImportError, TypeError, ValueError) as exc:
-        print(f"oodocs: {exc}", file=sys.stderr)
+        if getattr(args, "traceback", False):
+            traceback.print_exception(exc, file=sys.stderr)
+        else:
+            print(f"oodocs: {exc}", file=sys.stderr)
         return 2
 
 
@@ -86,10 +93,17 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Return a non-zero exit code when warnings are present.",
     )
     validate.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="Validation output format. Defaults to text.",
+    )
+    validate.add_argument(
         "--no-chdir",
         action="store_true",
         help="Do not run Python sources with their directory as the working directory.",
     )
+    _add_traceback_option(validate)
     validate.set_defaults(func=_run_validate)
 
     return parser
@@ -124,10 +138,38 @@ def _add_render_options(
         action="store_true",
         help="Print slow major build steps.",
     )
+    parser.add_argument(
+        "--show-warnings",
+        action="store_true",
+        help="Print validation warnings even when rendering succeeds.",
+    )
+    parser.add_argument(
+        "--fail-on-warning",
+        action="store_true",
+        help="Return a non-zero exit code when validation warnings are present.",
+    )
+    _add_traceback_option(parser)
+
+
+def _add_traceback_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--traceback",
+        action="store_true",
+        help="Print a full traceback for debugging instead of the compact CLI error.",
+    )
 
 
 def _run_build(args: argparse.Namespace) -> int:
     formats = _parse_formats(args.to)
+    validation_exit = _run_render_warning_policy(
+        args,
+        formats=formats,
+        source_type="python",
+        factory=args.factory,
+        chdir=not args.no_chdir,
+    )
+    if validation_exit != 0:
+        return validation_exit
     outputs = build_python_document(
         args.source,
         args.out,
@@ -144,6 +186,13 @@ def _run_build(args: argparse.Namespace) -> int:
 
 def _run_convert(args: argparse.Namespace) -> int:
     formats = _parse_formats(args.to)
+    validation_exit = _run_render_warning_policy(
+        args,
+        formats=formats,
+        title=args.title,
+    )
+    if validation_exit != 0:
+        return validation_exit
     outputs = convert_source(
         args.source,
         args.out,
@@ -167,10 +216,47 @@ def _run_validate(args: argparse.Namespace) -> int:
         formats=formats,
         chdir=not args.no_chdir,
     )
-    print(result.format_table(formats=formats))
+    if args.format == "json":
+        print(result.to_json(formats=formats))
+    else:
+        print(result.format_table(formats=formats))
     if result.errors_for(formats):
         return 1
     if args.strict and result.warnings_for(formats):
+        return 1
+    return 0
+
+
+def _run_render_warning_policy(
+    args: argparse.Namespace,
+    *,
+    formats: tuple[str, ...],
+    source_type: str | None = None,
+    title: str | None = None,
+    factory: str | None = None,
+    chdir: bool = True,
+) -> int:
+    if args.no_validate or not (args.show_warnings or args.fail_on_warning):
+        return 0
+
+    result = validate_source(
+        args.source,
+        source_type=source_type,
+        title=title,
+        factory=factory,
+        formats=formats,
+        chdir=chdir,
+    )
+    errors = result.errors_for(formats)
+    warnings = result.warnings_for(formats)
+    if args.show_warnings and warnings:
+        print(result.format_table(formats=formats))
+    if errors:
+        print(result.format_table(formats=formats), file=sys.stderr)
+        return 1
+    if args.fail_on_warning and warnings:
+        if not args.show_warnings:
+            print(result.format_table(formats=formats), file=sys.stderr)
         return 1
     return 0
 

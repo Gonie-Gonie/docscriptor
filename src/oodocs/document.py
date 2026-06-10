@@ -52,6 +52,18 @@ class Document:
         self.settings = settings or DocumentSettings()
         self.citations = coerce_citation_library(citations)
 
+    def add(self, *children: BlockInput) -> Document:
+        """Append top-level blocks and return this document."""
+
+        self.body.add(*children)
+        return self
+
+    def extend(self, children: Iterable[BlockInput]) -> Document:
+        """Append an iterable of top-level blocks and return this document."""
+
+        self.body.extend(children)
+        return self
+
     @classmethod
     def from_markdown(
         cls,

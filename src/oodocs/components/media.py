@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import csv
+from dataclasses import asdict, dataclass, is_dataclass
+import json
 from io import BytesIO
 from pathlib import Path
-from typing import Literal, Mapping, Sequence, TYPE_CHECKING
+from typing import Callable, Literal, Mapping, Sequence, TYPE_CHECKING
 
 from oodocs.components.base import Block
 from oodocs.components.blocks import CellInput, Paragraph, coerce_cell
@@ -563,6 +565,92 @@ def _coerce_style_mapping(
     return normalized
 
 
+RecordFormatter = Callable[[object], object] | str
+
+
+def _record_mapping(value: object) -> Mapping[object, object] | None:
+    if isinstance(value, Mapping):
+        return value
+    if is_dataclass(value) and not isinstance(value, type):
+        return asdict(value)
+    return None
+
+
+def _is_sequence_record(value: object) -> bool:
+    return isinstance(value, Sequence) and not isinstance(
+        value,
+        (str, bytes, bytearray, memoryview, Paragraph, TableCell),
+    )
+
+
+def _formatter_for(
+    column: object,
+    formatters: Mapping[object, RecordFormatter] | None,
+) -> RecordFormatter | None:
+    if formatters is None:
+        return None
+    if column in formatters:
+        return formatters[column]
+    text_column = str(column)
+    if text_column in formatters:
+        return formatters[text_column]
+    return None
+
+
+def _stringify_data_value(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (Mapping, list, tuple)):
+        return json.dumps(value, ensure_ascii=False)
+    return str(value)
+
+
+def _format_data_value(
+    value: object,
+    *,
+    column: object,
+    formatters: Mapping[object, RecordFormatter] | None,
+) -> str:
+    formatter = _formatter_for(column, formatters)
+    if formatter is None:
+        return _stringify_data_value(value)
+    if callable(formatter):
+        return _stringify_data_value(formatter(value))
+    return format(value, formatter)
+
+
+def _record_value(
+    record: object,
+    column: object,
+    *,
+    strict: bool,
+    missing: object,
+) -> object:
+    mapping = _record_mapping(record)
+    if mapping is not None:
+        if column in mapping:
+            return mapping[column]
+        if strict:
+            raise ValueError(f"Record is missing column {column!r}")
+        return missing
+
+    if _is_sequence_record(record):
+        try:
+            index = int(column)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "Sequence records require integer columns or headers-only column inference"
+            ) from exc
+        values = list(record)  # type: ignore[arg-type]
+        if 0 <= index < len(values):
+            return values[index]
+        if strict:
+            raise ValueError(f"Record is missing column index {index}")
+        return missing
+
+    raise TypeError(f"Unsupported record value: {type(record)!r}")
+
+
 @dataclass(slots=True, init=False)
 class Table(Block):
     """A table supporting explicit spans and dataframe-like inputs."""
@@ -824,6 +912,145 @@ class Table(Block):
             header_row_styles=header_row_styles,
         )
 
+    @classmethod
+    def from_records(
+        cls,
+        records: Sequence[object],
+        *,
+        columns: Sequence[object] | None = None,
+        headers: Sequence[TableCellInput] | None = None,
+        formatters: Mapping[object, RecordFormatter] | None = None,
+        missing: object = "",
+        strict: bool = False,
+        **table_kwargs: object,
+    ) -> Table:
+        """Create a table from mappings, dataclasses, or sequence records."""
+
+        record_list = list(records)
+        if columns is None:
+            if not record_list:
+                raise ValueError("columns is required when records is empty")
+            first_mapping = _record_mapping(record_list[0])
+            if first_mapping is not None:
+                normalized_columns = list(first_mapping.keys())
+            elif _is_sequence_record(record_list[0]) and headers is not None:
+                normalized_columns = list(range(len(headers)))
+            else:
+                raise ValueError("columns or headers is required for sequence records")
+        else:
+            normalized_columns = list(columns)
+
+        if not normalized_columns:
+            raise ValueError("columns must not be empty")
+
+        if headers is None:
+            normalized_headers: Sequence[TableCellInput] = [
+                str(column)
+                for column in normalized_columns
+            ]
+        else:
+            if len(headers) != len(normalized_columns):
+                raise ValueError("headers must match the number of columns")
+            normalized_headers = headers
+
+        rows = [
+            [
+                _format_data_value(
+                    _record_value(
+                        record,
+                        column,
+                        strict=strict,
+                        missing=missing,
+                    ),
+                    column=column,
+                    formatters=formatters,
+                )
+                for column in normalized_columns
+            ]
+            for record in record_list
+        ]
+        return cls(normalized_headers, rows, **table_kwargs)
+
+    @classmethod
+    def from_mapping(
+        cls,
+        mapping: Mapping[object, object],
+        *,
+        key_header: TableCellInput = "Field",
+        value_header: TableCellInput = "Value",
+        key_formatter: Callable[[object], object] | str | None = None,
+        value_formatter: Callable[[object], object] | str | None = None,
+        **table_kwargs: object,
+    ) -> Table:
+        """Create a two-column table from a mapping."""
+
+        if not mapping:
+            raise ValueError("mapping must not be empty")
+
+        def format_side(value: object, formatter: Callable[[object], object] | str | None) -> str:
+            if formatter is None:
+                return _stringify_data_value(value)
+            if callable(formatter):
+                return _stringify_data_value(formatter(value))
+            return format(value, formatter)
+
+        rows = [
+            [
+                format_side(key, key_formatter),
+                format_side(value, value_formatter),
+            ]
+            for key, value in mapping.items()
+        ]
+        return cls([key_header, value_header], rows, **table_kwargs)
+
+    @classmethod
+    def from_csv(
+        cls,
+        path: PathLike,
+        *,
+        headers: bool | Sequence[TableCellInput] = True,
+        encoding: str = "utf-8-sig",
+        delimiter: str = ",",
+        **table_kwargs: object,
+    ) -> Table:
+        """Create a table from a CSV file."""
+
+        with Path(path).open("r", encoding=encoding, newline="") as handle:
+            matrix = list(csv.reader(handle, delimiter=delimiter))
+        if not matrix:
+            raise ValueError("CSV file must contain at least one row")
+
+        if headers is True:
+            table_headers = matrix[0]
+            rows = matrix[1:]
+        elif headers is False:
+            column_count = max(len(row) for row in matrix)
+            table_headers = [f"Column {index + 1}" for index in range(column_count)]
+            rows = matrix
+        else:
+            table_headers = list(headers)
+            rows = matrix
+        return cls(table_headers, rows, **table_kwargs)
+
+    @classmethod
+    def from_tsv(
+        cls,
+        path: PathLike,
+        *,
+        headers: bool | Sequence[TableCellInput] = True,
+        encoding: str = "utf-8-sig",
+        **table_kwargs: object,
+    ) -> Table:
+        """Create a table from a TSV file."""
+
+        return cls.from_csv(
+            path,
+            headers=headers,
+            encoding=encoding,
+            delimiter="\t",
+            **table_kwargs,
+        )
+
     def render_to_docx(
         self,
         renderer: object,
@@ -887,6 +1114,36 @@ class Figure(Block):
         )
         self.dpi = dpi
         self.placement = normalize_media_placement(placement)
+
+    @classmethod
+    def from_bytes(
+        cls,
+        data: bytes | bytearray | memoryview,
+        *,
+        format: str = "png",
+        **figure_kwargs: object,
+    ) -> Figure:
+        """Create a figure from in-memory image bytes."""
+
+        return cls(ImageData(data, format=format), format=format, **figure_kwargs)
+
+    @classmethod
+    def from_buffer(
+        cls,
+        buffer: BytesIO | object,
+        *,
+        format: str = "png",
+        **figure_kwargs: object,
+    ) -> Figure:
+        """Create a figure from a readable or ``getvalue``-compatible buffer."""
+
+        if hasattr(buffer, "getvalue"):
+            data = buffer.getvalue()
+        elif hasattr(buffer, "read"):
+            data = buffer.read()
+        else:
+            raise TypeError("buffer must provide getvalue() or read()")
+        return cls.from_bytes(data, format=format, **figure_kwargs)
 
     def width_in_inches(self, default_unit: str) -> float | None:
         """Return figure width converted through the figure or document unit."""

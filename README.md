@@ -111,6 +111,8 @@ oodocs validate report.py
 
 `build` expects a Python file that exposes a `Document` as `document`, `doc`, or `report`, or a zero-argument factory such as `build_document()`. Use `--factory NAME` when the document object or builder has a different name. `convert` imports Markdown and Jupyter notebooks through the same parser APIs available in Python. Both commands validate before rendering by default and stop before writing outputs when validation errors are found.
 
+For CI and release evidence, `oodocs validate --format json` emits a machine-readable validation summary. `oodocs build ... --fail-on-warning` and `oodocs convert ... --fail-on-warning` treat validation warnings as failures, while `--show-warnings` prints warning tables without changing the default success path. Add `--traceback` to any command when debugging needs the full Python stack trace.
+
 ## Why Not Just LaTeX?
 
 OODocs is not trying to replace every LaTeX workflow. It is meant for documents where Python already owns the data, plots, citations, or release process and where collaborators may still need DOCX.
@@ -163,12 +165,14 @@ The default behavior is intentionally conventional:
 - Use `subscript(...)`, `superscript(...)`, and `prescript(...)` for ordinary prose. Use `Math(...)` or `Equation(...)` for lightweight LaTeX-style math, including ordinary `x^2` / `x_0` scripts and front scripts such as `\prescript{14}{6}{C}`.
 - Use `Part(...)` for book-like divisions above chapters; each part gets a separator page, while chapter numbers continue across parts by default.
 - Use `Chapter(...)`, `Section(...)`, `Subsection(...)`, and `Subsubsection(...)` for the visible outline. Their nesting in Python should match how you expect the final document to read.
+- Use `Document.add(...)`, `Section.add(...)`, `Box.add(...)`, and `MultiColumn.add(...)` when a longer report is easier to assemble step by step. Matching `extend(...)` methods accept iterables and use the same coercion rules as constructors.
 - Use `reference(obj)` or `obj.reference()` for cross-references to captioned media, headings, equations, paragraphs, code blocks, and boxes. Passing the raw object inside `Paragraph(...)` is rejected so insertion and citation are not confused.
 - Use `Definition(...)`, `Lemma(...)`, `Proposition(...)`, `Theorem(...)`, `Corollary(...)`, `Example(...)`, `Remark(...)`, `Assumption(...)`, `Axiom(...)`, `Claim(...)`, and `Conjecture(...)` for theorem-like blocks that share a document-wide counter; `Proof(...)` is unnumbered by default. Use `countable_kind("Exercise", counter="exercise")` to create custom countable block classes without subclassing, or pass `counter="theorem"` when a custom block should join the same sequence.
-- Use `Table(...)` for small authored tables and `Table.from_dataframe(...)` when the data already lives in pandas.
+- Use `Table(...)` for small authored tables, `Table.from_records(...)` or `Table.from_mapping(...)` for ordinary Python data, `Table.from_csv(...)` or `Table.from_tsv(...)` for delimited files, and `Table.from_dataframe(...)` when the data already lives in pandas.
+- Use `TableStyle.plain()`, `TableStyle.compact()`, or `TableStyle.evidence()` when several tables should share a preset without repeating style kwargs.
 - Use `TableCell(horizontal_alignment=..., vertical_alignment=...)` or table-wide `Table(..., cell_horizontal_alignment=..., cell_vertical_alignment=...)` when a table needs Word-like cell alignment. Use dictionaries in `row_styles`, `header_row_styles`, or `column_styles` when rows or columns need background color, text color, bold, or italic formatting.
 - Use `Table(split=True)` when a table should render in source order and may break across pages. Leave `split=False` when the table should stay together when possible; very long tables are automatically rendered as split repeated-header tables.
-- Use `Figure(...)` for image files or `savefig()`-compatible Python figure objects.
+- Use `Figure(...)` for image files or `savefig()`-compatible Python figure objects. Use `Figure.from_bytes(...)` or `Figure.from_buffer(...)` when image bytes are already in memory.
 - Use `SubFigureGroup(SubFigure(...), SubFigure(...), caption=...)` when related images should share one figure number and expose `(a)`, `(b)`, and similar subfigure references.
 - Use `Theme(table_caption_label=..., table_reference_label=..., figure_caption_label=..., figure_reference_label=...)` when captions and in-text references should use different labels such as `Figure`, `Fig.`, or localized terms.
 - Use `Theme(citation_format="apa", reference_format="apa")` when inline citations and the generated references page should follow an author-year style. Numeric citation output remains the default.
@@ -176,7 +180,7 @@ The default behavior is intentionally conventional:
 - Use `Box(...)` for callouts, evidence panels, and tcolorbox-like report sections that should stay editable in Word.
 - Use `Shape(...)`, `TextBox(...)`, and `ImageBox(...)` with `DocumentSettings(page_items=[...])` for page-positioned overlays that do not move the body text. Use `placement="inline"` when the same objects should sit in the text flow like Word's inline drawing mode.
 - Use `DocumentSettings(...)` for document-wide choices: authors, subtitle, page size, margins, units, page overlays, and theme defaults.
-- Use `document.validate()` when you want a structured preflight check before rendering. The returned `ValidationResult` prints as a compact table, and each issue records whether it affects Word, PDF, HTML, or all outputs. `save(...)`, `save_docx(...)`, `save_pdf(...)`, `save_html(...)`, and `save_all(...)` validate before rendering by default and stop before writing when errors are found.
+- Use `document.validate()` when you want a structured preflight check before rendering. The returned `ValidationResult` prints as a compact table, can be serialized with `to_dict()` or `to_json()`, and each issue records whether it affects Word, PDF, HTML, or all outputs. `save(...)`, `save_docx(...)`, `save_pdf(...)`, `save_html(...)`, and `save_all(...)` validate before rendering by default and stop before writing when errors are found.
 - Use `Document.from_markdown(...)` when a Markdown file should become a full document. Use `parse_markdown(...)` when you want a list of blocks that can be inserted, reordered, wrapped in sections, or combined with tables and figures.
 - Use `Document.from_markdown(..., numbered=False, toc=True)` when imported headings should keep their source titles without generated numbers but still appear in a generated table of contents.
 - Use `heading_level_shift=1` or `heading_level_shift=-1` with `Document.from_markdown(...)` or `parse_markdown(...)` when imported Markdown should be demoted or promoted before it is inserted into a larger outline. Use `shift_heading_levels(...)` when already-created `Chapter(...)`/`Section(...)` objects need the same adjustment; paragraphs and other non-heading blocks stay unchanged, and shifts beyond the supported heading range fail.
@@ -195,10 +199,10 @@ The default behavior is intentionally conventional:
 - footnotes target page-bottom placement by default when the renderer supports it; `Theme(footnote_placement="document")` keeps the collected-notes pattern
 - captioned tables and figures with automatic numbering and in-text references
 - independent document-level labels for table/figure captions and in-text references
-- table support for `TableCell(...)`, `rowspan`, `colspan`, banded rows, dataframe-like inputs, and cell/row/column styling
+- table support for `TableCell(...)`, `rowspan`, `colspan`, banded rows, ordinary Python records, CSV/TSV files, dataframe-like inputs, and cell/row/column styling
 - automatic split-table rendering for long tables, with repeated headers where renderers support them
 - advanced table and figure placement hints for here/float/top/bottom/page-style workflows
-- figure support for both stored image files and `savefig()`-compatible Python objects
+- figure support for stored image files, in-memory bytes, buffers, and `savefig()`-compatible Python objects
 - subfigure groups with automatic child labels and references such as `Figure 1(a)`
 - page-positioned `Shape.rect(...)`, `Shape.ellipse(...)`, `Shape.line(...)`, `TextBox(...)`, and `ImageBox(...)` objects with anchors to the page, the margin box, or an earlier named shape
 - inline drawing placement for `Shape(...)`, `TextBox(...)`, and `ImageBox(...)`, similar to using an image directly in the document flow
@@ -300,12 +304,12 @@ OODocs versions are derived from git tags through `setuptools-scm`.
 Create and push a release tag like this:
 
 ```powershell
-.\scripts\release.ps1 1.0.1
+.\scripts\release.ps1 1.0.2
 ```
 
-That pushes `v1.0.1`, and the GitHub release workflow runs the test suite, builds the wheel/sdist artifacts, renders the example PDFs, attaches them to the matching GitHub Release, and uploads the Python distributions to PyPI.
+That pushes `v1.0.2`, and the GitHub release workflow runs the test suite, builds the wheel/sdist artifacts, renders the example PDFs, attaches them to the matching GitHub Release, and uploads the Python distributions to PyPI.
 
-If you want a curated release body instead of GitHub's generated notes, add a file such as `release-notes/v1.0.1.md` before pushing the tag.
+If you want a curated release body instead of GitHub's generated notes, add a file such as `release-notes/v1.0.2.md` before pushing the tag.
 
 The `examples/release_notes_digest/` script demonstrates the same convention as a document workflow: it scans the semantic-versioned Markdown files under `release-notes/`, builds an index, includes the version-management rules, and imports each release body into one DOCX/PDF/HTML bundle.
 

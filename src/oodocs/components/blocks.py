@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Iterable, Literal, Sequence
 
 from oodocs.components.base import Block, BlockInput, coerce_blocks
 from oodocs.components.equations import equation_plain_text
@@ -538,6 +538,18 @@ class ColumnSpan(Block):
     def __init__(self, *children: BlockInput) -> None:
         self.children = coerce_blocks(children)
 
+    def add(self, *children: BlockInput) -> ColumnSpan:
+        """Append full-width children and return this column span."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
+    def extend(self, children: Iterable[BlockInput]) -> ColumnSpan:
+        """Append an iterable of full-width children."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
     def render_to_docx(
         self,
         renderer: object,
@@ -588,6 +600,18 @@ class MultiColumn(Block):
         self.column_gap = float(column_gap)
         self.unit = normalize_length_unit(unit) if unit is not None else None
         self.span_wide_media = bool(span_wide_media)
+
+    def add(self, *children: BlockInput) -> MultiColumn:
+        """Append children using constructor-compatible coercion."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
+    def extend(self, children: Iterable[BlockInput]) -> MultiColumn:
+        """Append an iterable of children."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
 
     def column_gap_in_inches(self, default_unit: str) -> float:
         """Return the gap between columns in inches."""
@@ -682,6 +706,18 @@ class Part(Block):
         self.toc = numbered if toc is None else bool(toc)
         self.level = 0
 
+    def add(self, *children: BlockInput) -> Part:
+        """Append child blocks and return this part."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
+    def extend(self, children: Iterable[BlockInput]) -> Part:
+        """Append an iterable of child blocks."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
     def plain_title(self) -> str:
         """Return the title without styling metadata."""
 
@@ -758,6 +794,18 @@ class Box(Block):
             alignment=alignment,
         )
 
+    def add(self, *children: BlockInput) -> Box:
+        """Append boxed content and return this box."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
+    def extend(self, children: Iterable[BlockInput]) -> Box:
+        """Append an iterable of boxed content."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
     def render_to_docx(
         self,
         renderer: object,
@@ -826,6 +874,18 @@ class CountableBlock(Block):
         self.counter = normalized_counter if self.numbered else None
         self.reference_label = normalized_reference_label
         self.label_suffix = label_suffix
+
+    def add(self, *children: BlockInput) -> CountableBlock:
+        """Append child blocks and return this countable block."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
+    def extend(self, children: Iterable[BlockInput]) -> CountableBlock:
+        """Append an iterable of child blocks."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
 
     def heading_label(self, number: int | None) -> str:
         """Return the visible heading label, including punctuation."""
@@ -950,6 +1010,18 @@ class Section(Block):
         self.level = level
         self.numbered = numbered
         self.toc = numbered if toc is None else bool(toc)
+
+    def add(self, *children: BlockInput) -> Section:
+        """Append child blocks and return this section."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
+    def extend(self, children: Iterable[BlockInput]) -> Section:
+        """Append an iterable of child blocks."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
 
     def plain_title(self) -> str:
         """Return the title without styling metadata."""

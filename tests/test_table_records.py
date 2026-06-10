@@ -1,0 +1,111 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from io import BytesIO
+
+import pytest
+
+from oodocs import Figure, ImageData, Table, TableStyle
+
+_TINY_PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0"
+    b"\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+
+@dataclass
+class MetricRow:
+    metric: str
+    value: float
+
+
+def _cell_text(table: Table, row: int, column: int) -> str:
+    return table.rows[row][column].content.plain_text()
+
+
+def test_table_from_records_supports_mappings_dataclasses_and_formatters() -> None:
+    table = Table.from_records(
+        [
+            {"metric": "speed", "value": 0.8123, "note": None},
+            MetricRow("quality", 0.945),
+        ],
+        columns=["metric", "value", "note"],
+        headers=["Metric", "Value", "Note"],
+        formatters={"value": ".2f"},
+        missing="n/a",
+        caption="Run metrics.",
+        style=TableStyle.evidence(),
+    )
+
+    assert [cell.content.plain_text() for cell in table.headers] == [
+        "Metric",
+        "Value",
+        "Note",
+    ]
+    assert _cell_text(table, 0, 1) == "0.81"
+    assert _cell_text(table, 0, 2) == ""
+    assert _cell_text(table, 1, 2) == "n/a"
+    assert table.style.repeat_header_rows is True
+
+
+def test_table_from_records_supports_sequence_records() -> None:
+    table = Table.from_records(
+        [("docx", 1), ("pdf", 2)],
+        headers=["Format", "Count"],
+    )
+
+    assert _cell_text(table, 0, 0) == "docx"
+    assert _cell_text(table, 1, 1) == "2"
+
+    with pytest.raises(ValueError, match="columns or headers"):
+        Table.from_records([("docx", 1)])
+
+    with pytest.raises(ValueError, match="missing column"):
+        Table.from_records([{"a": 1}], columns=["a", "b"], strict=True)
+
+
+def test_table_from_mapping_stringifies_nested_values() -> None:
+    table = Table.from_mapping(
+        {"name": "oodocs", "meta": {"python": ">=3.11"}},
+        key_header="Field",
+        value_header="Value",
+    )
+
+    assert [cell.content.plain_text() for cell in table.headers] == ["Field", "Value"]
+    assert _cell_text(table, 1, 1) == '{"python": ">=3.11"}'
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        Table.from_mapping({})
+
+
+def test_table_from_csv_and_tsv(tmp_path) -> None:
+    csv_path = tmp_path / "results.csv"
+    csv_path.write_text("metric,value\nspeed,0.81\nquality,0.94\n", encoding="utf-8")
+    tsv_path = tmp_path / "results.tsv"
+    tsv_path.write_text("metric\tvalue\nspeed\t0.81\n", encoding="utf-8")
+
+    csv_table = Table.from_csv(csv_path)
+    tsv_table = Table.from_tsv(tsv_path)
+    no_header = Table.from_csv(csv_path, headers=False)
+
+    assert [cell.content.plain_text() for cell in csv_table.headers] == ["metric", "value"]
+    assert _cell_text(csv_table, 1, 1) == "0.94"
+    assert _cell_text(tsv_table, 0, 0) == "speed"
+    assert [cell.content.plain_text() for cell in no_header.headers] == [
+        "Column 1",
+        "Column 2",
+    ]
+
+
+def test_figure_from_bytes_and_buffer_use_image_data() -> None:
+    from_bytes = Figure.from_bytes(_TINY_PNG, format="png", caption="Pixel.")
+    from_buffer = Figure.from_buffer(BytesIO(_TINY_PNG), format="png", caption="Pixel.")
+
+    assert isinstance(from_bytes.image_source, ImageData)
+    assert from_bytes.image_source.data == _TINY_PNG
+    assert isinstance(from_buffer.image_source, ImageData)
+    assert from_buffer.image_source.data == _TINY_PNG
+
+    with pytest.raises(ValueError, match="non-empty"):
+        Figure.from_bytes(b"", format="png")

@@ -413,6 +413,44 @@ class TableStyle:
         if self.border_width < 0:
             raise ValueError("TableStyle.border_width must be >= 0")
 
+    @classmethod
+    def plain(cls) -> TableStyle:
+        """Create a minimally styled table preset."""
+
+        return cls(
+            header_background_color="FFFFFF",
+            border_color="DADDE3",
+            cell_padding=5.0,
+            border_width=0.5,
+        )
+
+    @classmethod
+    def compact(cls) -> TableStyle:
+        """Create a dense preset for compact data tables."""
+
+        return cls(
+            header_background_color="F1F4F8",
+            border_color="C9D2DE",
+            alternate_row_background_color="FAFBFC",
+            cell_padding=3.0,
+            border_width=0.4,
+            repeat_header_rows=True,
+        )
+
+    @classmethod
+    def evidence(cls) -> TableStyle:
+        """Create a preset for release evidence and audit tables."""
+
+        return cls(
+            header_background_color="E7EEF7",
+            border_color="AEBBCC",
+            body_background_color="FFFFFF",
+            alternate_row_background_color="F8FBFD",
+            cell_padding=4.0,
+            border_width=0.5,
+            repeat_header_rows=True,
+        )
+
     def resolved_cell_padding(self) -> tuple[float, float, float, float]:
         """Return top, right, bottom, and left cell padding in points."""
 

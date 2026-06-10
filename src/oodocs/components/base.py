@@ -86,6 +86,18 @@ class Body(Block):
     def __init__(self, *children: BlockInput) -> None:
         self.children = coerce_blocks(children)
 
+    def add(self, *children: BlockInput) -> Body:
+        """Append children using the same coercion rules as the constructor."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
+    def extend(self, children: Iterable[BlockInput]) -> Body:
+        """Append an iterable of children and return this body."""
+
+        self.children.extend(coerce_blocks(children))
+        return self
+
     def render_to_docx(
         self,
         renderer: object,

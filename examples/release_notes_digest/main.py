@@ -31,6 +31,7 @@ VERSION_FILENAME_RE = re.compile(
     r"^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\.md$"
 )
 GIT_TAG_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+PENDING_RELEASE_DATE = "Pending tag"
 
 
 def version_parts_from_filename(path: Path) -> tuple[int, int, int]:
@@ -86,6 +87,15 @@ def release_dates_from_git(repo_root: str | Path = REPO_ROOT) -> dict[str, str]:
     return release_dates
 
 
+def release_date_for_version(
+    version: str,
+    release_dates: dict[str, str],
+) -> str:
+    """Return the release date or a draft marker before the tag exists."""
+
+    return release_dates.get(version, PENDING_RELEASE_DATE)
+
+
 def release_type_from_version(version_parts: tuple[int, int, int]) -> str:
     """Classify a semantic version as Major, Minor, or Patch."""
 
@@ -131,13 +141,7 @@ def build_release_notes_document(
         version_parts = version_parts_from_filename(path)
         release_type = release_type_from_version(version_parts)
         markdown_text = path.read_text(encoding="utf-8")
-        try:
-            release_date = release_dates[version]
-        except KeyError as exc:
-            raise ValueError(
-                f"No git tag date found for {version}; create a matching git tag "
-                "before rendering the release-note digest."
-            ) from exc
+        release_date = release_date_for_version(version, release_dates)
         imported_release = Document.from_markdown(
             markdown_text,
             numbered=False,
@@ -173,7 +177,7 @@ def build_release_notes_document(
 
     latest_release = files[0]
     latest_version = latest_release.stem
-    latest_release_date = release_dates[latest_version]
+    latest_release_date = release_date_for_version(latest_version, release_dates)
     digest_workflow_figure = Figure(
         RELEASE_DIGEST_DIAGRAM_PATH,
         caption=Paragraph(

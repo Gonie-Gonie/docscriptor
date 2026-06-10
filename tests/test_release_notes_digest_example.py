@@ -40,7 +40,10 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     release_dates = release_notes_example.release_dates_from_git()
     latest_release = files[0]
     latest_version = latest_release.stem
-    latest_release_date = release_dates[latest_version]
+    latest_release_date = release_notes_example.release_date_for_version(
+        latest_version,
+        release_dates,
+    )
     latest_release_path = f"release-notes/{latest_release.name}"
 
     expected_count = len(list(Path(release_notes_example.RELEASE_NOTES_DIR).glob("*.md")))
@@ -58,8 +61,14 @@ def test_release_notes_digest_example_builds_outputs(tmp_path: Path) -> None:
     assert release_notes_example.release_type_from_version((0, 10, 0)) == "Minor"
     assert release_notes_example.release_type_from_version((0, 9, 1)) == "Patch"
     assert release_notes_example.release_type_from_version((0, 9, 0)) == "Minor"
-    assert all(path.stem in release_dates for path in files)
-    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", latest_release_date)
+    assert all(
+        release_notes_example.release_date_for_version(path.stem, release_dates)
+        for path in files
+    )
+    assert latest_release_date == release_notes_example.PENDING_RELEASE_DATE or re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}",
+        latest_release_date,
+    )
 
     docx_path, pdf_path = release_notes_example.build_release_notes(tmp_path)
     html_path = tmp_path / "oodocs-release-notes.html"

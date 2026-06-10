@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from textwrap import wrap
 from typing import Iterable, Literal, Sequence, TYPE_CHECKING
@@ -74,6 +75,17 @@ class ValidationIssue:
         requested_formats = normalize_output_formats(formats)
         return bool(set(self.formats) & set(requested_formats))
 
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-serializable representation of this issue."""
+
+        return {
+            "severity": self.severity,
+            "code": self.code,
+            "message": self.message,
+            "path": self.path,
+            "formats": list(self.formats),
+        }
+
     def __str__(self) -> str:
         return (
             f"{self.severity.upper()} {self.code} "
@@ -137,6 +149,31 @@ class ValidationResult:
 
     def for_formats(self, formats: Iterable[str] | None = None) -> ValidationResult:
         return ValidationResult(self.issues_for(formats))
+
+    def to_dict(self, *, formats: Iterable[str] | None = None) -> dict[str, object]:
+        """Return a JSON-serializable validation summary."""
+
+        result = self.for_formats(formats)
+        return {
+            "ok": result.ok,
+            "errors": len(result.errors),
+            "warnings": len(result.warnings),
+            "issues": [issue.to_dict() for issue in result.issues],
+        }
+
+    def to_json(
+        self,
+        *,
+        formats: Iterable[str] | None = None,
+        indent: int | None = 2,
+    ) -> str:
+        """Serialize this validation summary to JSON."""
+
+        return json.dumps(
+            self.to_dict(formats=formats),
+            ensure_ascii=False,
+            indent=indent,
+        )
 
     def format_table(self, *, formats: Iterable[str] | None = None) -> str:
         issues = self.issues_for(formats)
